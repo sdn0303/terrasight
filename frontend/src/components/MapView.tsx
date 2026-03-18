@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, type ReactNode } from "react";
-import Map, { NavigationControl, type ViewStateChangeEvent } from "react-map-gl/maplibre";
+import Map, { NavigationControl, type ViewStateChangeEvent, type MapLayerMouseEvent } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const CARTO_DARK_MATTER = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
@@ -9,9 +9,10 @@ const CARTO_DARK_MATTER = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style
 interface MapViewProps {
   children?: ReactNode;
   onMoveEnd?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onClick?: (features: GeoJSON.Feature[]) => void;
 }
 
-export default function MapView({ children, onMoveEnd }: MapViewProps) {
+export default function MapView({ children, onMoveEnd, onClick }: MapViewProps) {
   const handleMoveEnd = useCallback(
     (evt: ViewStateChangeEvent) => {
       if (!onMoveEnd) return;
@@ -27,6 +28,16 @@ export default function MapView({ children, onMoveEnd }: MapViewProps) {
     [onMoveEnd],
   );
 
+  const handleClick = useCallback(
+    (evt: MapLayerMouseEvent) => {
+      if (!onClick) return;
+      const map = evt.target;
+      const features = map.queryRenderedFeatures(evt.point);
+      onClick(features as unknown as GeoJSON.Feature[]);
+    },
+    [onClick],
+  );
+
   return (
     <Map
       initialViewState={{
@@ -38,6 +49,7 @@ export default function MapView({ children, onMoveEnd }: MapViewProps) {
       style={{ width: "100%", height: "100%" }}
       mapStyle={CARTO_DARK_MATTER}
       onMoveEnd={handleMoveEnd}
+      onClick={handleClick}
     >
       <NavigationControl position="bottom-right" />
       {children}
