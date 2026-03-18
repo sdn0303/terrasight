@@ -82,7 +82,7 @@ async def fetch_tile_geojson(
     seen_coords: set[str] = set()
 
     for x, y in tiles:
-        params = {"z": zoom, "x": x, "y": y}
+        params = {"response_format": "geojson", "z": zoom, "x": x, "y": y}
         if extra_params:
             params.update(extra_params)
         try:
