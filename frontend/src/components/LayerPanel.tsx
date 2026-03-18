@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { TrendingUp, Building2, ShieldAlert, School, Hospital } from "lucide-react";
+import { TrendingUp, Building2, ShieldAlert, School } from "lucide-react";
 import { LAYERS, type ActiveLayers, type LayerDef } from "@/lib/layers";
 import type { Dispatch, SetStateAction } from "react";
 
