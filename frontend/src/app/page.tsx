@@ -3,6 +3,10 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { fetchAPI } from "@/lib/api";
+import { getDefaultActiveLayers, type ActiveLayers } from "@/lib/layers";
+import { useMapData } from "@/hooks/useMapData";
+import LayerPanel from "@/components/LayerPanel";
+import MapLayers from "@/components/MapLayers";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -10,6 +14,8 @@ type HealthStatus = "loading" | "online" | "offline";
 
 export default function Home() {
   const [status, setStatus] = useState<HealthStatus>("loading");
+  const [activeLayers, setActiveLayers] = useState<ActiveLayers>(getDefaultActiveLayers);
+  const { layerData, loading, fetchForBounds } = useMapData(activeLayers);
 
   useEffect(() => {
     fetchAPI<{ status: string }>("/api/health")
@@ -18,68 +24,57 @@ export default function Home() {
   }, []);
 
   return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
-      <MapView />
+    <div className="relative w-screen h-screen">
+      <MapView onMoveEnd={fetchForBounds}>
+        <MapLayers layerData={layerData} activeLayers={activeLayers} />
+      </MapView>
 
       {/* Header overlay */}
-      <div
-        style={{
-          position: "absolute",
-          top: 24,
-          left: 24,
-          zIndex: 10,
-          pointerEvents: "none",
-        }}
-      >
+      <div className="absolute top-6 left-6 z-10 pointer-events-none">
         <h1
-          style={{
-            fontSize: "1.25rem",
-            fontWeight: 700,
-            letterSpacing: "0.15em",
-            color: "var(--accent-cyan)",
-            margin: 0,
-            lineHeight: 1.2,
-          }}
+          className="text-xl font-bold tracking-[0.15em] leading-tight m-0"
+          style={{ color: "var(--accent-cyan)" }}
         >
           不動産投資 VISUALIZER
         </h1>
         <p
-          style={{
-            fontSize: "0.65rem",
-            letterSpacing: "0.25em",
-            color: "var(--text-muted)",
-            margin: "4px 0 0 0",
-          }}
+          className="text-[0.65rem] tracking-[0.25em] mt-1 m-0"
+          style={{ color: "var(--text-muted)" }}
         >
           MLIT GEOSPATIAL DATA PLATFORM
         </p>
       </div>
 
+      {/* Layer panel */}
+      <LayerPanel activeLayers={activeLayers} setActiveLayers={setActiveLayers} />
+
+      {/* Loading indicator */}
+      {loading && (
+        <div
+          className="absolute top-6 right-6 z-[300] flex items-center gap-2 px-4 py-2 rounded-md border text-[0.7rem] tracking-wider"
+          style={{
+            background: "var(--bg-secondary)",
+            borderColor: "var(--border-primary)",
+            color: "var(--accent-cyan)",
+          }}
+        >
+          <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+          LOADING...
+        </div>
+      )}
+
       {/* Status indicator */}
       <div
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-1.5 rounded-md border text-[0.7rem] tracking-wider"
         style={{
-          position: "absolute",
-          bottom: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "6px 16px",
           background: "var(--bg-secondary)",
-          border: "1px solid var(--border-primary)",
-          borderRadius: 6,
-          fontSize: "0.7rem",
-          letterSpacing: "0.1em",
+          borderColor: "var(--border-primary)",
           color: "var(--text-secondary)",
         }}
       >
         <span
+          className="w-1.5 h-1.5 rounded-full"
           style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
             background:
               status === "online"
                 ? "var(--accent-cyan)"
