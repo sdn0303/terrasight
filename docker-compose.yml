@@ -1,32 +1,46 @@
 services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: realestate
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d realestate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
-    build: ./backend
-    container_name: realestate-backend
+    build: ./services/backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://app:${DB_PASSWORD:-devpass}@db:5432/realestate
+      REINFOLIB_API_KEY: ${REINFOLIB_API_KEY:-}
+      RUST_LOG: ${RUST_LOG:-info}
+      ALLOWED_ORIGINS: http://localhost:3000
     ports:
       - "8000:8000"
-    environment:
-      - REINFOLIB_API_KEY=${REINFOLIB_API_KEY:-}
-      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-86400}
-    volumes:
-      - backend_data:/app/data
-    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
   frontend:
-    build: ./frontend
-    container_name: realestate-frontend
+    build: ./services/frontend
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
 
 volumes:
-  backend_data:
+  pgdata:

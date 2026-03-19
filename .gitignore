@@ -1,14 +1,22 @@
-# Python
+# Rust
+target/
+
+# Python (legacy)
 __pycache__/
 *.pyc
 *.pyo
-backend/data/
-backend/.env
 
 # Node
 node_modules/
 .next/
-frontend/.env.local
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Data (large GeoJSON files)
+data/geojson/
 
 # IDE
 .vscode/
