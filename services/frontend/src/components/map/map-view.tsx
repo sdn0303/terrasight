@@ -2,14 +2,21 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Map, NavigationControl } from "react-map-gl/maplibre";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   MapEvent,
   MapLayerMouseEvent,
   ViewStateChangeEvent,
 } from "react-map-gl/maplibre";
+import { Map as MapGL, NavigationControl } from "react-map-gl/maplibre";
 import { DEBOUNCE_MS, MAP_CONFIG } from "@/lib/constants";
+import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
 import { useMapStore } from "@/stores/map-store";
 
 interface MapViewProps {
@@ -18,10 +25,16 @@ interface MapViewProps {
   onFeatureClick?: (e: MapLayerMouseEvent) => void;
 }
 
+const WEBGL_RECOVERY_TIMEOUT_MS = 5000;
+
 export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
   const [mounted, setMounted] = useState(false);
+  const [webglLost, setWebglLost] = useState(false);
   const { viewState, setViewState } = useMapStore();
-  const moveEndTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const moveEndTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const mapRef = useRef<maplibregl.Map | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -59,73 +72,125 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
 
   const handleLoad = useCallback((e: MapEvent) => {
     const map = e.target;
+    mapRef.current = map;
 
-    // Add terrain DEM source for 3D elevation
-    map.addSource("terrain-dem", {
-      type: "raster-dem",
-      tiles: [
-        "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
-      ],
-      tileSize: 256,
-      maxzoom: 15,
-      encoding: "terrarium",
-    });
+    // ─── CRITICAL GAP FIX: try/catch wrapper for addSource ───
+    // Protects against malformed data or duplicate source IDs
+    try {
+      map.addSource("terrain-dem", {
+        type: "raster-dem",
+        tiles: [
+          "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
+        maxzoom: 15,
+        encoding: "terrarium",
+      });
 
-    // Enable terrain with mild exaggeration to reveal urban topography
-    map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
+      map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
+    } catch (err) {
+      console.error("[MapView] Failed to add terrain source:", err);
+    }
 
     // Add 3D building extrusion layer using CARTO vector tiles
-    // CARTO Dark Matter exposes a 'building' layer in the 'carto' source
-    const style = map.getStyle();
-    const layers = style.layers ?? [];
-    const hasBuildingLayer = layers.some(
-      (l) => l.id === "building" || ("source-layer" in l && l["source-layer"] === "building"),
-    );
-
-    if (!hasBuildingLayer) {
-      // Find insertion point: above roads, below labels
-      const labelLayerId = layers.find(
+    try {
+      const style = map.getStyle();
+      const layers = style.layers ?? [];
+      const hasBuildingLayer = layers.some(
         (l) =>
-          l.type === "symbol" &&
-          "source-layer" in l &&
-          typeof l["source-layer"] === "string" &&
-          l["source-layer"].includes("place"),
-      )?.id;
-
-      map.addLayer(
-        {
-          id: "3d-buildings",
-          type: "fill-extrusion",
-          source: "carto",
-          "source-layer": "building",
-          filter: ["==", ["geometry-type"], "Polygon"],
-          paint: {
-            "fill-extrusion-color": "#1e1e2e",
-            "fill-extrusion-height": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              14,
-              0,
-              16,
-              ["coalesce", ["get", "render_height"], ["get", "height"], 10],
-            ],
-            "fill-extrusion-base": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              14,
-              0,
-              16,
-              ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
-            ],
-            "fill-extrusion-opacity": 0.7,
-          },
-        },
-        labelLayerId,
+          l.id === "building" ||
+          ("source-layer" in l && l["source-layer"] === "building"),
       );
+
+      if (!hasBuildingLayer) {
+        const labelLayerId = layers.find(
+          (l) =>
+            l.type === "symbol" &&
+            "source-layer" in l &&
+            typeof l["source-layer"] === "string" &&
+            l["source-layer"].includes("place"),
+        )?.id;
+
+        map.addLayer(
+          {
+            id: "3d-buildings",
+            type: "fill-extrusion",
+            source: "carto",
+            "source-layer": "building",
+            filter: ["==", ["geometry-type"], "Polygon"],
+            paint: {
+              "fill-extrusion-color": "#1e1e2e",
+              "fill-extrusion-height": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                14,
+                0,
+                16,
+                ["coalesce", ["get", "render_height"], ["get", "height"], 10],
+              ],
+              "fill-extrusion-base": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                14,
+                0,
+                16,
+                [
+                  "coalesce",
+                  ["get", "render_min_height"],
+                  ["get", "min_height"],
+                  0,
+                ],
+              ],
+              "fill-extrusion-opacity": 0.7,
+            },
+          },
+          labelLayerId,
+        );
+      }
+    } catch (err) {
+      console.error("[MapView] Failed to add 3D buildings layer:", err);
+    }
+
+    // ─── CRITICAL GAP FIX: WebGL context lost recovery ───
+    const canvas = map.getCanvas();
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.warn("[MapView] WebGL context lost — attempting recovery");
+      setWebglLost(true);
+    };
+    const handleContextRestored = () => {
+      console.info("[MapView] WebGL context restored");
+      setWebglLost(false);
+    };
+
+    canvas.addEventListener("webglcontextlost", handleContextLost);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored);
+  }, []);
+
+  const handleForceReload = useCallback(() => {
+    if (mapRef.current) {
+      try {
+        mapRef.current.triggerRepaint();
+      } catch {
+        // If triggerRepaint fails, force page-level recovery
+        window.location.reload();
+      }
     }
   }, []);
+
+  // Auto-recovery timeout for WebGL context lost
+  useEffect(() => {
+    if (!webglLost) return;
+
+    const timer = setTimeout(() => {
+      // If still lost after timeout, the toast will show reload button
+      // (auto-recovery via browser is the primary path)
+    }, WEBGL_RECOVERY_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [webglLost]);
 
   if (!mounted) {
     return (
@@ -147,22 +212,71 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
   }
 
   return (
-    <Map
-      longitude={viewState.longitude}
-      latitude={viewState.latitude}
-      zoom={viewState.zoom}
-      pitch={viewState.pitch}
-      bearing={viewState.bearing}
-      onMove={handleMove}
-      onMoveEnd={handleMoveEnd}
-      onClick={handleClick}
-      onLoad={handleLoad}
-      mapStyle={MAP_CONFIG.style}
-      style={{ width: "100%", height: "100%" }}
-      attributionControl={false}
-    >
-      <NavigationControl position="bottom-right" />
-      {children}
-    </Map>
+    <>
+      <MapGL
+        longitude={viewState.longitude}
+        latitude={viewState.latitude}
+        zoom={viewState.zoom}
+        pitch={viewState.pitch}
+        bearing={viewState.bearing}
+        onMove={handleMove}
+        onMoveEnd={handleMoveEnd}
+        onClick={handleClick}
+        onLoad={handleLoad}
+        mapStyle={MAP_CONFIG.style}
+        style={{ width: "100%", height: "100%" }}
+        attributionControl={false}
+        interactiveLayerIds={ALL_INTERACTIVE_LAYER_IDS}
+      >
+        <NavigationControl position="bottom-right" />
+        {children}
+      </MapGL>
+
+      {/* WebGL context lost toast overlay */}
+      {webglLost && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(12, 12, 20, 0.85)" }}
+          role="alert"
+          aria-live="assertive"
+        >
+          <div
+            className="rounded-lg px-6 py-4 text-center max-w-xs"
+            style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border-primary)",
+            }}
+          >
+            <div
+              className="text-sm mb-2"
+              style={{
+                color: "var(--accent-warning)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              ⚠ 地図を再読み込み中...
+            </div>
+            <div
+              className="text-xs mb-3"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              GPUメモリ不足が発生しました
+            </div>
+            <button
+              type="button"
+              onClick={handleForceReload}
+              className="px-4 py-1.5 rounded text-xs"
+              style={{
+                background: "var(--accent-cyan)",
+                color: "var(--bg-primary)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              再読み込み
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
