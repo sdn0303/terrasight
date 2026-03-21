@@ -1,0 +1,36 @@
+# lefthook.yml — Git hooks for Rust backend quality gates
+# Install: lefthook install
+
+pre-commit:
+  parallel: true
+  commands:
+    rust-fmt:
+      root: "services/backend/"
+      glob: "*.rs"
+      run: cargo fmt --all -- --check
+      fail_text: "cargo fmt failed — run `cargo fmt --all` to fix"
+
+    rust-clippy:
+      root: "services/backend/"
+      glob: "*.rs"
+      run: cargo clippy --workspace -- -D warnings
+      fail_text: "clippy warnings found — fix before committing"
+
+    sql-lint:
+      root: "services/backend/"
+      glob: "migrations/*.sql"
+      run: sqruff lint migrations/
+      fail_text: "SQL lint failed — run `sqruff fix migrations/` to fix"
+
+pre-push:
+  parallel: false
+  commands:
+    rust-test:
+      root: "services/backend/"
+      run: cargo test --workspace
+      fail_text: "tests failed — fix before pushing"
+
+    rust-build:
+      root: "services/backend/"
+      run: cargo build --workspace
+      fail_text: "build failed — fix before pushing"
