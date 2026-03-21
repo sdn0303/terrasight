@@ -1,6 +1,6 @@
 # TODOS
 
-> 最終更新: 2026-03-19 (エンジニアリング + デザインレビュー反映)
+> 最終更新: 2026-03-22 (CEO Review: Data Strategy & Platform Vision 反映)
 
 ---
 
@@ -58,6 +58,28 @@
 - **Why**: 投資スコアの「地価トレンド」算出とSparkline表示に必要
 - **Effort**: S | **Priority**: P1
 
+### ~~MapLibre addSource エラーハンドリング~~ ✅
+- **Completed**: PR1 (feature/pr1-layer-expansion)
+- try/catch wrapper added to map-view.tsx handleLoad
+
+### ~~WebGL Context Lost リカバリー~~ ✅
+- **Completed**: PR1 (feature/pr1-layer-expansion)
+- webglcontextlost/restored event handlers + toast overlay + reload button
+
+### ~~レイヤートグル中の fetch レースコンディション~~ ✅
+- **Completed**: PR1 (feature/pr1-layer-expansion)
+- Static layers use `if (!visible) return null` pattern — Source unmount cancels fetch. No stale data possible.
+
+### ~~page.tsx レイヤー宣言的レンダリングリファクタ~~ ✅
+- **Completed**: PR1 (feature/pr1-layer-expansion)
+- Component registry pattern + source field in layers.ts + two loops (static/API)
+
+### reinfolib API モック/スタブ
+- **What**: reinfolib_mock.rsでモックレスポンスを提供し、APIキー取得前の並行開発を可能にする
+- **Why**: APIキー申請は2-4週かかる可能性。Phase 2の不動産取引価格レイヤー(#8)開発をブロックしない
+- **Effort**: S (human 3h / CC 15min) | **Priority**: P1
+- **File**: `services/backend/src/infra/reinfolib_mock.rs`
+
 ---
 
 ## P2 — SaaS化フェーズ
@@ -84,3 +106,15 @@
 - **What**: まず首都圏4県（東京+神奈川+埼玉+千葉）で性能テスト、bbox P99 < 100msを基準に
 - **Why**: 全国データ投入でクエリ性能が劣化する可能性。パーティショニングの必要性を検証
 - **Effort**: M | **Priority**: P2
+
+### UIUX_SPEC.md 更新
+- **What**: CRT/Shadowbrokerテーマ参照をUrban Stratigraphyデザインシステムに更新
+- **Why**: ステールなドキュメントは新エンジニアの混乱を招く。globals.cssとの乖離が拡大
+- **Effort**: S (human 4h / CC 15min) | **Priority**: P2
+- **File**: `docs/UIUX_SPEC.md`
+
+### DESIGN.md 作成
+- **What**: Urban Stratigraphyデザインシステムの公式ドキュメント（カラートークン、タイポグラフィ、コンポーネントパターン）
+- **Why**: globals.cssにデザイントークンが定義済みだがドキュメント化されていない。21レイヤー拡大後、デザインレビューの基準が不明確
+- **Effort**: S (human 4h / CC 15min) | **Priority**: P2
+- **File**: `DESIGN.md`
