@@ -17,7 +17,7 @@ export function MedicalLayer({ data, visible }: Props) {
         type="circle"
         paint={{
           "circle-radius": 5,
-          "circle-color": "#6ee7b7",
+          "circle-color": "#2dd4bf",
           "circle-opacity": 0.9,
         }}
       />

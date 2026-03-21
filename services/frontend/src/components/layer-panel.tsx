@@ -22,16 +22,16 @@ function LayerPanelContent() {
     <>
       <div className="px-4 pt-4 pb-2">
         <div
-          className="text-xs tracking-[0.15em]"
-          style={{ color: "var(--accent-cyan)" }}
+          className="text-base tracking-[0.05em] font-bold"
+          style={{ color: "var(--text-heading)", fontFamily: "var(--font-sans)" }}
         >
-          ▸ REALESTATE
+          地層
         </div>
         <div
-          className="text-xs tracking-[0.15em]"
-          style={{ color: "var(--accent-cyan)" }}
+          className="text-[10px] tracking-[0.12em] mt-0.5"
+          style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
         >
-          &nbsp; INTELLIGENCE
+          URBAN STRATIGRAPHY
         </div>
       </div>
 
@@ -43,9 +43,12 @@ function LayerPanelContent() {
           <div key={category.id} className="px-4 py-2">
             <div
               className="text-[9px] tracking-[0.15em] mb-2"
-              style={{ color: "var(--text-muted)" }}
+              style={{
+                color: "var(--text-muted)",
+                fontFamily: "var(--font-mono)",
+              }}
             >
-              ── {category.label} ──
+              ── {category.labelJa} ──
             </div>
             {categoryLayers.map((layer) => {
               const isActive = visibleLayers.has(layer.id);
@@ -62,17 +65,19 @@ function LayerPanelContent() {
                     color: isActive
                       ? "var(--text-primary)"
                       : "var(--text-muted)",
+                    fontFamily: "var(--font-sans)",
                   }}
                   aria-pressed={isActive}
-                  aria-label={`${layer.nameJa} layer toggle`}
+                  aria-label={`${layer.nameJa} レイヤー切替`}
                 >
                   <span
-                    className="inline-block w-2 h-2 rounded-full"
+                    className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                     style={{
                       background: isActive
-                        ? "var(--accent-cyan)"
+                        ? layer.color
                         : "var(--text-muted)",
                     }}
+                    aria-hidden="true"
                   />
                   {layer.nameJa}
                 </button>
@@ -103,7 +108,7 @@ export function LayerPanel() {
               border: "1px solid var(--border-primary)",
               color: "var(--accent-cyan)",
             }}
-            aria-label="Open layer controls"
+            aria-label="レイヤーコントロールを開く"
           >
             <MenuIcon size={16} />
           </button>
@@ -118,7 +123,7 @@ export function LayerPanel() {
           }}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Layer Controls</SheetTitle>
+            <SheetTitle>レイヤーコントロール</SheetTitle>
           </SheetHeader>
           <LayerPanelContent />
         </SheetContent>
@@ -142,7 +147,7 @@ export function LayerPanel() {
             borderRight: "1px solid var(--border-primary)",
             zIndex: 40,
           }}
-          aria-label="Layer controls"
+          aria-label="レイヤーコントロール"
         >
           <LayerPanelContent />
         </motion.aside>

@@ -17,10 +17,10 @@ export function LandpriceLayer({ data, visible }: Props) {
         type="circle"
         paint={{
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 15, 8],
-          "circle-color": "#22d3ee",
-          "circle-opacity": 0.8,
+          "circle-color": "#fbbf24",
+          "circle-opacity": 0.85,
           "circle-stroke-width": 1,
-          "circle-stroke-color": "#0a0a0f",
+          "circle-stroke-color": "#0c0c14",
         }}
       />
     </Source>

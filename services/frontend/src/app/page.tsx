@@ -4,7 +4,6 @@ import type { FeatureCollection } from "geojson";
 import { useCallback, useMemo, useState } from "react";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 import { ComparePanel } from "@/components/compare-panel";
-import { CRTOverlay } from "@/components/crt-overlay";
 import { DashboardStats } from "@/components/dashboard-stats";
 import { LayerPanel } from "@/components/layer-panel";
 import {
@@ -129,7 +128,6 @@ export default function Home() {
       </MapView>
 
       <ComparePanel />
-      <CRTOverlay />
       <StatusBar
         lat={viewState.latitude}
         lng={viewState.longitude}

@@ -17,7 +17,7 @@ export function SchoolLayer({ data, visible }: Props) {
         type="circle"
         paint={{
           "circle-radius": 5,
-          "circle-color": "#10b981",
+          "circle-color": "#34d399",
           "circle-opacity": 0.9,
         }}
       />
