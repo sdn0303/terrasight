@@ -1,23 +1,39 @@
 # Rust
 target/
-
-# Python (legacy)
-__pycache__/
-*.pyc
-*.pyo
+**/*.rs.bk
 
 # Node
 node_modules/
 .next/
+.turbo/
+out/
 
 # Environment
 .env
 .env.local
 .env*.local
 
-# Data (large GeoJSON files)
-data/geojson/
+# Data (large files — seed via scripts, not git)
+data/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Test / Coverage
+coverage/
+*.lcov
+tarpaulin-report.html
+
+# Logs
+*.log

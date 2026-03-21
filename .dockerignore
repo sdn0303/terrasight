@@ -1,0 +1,49 @@
+# Version control
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Data (not needed in image)
+data/
+
+# Archive (deprecated code)
+archive/
+
+# Node (frontend has its own Dockerfile)
+node_modules/
+.next/
+.turbo/
+
+# Rust build artifacts (rebuilt in Docker)
+target/
+
+# Environment files
+.env
+.env.local
+.env*.local
+.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude / AI
+.claude/
+
+# CI
+.github/
+
+# Scripts (not needed in production image)
+scripts/
+
+# Misc
+*.log
+coverage/
