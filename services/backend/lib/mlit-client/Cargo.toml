@@ -1,0 +1,24 @@
+[package]
+name = "mlit-client"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+description = "HTTP client for Japanese government APIs (reinfolib, KSJ, e-Stat)"
+
+[features]
+default = ["reinfolib"]
+reinfolib = []
+ksj = []
+estat = []
+
+[dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+tokio = { version = "1", features = ["time"] }
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt", "macros"] }

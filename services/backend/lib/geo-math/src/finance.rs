@@ -1,0 +1,87 @@
+/// Compute Compound Annual Growth Rate (CAGR).
+///
+/// `CAGR = (latest / oldest)^(1/years) - 1`
+///
+/// Returns `0.0` if `oldest_price <= 0.0` or `years == 0`.
+///
+/// # Examples
+///
+/// ```
+/// use realestate_geo_math::finance::compute_cagr;
+///
+/// let cagr = compute_cagr(100_000.0, 120_000.0, 4);
+/// assert!((cagr - 0.0466).abs() < 0.001);
+///
+/// assert_eq!(compute_cagr(100_000.0, 100_000.0, 5), 0.0);
+/// assert_eq!(compute_cagr(0.0, 100.0, 5), 0.0);
+/// ```
+pub fn compute_cagr(oldest_price: f64, latest_price: f64, years: u32) -> f64 {
+    if oldest_price <= 0.0 || years == 0 {
+        return 0.0;
+    }
+    (latest_price / oldest_price).powf(1.0 / years as f64) - 1.0
+}
+
+/// Estimate yield ratio.
+///
+/// Phase 1 assumes transaction price ≈ `land_price * transaction_ratio`.
+///
+/// # Examples
+///
+/// ```
+/// use realestate_geo_math::finance::estimate_yield;
+///
+/// assert_eq!(estimate_yield(1_000_000, 0.8), 0.8);
+/// ```
+pub fn estimate_yield(land_price: i64, transaction_ratio: f64) -> f64 {
+    let avg_transaction = land_price as f64 * transaction_ratio;
+    avg_transaction / land_price as f64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cagr_positive_growth() {
+        let result = compute_cagr(100_000.0, 120_000.0, 4);
+        assert!(
+            (result - 0.0466).abs() < 0.001,
+            "expected ~0.0466, got {result}"
+        );
+    }
+
+    #[test]
+    fn cagr_no_growth() {
+        assert_eq!(compute_cagr(100_000.0, 100_000.0, 5), 0.0);
+    }
+
+    #[test]
+    fn cagr_zero_oldest_price() {
+        assert_eq!(compute_cagr(0.0, 100.0, 5), 0.0);
+    }
+
+    #[test]
+    fn cagr_negative_oldest_price() {
+        assert_eq!(compute_cagr(-1.0, 100.0, 5), 0.0);
+    }
+
+    #[test]
+    fn cagr_zero_years() {
+        assert_eq!(compute_cagr(100.0, 200.0, 0), 0.0);
+    }
+
+    #[test]
+    fn cagr_decline() {
+        let result = compute_cagr(100.0, 50.0, 2);
+        assert!(
+            result < 0.0,
+            "declining prices should yield negative CAGR, got {result}"
+        );
+    }
+
+    #[test]
+    fn estimate_yield_typical() {
+        assert_eq!(estimate_yield(1_000_000, 0.8), 0.8);
+    }
+}
