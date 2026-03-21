@@ -42,17 +42,9 @@ pub const RISK_WEIGHT_STEEP: f64 = 0.2;
 ///
 /// Intentionally differs from [`RISK_WEIGHT_FLOOD`] because the area-based
 /// query aggregates over many cells and omits the liquefaction component.
-#[expect(
-    dead_code,
-    reason = "consumed by the stats usecase in a subsequent task"
-)]
 pub const STATS_RISK_WEIGHT_FLOOD: f64 = 0.6;
 
 /// Steep-slope risk weight used in the area-based stats risk calculation.
-#[expect(
-    dead_code,
-    reason = "consumed by the stats usecase in a subsequent task"
-)]
 pub const STATS_RISK_WEIGHT_STEEP: f64 = 0.4;
 
 // ---------------------------------------------------------------------------
@@ -100,6 +92,7 @@ pub const YIELD_SCORE_MULTIPLIER: f64 = 500.0;
 
 /// Radius (m) used for buffered PostGIS queries when fetching risk data
 /// around a point of interest.
+// FIXME: remove #[expect(dead_code)] once consumed by infra repository (Task 4)
 #[expect(
     dead_code,
     reason = "consumed by the infra repository layer in a subsequent task"
@@ -107,6 +100,7 @@ pub const YIELD_SCORE_MULTIPLIER: f64 = 500.0;
 pub const RADIUS_RISK_BUFFER_M: f64 = 500.0;
 
 /// Radius (m) used when searching for nearby schools and medical facilities.
+// FIXME: remove #[expect(dead_code)] once consumed by infra repository (Task 4)
 #[expect(
     dead_code,
     reason = "consumed by the infra repository layer in a subsequent task"
@@ -115,6 +109,7 @@ pub const RADIUS_FACILITY_SEARCH_M: f64 = 1000.0;
 
 /// Radius (m) used when aggregating historical transaction data for trend
 /// analysis around a given coordinate.
+// FIXME: remove #[expect(dead_code)] once consumed by infra repository (Task 4)
 #[expect(
     dead_code,
     reason = "consumed by the infra repository layer in a subsequent task"
@@ -127,10 +122,6 @@ pub const RADIUS_TREND_SEARCH_M: f64 = 2000.0;
 
 /// Default number of years of historical data used for CAGR calculation
 /// when the caller does not specify an explicit window.
-#[expect(
-    dead_code,
-    reason = "consumed by the handler request extractor in a subsequent task"
-)]
 pub const TREND_DEFAULT_YEARS: i32 = 5;
 
 /// Minimum allowed value for the trend analysis year window.
@@ -174,6 +165,7 @@ pub const PRECISION_DISTANCE: u32 = 1;
 
 /// Percentile argument passed to PostGIS `percentile_cont` for median
 /// calculations (0.5 = 50th percentile).
+// FIXME: remove #[expect(dead_code)] — SQL string literal, may not be directly importable
 #[expect(
     dead_code,
     reason = "consumed by the infra repository layer in a subsequent task"
@@ -182,6 +174,7 @@ pub const MEDIAN_PERCENTILE: f64 = 0.5;
 
 /// EPSG SRID for the WGS 84 geographic coordinate system used in all
 /// GeoJSON output and PostGIS geometry storage.
+// FIXME: remove #[expect(dead_code)] — SQL string literal, may not be directly importable
 #[expect(
     dead_code,
     reason = "consumed by the infra repository layer in a subsequent task"
@@ -205,8 +198,4 @@ pub const HEALTH_STATUS_DEGRADED: &str = "degraded";
 
 /// Disclaimer appended to all investment score responses, reminding users
 /// that the score is informational and not financial advice.
-#[expect(
-    dead_code,
-    reason = "consumed by the score handler response in a subsequent task"
-)]
 pub const SCORE_DISCLAIMER: &str = "本スコアは参考値です。投資判断は自己責任で行ってください。";
