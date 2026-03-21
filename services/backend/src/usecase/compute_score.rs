@@ -114,7 +114,10 @@ fn compute_trend(prices: &[PriceRecord]) -> ScoreComponent {
 /// risk (0-25): composite = flood*0.4 + liquefaction*0.4 + steep*0.2; score = 25*(1-composite)
 fn compute_risk(flood_overlap: f64, steep_nearby: bool) -> ScoreComponent {
     let liquefaction_overlap = 0.0; // Phase 1: no liquefaction data yet
-    let steep_factor = if steep_nearby { 1.0 } else { 0.0 };
+    let steep_factor = match steep_nearby {
+        true => 1.0,
+        false => 0.0,
+    };
     let composite = flood_overlap * RISK_WEIGHT_FLOOD
         + liquefaction_overlap * RISK_WEIGHT_LIQUEFACTION
         + steep_factor * RISK_WEIGHT_STEEP;
