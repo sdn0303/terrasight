@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useStats } from "@/features/stats/api/use-stats";
 import { useMapStore } from "@/stores/map-store";
 
@@ -44,14 +46,102 @@ function StatCard({
 export function DashboardStats() {
   const bbox = useMapStore((s) => s.getBBox());
   const { data: stats, isLoading } = useStats(bbox);
+  const isTablet = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery("(min-width: 1280px)");
+  const isMobile = !isTablet;
+
+  // Mobile: hidden by default, toggled by a floating button
+  const [mobileVisible, setMobileVisible] = useState(false);
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Floating tap-to-show button on mobile */}
+        <button
+          type="button"
+          onClick={() => setMobileVisible((v) => !v)}
+          className="fixed bottom-10 right-4 z-40 rounded px-3 py-1.5 text-[10px] tracking-[0.1em]"
+          style={{
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-primary)",
+            color: "var(--accent-cyan)",
+          }}
+          aria-expanded={mobileVisible}
+          aria-controls="dashboard-stats-panel"
+          aria-label={mobileVisible ? "Hide area statistics" : "Show area statistics"}
+        >
+          {mobileVisible ? "HIDE STATS" : "SHOW STATS"}
+        </button>
+
+        {mobileVisible && (
+          <div
+            id="dashboard-stats-panel"
+            className="fixed left-0 right-0 grid grid-cols-2 gap-2 px-3 py-2"
+            style={{
+              bottom: 28,
+              background: "var(--bg-secondary)",
+              borderTop: "1px solid var(--border-primary)",
+              zIndex: 30,
+            }}
+            aria-label="Area statistics"
+            role="region"
+          >
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg p-3"
+                  style={{ background: "var(--bg-tertiary)" }}
+                >
+                  <Skeleton className="h-3 w-16 mb-2" />
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              ))
+            ) : stats ? (
+              <>
+                <StatCard
+                  label="AVG PRICE"
+                  value={`¥${stats.land_price.avg_per_sqm.toLocaleString()}`}
+                  sub={`med: ¥${stats.land_price.median_per_sqm.toLocaleString()}`}
+                />
+                <StatCard
+                  label="LISTINGS"
+                  value={String(stats.land_price.count)}
+                />
+                <StatCard
+                  label="RISK"
+                  value={`${Math.round(stats.risk.avg_composite_risk * 100)}%`}
+                  color={
+                    Math.round(stats.risk.avg_composite_risk * 100) > 30
+                      ? "var(--accent-danger)"
+                      : "var(--accent-success)"
+                  }
+                />
+                <StatCard
+                  label="FACILITIES"
+                  value={String(stats.facilities.schools + stats.facilities.medical)}
+                  sub={`${stats.facilities.schools} schools, ${stats.facilities.medical} medical`}
+                />
+              </>
+            ) : null}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Tablet: 80px height, 2x2 grid
+  // Desktop: 120px height, single row
+  const panelHeight = isDesktop ? 120 : 80;
+  const gridClass = isDesktop ? "flex gap-3" : "grid grid-cols-2 gap-2";
 
   if (isLoading) {
     return (
       <div
-        className="fixed left-0 right-0 flex gap-3 px-4 py-3"
+        className={`fixed left-0 right-0 px-4 py-3 ${gridClass}`}
         style={{
           bottom: 28,
-          height: 120,
+          height: panelHeight,
           background: "var(--bg-secondary)",
           borderTop: "1px solid var(--border-primary)",
           zIndex: 30,
@@ -79,10 +169,10 @@ export function DashboardStats() {
 
   return (
     <div
-      className="fixed left-0 right-0 flex gap-3 px-4 py-3"
+      className={`fixed left-0 right-0 px-4 py-3 ${gridClass}`}
       style={{
         bottom: 28,
-        height: 120,
+        height: panelHeight,
         background: "var(--bg-secondary)",
         borderTop: "1px solid var(--border-primary)",
         zIndex: 30,
