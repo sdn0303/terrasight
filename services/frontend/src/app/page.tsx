@@ -19,11 +19,13 @@ import { ScoreCard } from "@/components/score-card/score-card";
 import { StatusBar } from "@/components/status-bar";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useHealth } from "@/features/health/api/use-health";
+import { useMapUrlState } from "@/hooks/use-map-url-state";
 import { useMapStore } from "@/stores/map-store";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
 export default function Home() {
+  useMapUrlState();
   const { viewState, visibleLayers, selectFeature, getBBox } = useMapStore();
   const bboxRef = useRef(getBBox());
 

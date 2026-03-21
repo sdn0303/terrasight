@@ -1,5 +1,6 @@
 import { GeistMono } from "geist/font/mono";
 import type { Metadata } from "next";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Providers } from "@/components/providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -17,9 +18,11 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`dark ${GeistMono.variable}`}>
       <body>
-        <Providers>
-          <TooltipProvider>{children}</TooltipProvider>
-        </Providers>
+        <NuqsAdapter>
+          <Providers>
+            <TooltipProvider>{children}</TooltipProvider>
+          </Providers>
+        </NuqsAdapter>
       </body>
     </html>
   );
