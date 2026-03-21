@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Map, NavigationControl } from "react-map-gl/maplibre";
 import type {
+  MapEvent,
   MapLayerMouseEvent,
   ViewStateChangeEvent,
 } from "react-map-gl/maplibre";
@@ -56,6 +57,76 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
     [onFeatureClick],
   );
 
+  const handleLoad = useCallback((e: MapEvent) => {
+    const map = e.target;
+
+    // Add terrain DEM source for 3D elevation
+    map.addSource("terrain-dem", {
+      type: "raster-dem",
+      tiles: [
+        "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      maxzoom: 15,
+      encoding: "terrarium",
+    });
+
+    // Enable terrain with mild exaggeration to reveal urban topography
+    map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
+
+    // Add 3D building extrusion layer using CARTO vector tiles
+    // CARTO Dark Matter exposes a 'building' layer in the 'carto' source
+    const style = map.getStyle();
+    const layers = style.layers ?? [];
+    const hasBuildingLayer = layers.some(
+      (l) => l.id === "building" || ("source-layer" in l && l["source-layer"] === "building"),
+    );
+
+    if (!hasBuildingLayer) {
+      // Find insertion point: above roads, below labels
+      const labelLayerId = layers.find(
+        (l) =>
+          l.type === "symbol" &&
+          "source-layer" in l &&
+          typeof l["source-layer"] === "string" &&
+          l["source-layer"].includes("place"),
+      )?.id;
+
+      map.addLayer(
+        {
+          id: "3d-buildings",
+          type: "fill-extrusion",
+          source: "carto",
+          "source-layer": "building",
+          filter: ["==", ["geometry-type"], "Polygon"],
+          paint: {
+            "fill-extrusion-color": "#1e1e2e",
+            "fill-extrusion-height": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              14,
+              0,
+              16,
+              ["coalesce", ["get", "render_height"], ["get", "height"], 10],
+            ],
+            "fill-extrusion-base": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              14,
+              0,
+              16,
+              ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
+            ],
+            "fill-extrusion-opacity": 0.7,
+          },
+        },
+        labelLayerId,
+      );
+    }
+  }, []);
+
   if (!mounted) {
     return (
       <div
@@ -64,12 +135,13 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
           width: "100%",
           height: "100%",
           background: "var(--bg-primary)",
-          color: "var(--accent-cyan)",
+          color: "var(--text-secondary)",
           fontFamily: "var(--font-mono)",
-          fontSize: "14px",
+          fontSize: "13px",
+          letterSpacing: "0.1em",
         }}
       >
-        LOADING MAP...
+        地層 LOADING...
       </div>
     );
   }
@@ -84,6 +156,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
       onMove={handleMove}
       onMoveEnd={handleMoveEnd}
       onClick={handleClick}
+      onLoad={handleLoad}
       mapStyle={MAP_CONFIG.style}
       style={{ width: "100%", height: "100%" }}
       attributionControl={false}
