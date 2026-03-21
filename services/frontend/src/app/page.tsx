@@ -14,6 +14,7 @@ import {
 } from "@/components/map/layers";
 import { CRTOverlay } from "@/components/crt-overlay";
 import { LayerPanel } from "@/components/layer-panel";
+import { ScoreCard } from "@/components/score-card/score-card";
 import { StatusBar } from "@/components/status-bar";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useHealth } from "@/features/health/api/use-health";
@@ -54,6 +55,7 @@ export default function Home() {
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       <LayerPanel />
+      <ScoreCard />
 
       <MapView onMoveEnd={handleMoveEnd} onFeatureClick={handleFeatureClick}>
         <LandpriceLayer
