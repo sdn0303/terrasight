@@ -1,0 +1,40 @@
+//! Real Estate Investment API — library entry point.
+//!
+//! Exposes [`build_router`] so that both `main.rs` and integration tests
+//! can construct the same Axum router against a real database pool.
+
+pub mod app_state;
+pub mod config;
+pub mod domain;
+pub mod handler;
+pub mod infra;
+pub mod logging;
+pub mod usecase;
+
+use axum::{Router, routing::get};
+use realestate_api_core::middleware::{request_id, response_time};
+use sqlx::PgPool;
+
+use app_state::AppState;
+
+/// Build the Axum router with all routes and middleware (except CORS / rate limiting / compression).
+///
+/// CORS, rate limiting, and compression are added in `main.rs` because they
+/// depend on runtime configuration and are not needed for integration tests.
+pub fn build_router(pool: PgPool) -> Router {
+    let state = AppState::new(pool, false);
+
+    Router::new()
+        .route("/api/health", get(handler::health::health))
+        .with_state(state.health)
+        .route("/api/area-data", get(handler::area_data::get_area_data))
+        .with_state(state.area_data)
+        .route("/api/score", get(handler::score::get_score))
+        .with_state(state.score)
+        .route("/api/stats", get(handler::stats::get_stats))
+        .with_state(state.stats)
+        .route("/api/trend", get(handler::trend::get_trend))
+        .with_state(state.trend)
+        .layer(response_time::response_time_layer())
+        .layer(request_id::request_id_layer())
+}

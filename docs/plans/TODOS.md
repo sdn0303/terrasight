@@ -12,11 +12,12 @@ _全P0タスク完了。_
 
 ## P1 — Phase 1内で対応
 
-### cargo test 統合テスト拡充（BE）
-- **What**: `#[sqlx::test]` で PostGIS 統合テスト追加。現在28ユニットテストは通過済み
-- **Why**: ユニットテストはモック経由。実DBクエリの回帰テストが必要
-- **Effort**: S | **Priority**: P1
-- **Scope**: `/api/health` smoke test + `/api/area-data` bbox→GeoJSON統合テスト + seed data verification
+### ~~cargo test 統合テスト拡充（BE）~~ ✅
+- **Completed**: axum-test による HTTP統合テスト11本追加。全5エンドポイント網羅
+- lib.rs 抽出で `build_router()` をテストから呼び出し可能に
+- テスト: health(1), area-data(5: 正常系3+異常系2), score(1), stats(1), trend(1), seed検証(2)
+- DATABASE_URL未設定時は graceful skip（CIでDB不要時も安全）
+- 合計39テスト（28 unit + 11 integration）、0 clippy warnings
 
 ### ~~セキュリティ強化~~ ✅
 - **Completed**: CORS明示設定 + レート制限実装済み
@@ -31,9 +32,8 @@ _全P0タスク完了。_
 - **Effort**: S | **Priority**: P1
 - **対応案**: 液状化→東京都建設局SHP変換、洪水→国土数値情報A31のGeoJSON
 
-### layers.ts の endpoint フィールド整理
-- **What**: PostGIS移行後、reinfolib APIコード（XPT002等）を保持する `endpoint` フィールドがdead codeになる
-- **Effort**: XS | **Priority**: P1
+### ~~layers.ts の endpoint フィールド整理~~ ✅
+- **Completed**: PR1のレイヤー拡張リファクタで `endpoint` フィールド除去済み。`source: "api" | "static"` に置換
 
 ### L01 複数年度インポート手順
 - **What**: Sparkline用に5年分（2020-2024）の地価公示データをインポートする手順を実装

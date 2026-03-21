@@ -1,27 +1,17 @@
-use axum::{Router, routing::get};
 use http::HeaderValue;
-use realestate_api_core::middleware::{rate_limit, request_id, response_time};
+use realestate_api_core::middleware::rate_limit;
 use std::net::SocketAddr;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-mod app_state;
-mod config;
-mod domain;
-mod handler;
-mod infra;
-mod logging;
-mod usecase;
-
-use app_state::AppState;
-use config::Config;
+use realestate_api::config::Config;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let config = Config::from_env();
-    logging::init(&config);
+    realestate_api::logging::init(&config);
 
     tracing::info!(
         port = config.port,
@@ -34,7 +24,8 @@ async fn main() -> anyhow::Result<()> {
     let pool =
         realestate_db::pool::create_pool(&config.database_url, config.db_max_connections).await?;
 
-    let state = AppState::new(pool, config.reinfolib_api_key.is_some());
+    // Build the core router from lib.rs (routes + request-id + response-time).
+    let app = realestate_api::build_router(pool);
 
     // CORS: explicit origin whitelist in production, permissive in development.
     let cors_layer = match config.parsed_origins() {
@@ -69,21 +60,8 @@ async fn main() -> anyhow::Result<()> {
         "rate limiting enabled"
     );
 
-    let app = Router::new()
-        .route("/api/health", get(handler::health::health))
-        .with_state(state.health)
-        .route("/api/area-data", get(handler::area_data::get_area_data))
-        .with_state(state.area_data)
-        .route("/api/score", get(handler::score::get_score))
-        .with_state(state.score)
-        .route("/api/stats", get(handler::stats::get_stats))
-        .with_state(state.stats)
-        .route("/api/trend", get(handler::trend::get_trend))
-        .with_state(state.trend)
-        // Rate limiting must be AFTER with_state (needs peer address from axum::serve).
+    let app = app
         .layer(rate_limit)
-        .layer(response_time::response_time_layer())
-        .layer(request_id::request_id_layer())
         .layer(realestate_telemetry::http::trace_layer())
         .layer(cors_layer)
         .layer(CompressionLayer::new());
