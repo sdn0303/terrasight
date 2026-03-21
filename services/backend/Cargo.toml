@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "lib/telemetry", "lib/geo-math", "lib/mlit-client", "lib/db", "lib/api-core"]
+resolver = "3"
+
 [package]
 name = "realestate-api"
 version = "0.1.0"
@@ -5,23 +9,28 @@ edition = "2024"
 rust-version = "1.94"
 
 [dependencies]
+realestate-telemetry = { path = "lib/telemetry", features = ["log", "metrics", "http"] }
+realestate-geo-math = { path = "lib/geo-math" }
+realestate-db = { path = "lib/db" }
+realestate-api-core = { path = "lib/api-core" }
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "json", "migrate"] }
-reqwest = { version = "0.12", features = ["json"] }
 tower-http = { version = "0.6", features = ["cors", "compression-gzip", "trace"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
 dotenvy = "0.15"
+envy = "0.4"
+async-trait = "0.1"
+futures = "0.3"
 thiserror = "2"
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
-axum-test = "16"
+axum-test = "19"
 
 [profile.release]
 lto = true

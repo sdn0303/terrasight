@@ -1,0 +1,23 @@
+[sqruff]
+dialect = postgres
+
+# LT01: column-alignment spacing
+#   Our CREATE TABLE definitions use deliberate column-aligned spacing for
+#   readability (e.g. aligning type, NOT NULL, DEFAULT across columns).
+#   Enforcing single-space would destroy that intentional formatting.
+#
+# LT05: long lines (> 80 chars)
+#   COMMENT ON COLUMN statements are verbose by design; they document
+#   Japanese-language domain context that cannot be shortened without losing
+#   meaning.
+#
+# CP01: keyword capitalisation
+#   PostGIS geometry type constructors use mixed-case type arguments:
+#   geometry(Point, 4326), geometry(MultiPolygon, 4326).
+#   sqruff cannot distinguish PostGIS type names from SQL keywords here,
+#   producing false positives on every geometry column definition.
+#
+# CP02: identifier capitalisation
+#   Same root cause: GIST, Point, MultiPolygon inside index and column
+#   definitions are PostGIS type names, not SQL identifiers.
+exclude_rules = LT01,LT05,CP01,CP02
