@@ -1,10 +1,16 @@
 # TODOS
 
-> 最終更新: 2026-03-22 (CEO Review: Data Strategy & Platform Vision 反映)
+> 最終更新: 2026-03-22 (PR1完了後の整理)
 
 ---
 
 ## P0 — 現フェーズで対応
+
+### Vitest テスト基盤構築（FE）
+- **What**: フロントエンドのvitest基盤 + PR1で追加した21レイヤーシステムのテスト
+- **Why**: テストゼロのまま21レイヤーを運用するのは危険。コンポーネントレジストリ、レイヤー設定、ストア、ポップアップ等の回帰テスト必須
+- **Effort**: M (human 1day / CC 15min) | **Priority**: P0
+- **Scope**: layers.ts設定整合性、map-store toggleLayer/selectFeature、PopupCard描画、YearSliderデバウンス、useAreaData hook
 
 ### Rust Axum バックエンド移行（2週間）
 - **What**: Python FastAPI (~200行) → Rust Axum に書き換え。PostGIS 移行と同時実施
@@ -15,28 +21,21 @@
 - **CRITICAL**: SQLは必ずパラメータバインド（`$1`, `$2`）。`format!()`でSQL埋め込み禁止
 - **CRITICAL**: APIエンドポイントは `/api/area-data` を維持（リネームしない）
 
-### useMapData メモリリーク修正（FE）
-- **What**: `useMapData.ts` の `debounceRef` を useEffect クリーンアップで clearTimeout
-- **Why**: コンポーネントアンマウント時にメモリリーク + ステール更新が発生
-- **Effort**: XS | **Priority**: P0
-- **独立修正**: Rust移行とは無関係、即修正可能
-
 ### PostGIS seed データ作成
 - **What**: 開発用最小サンプルデータ（東京駅周辺5-10行/テーブル）
 - **Why**: PostGISにデータ投入される前の開発段階でFE開発者が動作確認できない（DEMO_MODE撤去後の開発体験断絶を防ぐ）
 - **Effort**: XS | **Priority**: P0
-- **Depends on**: Task 2（PostGISスキーマ）と同時
+- **Depends on**: Rust Axum移行（PostGISスキーマ）と同時
 
 ---
 
 ## P1 — Phase 1内で対応
 
-### テスト基盤構築（Rust移行と並行）
-- **What**: `cargo test` (BE) + vitest (FE)
+### cargo test テスト基盤構築（BE: Rust移行と並行）
+- **What**: `cargo test` + `#[sqlx::test]`
 - **Why**: テストゼロのまま新バックエンドを投入するのは危険
 - **Effort**: M | **Priority**: P1
 - **最低限**: `/api/health` smoke test + scoring engine 単体テスト + `#[sqlx::test]` で /api/area-data 統合テスト
-- **FE**: fetchWithRetry、URL state encode/decode
 
 ### セキュリティ強化（Rust移行と同時）
 - **What**: bbox範囲制限、CORS明示設定（環境変数 `ALLOWED_ORIGINS`）、レート制限（tower-governor）、入力バリデーション
@@ -57,6 +56,15 @@
 - **What**: Sparkline用に5年分（2020-2024）の地価公示データをインポートする手順を実装
 - **Why**: 投資スコアの「地価トレンド」算出とSparkline表示に必要
 - **Effort**: S | **Priority**: P1
+
+---
+
+## Completed
+
+### ~~useMapData メモリリーク修正~~ ✅
+- **Completed**: TanStack Query移行で解決済み
+- `useMapData.ts` → `use-area-data.ts` (TanStack Query) にリファクタ。手動debounceRef不要に
+- map-view.tsx / year-slider.tsx のtimerRefも `useEffect` cleanup済み
 
 ### ~~MapLibre addSource エラーハンドリング~~ ✅
 - **Completed**: PR1 (feature/pr1-layer-expansion)
