@@ -21,7 +21,15 @@ export function ErrorFallback({ error, reset }: ErrorFallbackProps) {
         ── SYSTEM ERROR ──
       </div>
       <div className="text-sm" style={{ color: "var(--text-primary)" }}>
-        {error.message}
+        An unexpected error occurred.
+        {error.digest && (
+          <span
+            className="block text-[10px] mt-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Reference: {error.digest}
+          </span>
+        )}
       </div>
       <button
         type="button"

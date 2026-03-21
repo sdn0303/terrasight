@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 import { ComparePanel } from "@/components/compare-panel";
@@ -30,14 +30,14 @@ export default function Home() {
   useMapUrlState();
   const { viewState, visibleLayers, selectFeature, getBBox } = useMapStore();
   const { compareMode, setComparePoint } = useUIStore();
-  const bboxRef = useRef(getBBox());
+  const [bbox, setBbox] = useState(() => getBBox());
 
   const layers = useMemo(() => [...visibleLayers], [visibleLayers]);
-  const { data: areaData, isLoading } = useAreaData(bboxRef.current, layers);
+  const { data: areaData, isLoading } = useAreaData(bbox, layers);
   const { data: health } = useHealth();
 
   const handleMoveEnd = useCallback(() => {
-    bboxRef.current = getBBox();
+    setBbox(getBBox());
   }, [getBBox]);
 
   const handleFeatureClick = useCallback(
@@ -60,7 +60,7 @@ export default function Home() {
       } else if (feature) {
         selectFeature({
           layerId: feature.layer.id,
-          properties: feature.properties as Record<string, unknown>,
+          properties: (feature.properties ?? {}) as Record<string, unknown>,
           coordinates: [e.lngLat.lng, e.lngLat.lat],
         });
       } else {

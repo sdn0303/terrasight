@@ -5,7 +5,7 @@ export const queryKeys = {
   areaData: {
     all: ["area-data"] as const,
     bbox: (bbox: BBox, layers: string[]) =>
-      ["area-data", bbox, layers.sort().join(",")] as const,
+      ["area-data", bbox, [...layers].sort().join(",")] as const,
   },
   score: {
     all: ["score"] as const,

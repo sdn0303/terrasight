@@ -9,7 +9,11 @@ export function useTrend(
 ) {
   return useQuery({
     queryKey: queryKeys.trend.coord(lat ?? 0, lng ?? 0, years),
-    queryFn: () => fetchTrend(lat!, lng!, years),
+    queryFn: () => {
+      if (lat === null) throw new Error("lat is required");
+      if (lng === null) throw new Error("lng is required");
+      return fetchTrend(lat, lng, years);
+    },
     enabled: lat !== null && lng !== null,
   });
 }

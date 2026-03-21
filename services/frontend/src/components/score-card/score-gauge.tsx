@@ -1,5 +1,3 @@
-"use client";
-
 interface ScoreGaugeProps {
   score: number; // 0-100
 }

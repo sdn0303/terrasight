@@ -72,7 +72,11 @@ export function ComparePanel() {
             className="absolute inset-0"
             style={{ background: "rgba(0,0,0,0.6)" }}
             onClick={exitCompareMode}
-            onKeyDown={(e) => e.key === "Escape" && exitCompareMode()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+                exitCompareMode();
+              }
+            }}
             role="button"
             tabIndex={0}
             aria-label="Close comparison"

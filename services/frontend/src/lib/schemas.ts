@@ -6,6 +6,11 @@ const PointGeometry = z.object({
   coordinates: z.tuple([z.number(), z.number()]), // [lng, lat] per RFC 7946
 });
 
+const PolygonGeometry = z.object({
+  type: z.literal("Polygon"),
+  coordinates: z.array(z.array(z.tuple([z.number(), z.number()]))),
+});
+
 const MultiPolygonGeometry = z.object({
   type: z.literal("MultiPolygon"),
   coordinates: z.array(z.array(z.array(z.tuple([z.number(), z.number()])))),
@@ -13,6 +18,7 @@ const MultiPolygonGeometry = z.object({
 
 const Geometry = z.discriminatedUnion("type", [
   PointGeometry,
+  PolygonGeometry,
   MultiPolygonGeometry,
 ]);
 
