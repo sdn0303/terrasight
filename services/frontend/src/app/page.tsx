@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { FeatureCollection } from "geojson";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
+import { ComparePanel } from "@/components/compare-panel";
 import { MapView } from "@/components/map/map-view";
 import {
   FloodLayer,
@@ -21,12 +22,14 @@ import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useHealth } from "@/features/health/api/use-health";
 import { useMapUrlState } from "@/hooks/use-map-url-state";
 import { useMapStore } from "@/stores/map-store";
+import { useUIStore } from "@/stores/ui-store";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
 export default function Home() {
   useMapUrlState();
   const { viewState, visibleLayers, selectFeature, getBBox } = useMapStore();
+  const { compareMode, setComparePoint } = useUIStore();
   const bboxRef = useRef(getBBox());
 
   const layers = useMemo(() => [...visibleLayers], [visibleLayers]);
@@ -40,7 +43,21 @@ export default function Home() {
   const handleFeatureClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0];
-      if (feature) {
+      if (compareMode) {
+        // In compare mode, set compare points instead of selecting a feature
+        const address =
+          feature?.properties != null &&
+          typeof feature.properties === "object" &&
+          "address" in feature.properties &&
+          typeof feature.properties.address === "string"
+            ? feature.properties.address
+            : `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`;
+        setComparePoint({
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+          address,
+        });
+      } else if (feature) {
         selectFeature({
           layerId: feature.layer.id,
           properties: feature.properties as Record<string, unknown>,
@@ -50,7 +67,7 @@ export default function Home() {
         selectFeature(null);
       }
     },
-    [selectFeature],
+    [compareMode, selectFeature, setComparePoint],
   );
 
   const isDemoMode = health ? !health.reinfolib_key_set : true;
@@ -87,6 +104,7 @@ export default function Home() {
         />
       </MapView>
 
+      <ComparePanel />
       <CRTOverlay />
       <StatusBar
         lat={viewState.latitude}
