@@ -1,7 +1,7 @@
 "use client";
 
-import { Layer, Source } from "react-map-gl/maplibre";
 import type { FeatureCollection } from "geojson";
+import { Layer, Source } from "react-map-gl/maplibre";
 
 interface Props {
   data: FeatureCollection;
@@ -16,15 +16,7 @@ export function LandpriceLayer({ data, visible }: Props) {
         id="landprice-circle"
         type="circle"
         paint={{
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10,
-            3,
-            15,
-            8,
-          ],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 15, 8],
           "circle-color": "#22d3ee",
           "circle-opacity": 0.8,
           "circle-stroke-width": 1,

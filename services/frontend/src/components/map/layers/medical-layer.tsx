@@ -1,7 +1,7 @@
 "use client";
 
-import { Layer, Source } from "react-map-gl/maplibre";
 import type { FeatureCollection } from "geojson";
+import { Layer, Source } from "react-map-gl/maplibre";
 
 interface Props {
   data: FeatureCollection;

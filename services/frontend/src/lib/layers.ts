@@ -2,7 +2,7 @@ export interface LayerConfig {
   id: string;
   name: string;
   nameJa: string;
-  category: "pricing" | "urban" | "disaster" | "facilities";
+  category: "pricing" | "urban" | "disaster" | "facilities" | "terrain";
   defaultEnabled: boolean;
 }
 
@@ -49,6 +49,62 @@ export const LAYERS: LayerConfig[] = [
     category: "facilities",
     defaultEnabled: false,
   },
+  {
+    id: "did",
+    name: "DID Area",
+    nameJa: "人口集中地区",
+    category: "urban",
+    defaultEnabled: false,
+  },
+  {
+    id: "landform",
+    name: "Landform",
+    nameJa: "地形分類",
+    category: "terrain",
+    defaultEnabled: false,
+  },
+  {
+    id: "geology",
+    name: "Geology",
+    nameJa: "表層地質",
+    category: "terrain",
+    defaultEnabled: false,
+  },
+  {
+    id: "admin_boundary",
+    name: "Admin Boundary",
+    nameJa: "市町村境界",
+    category: "urban",
+    defaultEnabled: false,
+  },
+  {
+    id: "fault",
+    name: "Fault Lines",
+    nameJa: "断層線",
+    category: "disaster",
+    defaultEnabled: false,
+  },
+  {
+    id: "flood_history",
+    name: "Flood History",
+    nameJa: "浸水履歴",
+    category: "disaster",
+    defaultEnabled: false,
+  },
+  {
+    id: "volcano",
+    name: "Volcanoes",
+    nameJa: "火山",
+    category: "disaster",
+    defaultEnabled: false,
+  },
+  {
+    id: "soil",
+    name: "Soil",
+    nameJa: "土壌図",
+    category: "terrain",
+    defaultEnabled: false,
+  },
 ];
 
 export const CATEGORIES = [
@@ -56,4 +112,5 @@ export const CATEGORIES = [
   { id: "urban", label: "URBAN PLANNING" },
   { id: "disaster", label: "DISASTER RISK" },
   { id: "facilities", label: "FACILITIES" },
+  { id: "terrain", label: "TERRAIN" },
 ] as const;

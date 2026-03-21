@@ -1,21 +1,29 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
 import type { FeatureCollection } from "geojson";
+import { useCallback, useMemo, useState } from "react";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 import { ComparePanel } from "@/components/compare-panel";
-import { MapView } from "@/components/map/map-view";
-import {
-  FloodLayer,
-  LandpriceLayer,
-  MedicalLayer,
-  SchoolLayer,
-  SteepSlopeLayer,
-  ZoningLayer,
-} from "@/components/map/layers";
 import { CRTOverlay } from "@/components/crt-overlay";
 import { DashboardStats } from "@/components/dashboard-stats";
 import { LayerPanel } from "@/components/layer-panel";
+import {
+  AdminBoundaryLayer,
+  DIDLayer,
+  FaultLayer,
+  FloodHistoryLayer,
+  FloodLayer,
+  GeologyLayer,
+  LandformLayer,
+  LandpriceLayer,
+  MedicalLayer,
+  SchoolLayer,
+  SoilLayer,
+  SteepSlopeLayer,
+  VolcanoLayer,
+  ZoningLayer,
+} from "@/components/map/layers";
+import { MapView } from "@/components/map/map-view";
 import { ScoreCard } from "@/components/score-card/score-card";
 import { StatusBar } from "@/components/status-bar";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
@@ -79,7 +87,9 @@ export default function Home() {
 
       <MapView onMoveEnd={handleMoveEnd} onFeatureClick={handleFeatureClick}>
         <LandpriceLayer
-          data={(areaData?.landprice as FeatureCollection | undefined) ?? EMPTY_FC}
+          data={
+            (areaData?.landprice as FeatureCollection | undefined) ?? EMPTY_FC
+          }
           visible={visibleLayers.has("landprice")}
         />
         <ZoningLayer
@@ -91,17 +101,31 @@ export default function Home() {
           visible={visibleLayers.has("flood")}
         />
         <SteepSlopeLayer
-          data={(areaData?.steep_slope as FeatureCollection | undefined) ?? EMPTY_FC}
+          data={
+            (areaData?.steep_slope as FeatureCollection | undefined) ?? EMPTY_FC
+          }
           visible={visibleLayers.has("steep_slope")}
         />
         <SchoolLayer
-          data={(areaData?.schools as FeatureCollection | undefined) ?? EMPTY_FC}
+          data={
+            (areaData?.schools as FeatureCollection | undefined) ?? EMPTY_FC
+          }
           visible={visibleLayers.has("schools")}
         />
         <MedicalLayer
-          data={(areaData?.medical as FeatureCollection | undefined) ?? EMPTY_FC}
+          data={
+            (areaData?.medical as FeatureCollection | undefined) ?? EMPTY_FC
+          }
           visible={visibleLayers.has("medical")}
         />
+        <DIDLayer visible={visibleLayers.has("did")} />
+        <LandformLayer visible={visibleLayers.has("landform")} />
+        <GeologyLayer visible={visibleLayers.has("geology")} />
+        <AdminBoundaryLayer visible={visibleLayers.has("admin_boundary")} />
+        <FaultLayer visible={visibleLayers.has("fault")} />
+        <FloodHistoryLayer visible={visibleLayers.has("flood_history")} />
+        <SoilLayer visible={visibleLayers.has("soil")} />
+        <VolcanoLayer visible={visibleLayers.has("volcano")} />
       </MapView>
 
       <ComparePanel />
