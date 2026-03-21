@@ -1,45 +1,27 @@
 # TODOS
 
-> 最終更新: 2026-03-22 (PR1完了後の整理)
+> 最終更新: 2026-03-22 (P0完了)
 
 ---
 
 ## P0 — 現フェーズで対応
 
-### Vitest テスト基盤構築（FE）
-- **What**: フロントエンドのvitest基盤 + PR1で追加した21レイヤーシステムのテスト
-- **Why**: テストゼロのまま21レイヤーを運用するのは危険。コンポーネントレジストリ、レイヤー設定、ストア、ポップアップ等の回帰テスト必須
-- **Effort**: M (human 1day / CC 15min) | **Priority**: P0
-- **Scope**: layers.ts設定整合性、map-store toggleLayer/selectFeature、PopupCard描画、YearSliderデバウンス、useAreaData hook
-
-### Rust Axum バックエンド移行（2週間）
-- **What**: Python FastAPI (~200行) → Rust Axum に書き換え。PostGIS 移行と同時実施
-- **Why**: 全国GeoJSON (数GB) の bbox フィルタリング + 投資スコア空間計算がホットパス
-- **Effort**: L | **Priority**: P0
-- **Plan**: `docs/plans/2026-03-19-rust-axum-migration.md`
-- **Schedule**: Week 1 scaffold + PostGIS Docker、Week 2 データ投入 + API
-- **CRITICAL**: SQLは必ずパラメータバインド（`$1`, `$2`）。`format!()`でSQL埋め込み禁止
-- **CRITICAL**: APIエンドポイントは `/api/area-data` を維持（リネームしない）
-
-### PostGIS seed データ作成
-- **What**: 開発用最小サンプルデータ（東京駅周辺5-10行/テーブル）
-- **Why**: PostGISにデータ投入される前の開発段階でFE開発者が動作確認できない（DEMO_MODE撤去後の開発体験断絶を防ぐ）
-- **Effort**: XS | **Priority**: P0
-- **Depends on**: Rust Axum移行（PostGISスキーマ）と同時
+_全P0タスク完了。_
 
 ---
 
 ## P1 — Phase 1内で対応
 
-### cargo test テスト基盤構築（BE: Rust移行と並行）
-- **What**: `cargo test` + `#[sqlx::test]`
-- **Why**: テストゼロのまま新バックエンドを投入するのは危険
-- **Effort**: M | **Priority**: P1
-- **最低限**: `/api/health` smoke test + scoring engine 単体テスト + `#[sqlx::test]` で /api/area-data 統合テスト
+### cargo test 統合テスト拡充（BE）
+- **What**: `#[sqlx::test]` で PostGIS 統合テスト追加。現在25ユニットテストは通過済み
+- **Why**: ユニットテストはモック経由。実DBクエリの回帰テストが必要
+- **Effort**: S | **Priority**: P1
+- **Scope**: `/api/health` smoke test + `/api/area-data` bbox→GeoJSON統合テスト + seed data verification
 
-### セキュリティ強化（Rust移行と同時）
-- **What**: bbox範囲制限、CORS明示設定（環境変数 `ALLOWED_ORIGINS`）、レート制限（tower-governor）、入力バリデーション
-- **Why**: bbox無制限でDoS可能。CorsLayer::permissive() のまま本番投入は危険
+### セキュリティ強化（残り）
+- **What**: CORS明示設定（`ALLOWED_ORIGINS` env var対応）、レート制限（tower-governor）
+- **Why**: CorsLayer::permissive() のまま本番投入は危険
+- **Done**: bbox範囲制限（0.5°制限）、入力バリデーション（BBox/Coord value objects）は実装済み
 - **Effort**: S | **Priority**: P1
 
 ### XKT025/026 代替データ経路の確定
@@ -82,6 +64,25 @@
 - **Completed**: PR1 (feature/pr1-layer-expansion)
 - Component registry pattern + source field in layers.ts + two loops (static/API)
 
+### ~~Vitest テスト基盤構築（FE）~~ ✅
+- **Completed**: PR2 (feature/pr2-vitest-foundation)
+- 43テスト: layers.ts設定整合性(17) + map-store拡張(8) + ui-store(6) + 既存(12)
+- layers.test.ts / map-store-extended.test.ts / ui-store.test.ts
+
+### ~~Rust Axum バックエンド移行~~ ✅
+- **Completed**: Clean Architecture実装済み (handler/usecase/domain/infra)
+- 5 APIエンドポイント: health, area-data, score, stats, trend
+- 25 cargo tests passing, clippy clean
+- Workspace: 5 lib crates (telemetry, geo-math, db, api-core, mlit-client)
+- PostGIS schema migration + GIST indexes on all geometry columns
+- 全SQLパラメータバインド済み（$1, $2）、format!()なし
+
+### ~~PostGIS seed データ作成~~ ✅
+- **Completed**: migrations/20260322000001_seed_dev.sql
+- 東京駅周辺: land_prices(15行/5年分), zoning(5), flood_risk(4), steep_slope(3), schools(8), medical(6)
+- 冪等INSERT（WHERE NOT EXISTS）で再実行安全
+- scripts/seed-dev.sh でワンコマンド投入
+
 ### reinfolib API モック/スタブ
 - **What**: reinfolib_mock.rsでモックレスポンスを提供し、APIキー取得前の並行開発を可能にする
 - **Why**: APIキー申請は2-4週かかる可能性。Phase 2の不動産取引価格レイヤー(#8)開発をブロックしない
@@ -92,9 +93,9 @@
 
 ## P2 — SaaS化フェーズ
 
-### 可観測性基盤
-- **What**: `tracing` + `tracing-subscriber` (BE: Rust移行で同時導入) + pino (FE)
-- **Effort**: S | **Priority**: P2
+### 可観測性基盤（FE pino追加）
+- **What**: FE側にpino構造化ログ追加。BE側はtracing + tracing-subscriber + telemetry crate実装済み
+- **Effort**: XS | **Priority**: P2
 
 ### CI/CDパイプライン
 - **What**: GitHub Actions で clippy + cargo test + npm test + build + deploy

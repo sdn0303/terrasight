@@ -16,19 +16,30 @@ RUN set -o pipefail && \
     rm -rf /var/lib/apt/lists/*
 
 # Dependency caching layer:
-# Copy manifests first so that `cargo build --release` can be cached
-# independently of source changes.
+# Copy ALL workspace manifests first so that `cargo build --release` can
+# cache dependency compilation independently of source changes.
+# The workspace has 6 members: root + 5 lib crates.
 COPY Cargo.toml Cargo.lock ./
+COPY lib/telemetry/Cargo.toml lib/telemetry/Cargo.toml
+COPY lib/geo-math/Cargo.toml lib/geo-math/Cargo.toml
+COPY lib/mlit-client/Cargo.toml lib/mlit-client/Cargo.toml
+COPY lib/db/Cargo.toml lib/db/Cargo.toml
+COPY lib/api-core/Cargo.toml lib/api-core/Cargo.toml
 
-# Build a dummy main to cache all dependency compilation.
+# Build dummy sources to cache all dependency compilation.
 # This layer is reused as long as Cargo.toml / Cargo.lock are unchanged.
-RUN mkdir src && \
-    echo 'fn main() {}' > src/main.rs && \
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && \
+    mkdir -p lib/telemetry/src && echo '' > lib/telemetry/src/lib.rs && \
+    mkdir -p lib/geo-math/src && echo '' > lib/geo-math/src/lib.rs && \
+    mkdir -p lib/mlit-client/src && echo '' > lib/mlit-client/src/lib.rs && \
+    mkdir -p lib/db/src && echo '' > lib/db/src/lib.rs && \
+    mkdir -p lib/api-core/src && echo '' > lib/api-core/src/lib.rs && \
     cargo build --release && \
-    rm -rf src
+    rm -rf src lib
 
-# Copy application source and migration files
+# Copy all application source and migration files
 COPY src/ src/
+COPY lib/ lib/
 COPY migrations/ migrations/
 
 # Touch main.rs so Cargo notices the source change and relinks the binary
