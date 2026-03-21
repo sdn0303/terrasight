@@ -58,6 +58,13 @@
   --layer-medical: #2dd4bf;
   --layer-boundary: #a1a1aa;
   --layer-zoning: #818cf8;
+  --layer-station: #f472b6;
+  --layer-school-dist: #4ade80;
+  --layer-landslide: #fb923c;
+  --layer-park: #86efac;
+  --layer-population: #c084fc;
+  --layer-urban-plan: #34d399;
+  --layer-tsunami: #38bdf8;
 
   /* ─── shadcn/ui theme (zinc dark) ───────────── */
   --radius: 0.5rem;
