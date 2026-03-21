@@ -1,5 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import type { Metadata } from "next";
+import { Providers } from "@/components/providers";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,8 +15,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja" className={GeistMono.variable}>
-      <body>{children}</body>
+    <html lang="ja" className={`dark ${GeistMono.variable}`}>
+      <body>
+        <Providers>
+          <TooltipProvider>{children}</TooltipProvider>
+        </Providers>
+      </body>
     </html>
   );
 }
