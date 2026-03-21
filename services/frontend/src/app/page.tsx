@@ -13,6 +13,7 @@ import {
   ZoningLayer,
 } from "@/components/map/layers";
 import { CRTOverlay } from "@/components/crt-overlay";
+import { DashboardStats } from "@/components/dashboard-stats";
 import { LayerPanel } from "@/components/layer-panel";
 import { ScoreCard } from "@/components/score-card/score-card";
 import { StatusBar } from "@/components/status-bar";
@@ -92,6 +93,7 @@ export default function Home() {
         isLoading={isLoading}
         isDemoMode={isDemoMode}
       />
+      <DashboardStats />
     </div>
   );
 }
