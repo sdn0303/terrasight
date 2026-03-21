@@ -13,16 +13,17 @@ _全P0タスク完了。_
 ## P1 — Phase 1内で対応
 
 ### cargo test 統合テスト拡充（BE）
-- **What**: `#[sqlx::test]` で PostGIS 統合テスト追加。現在25ユニットテストは通過済み
+- **What**: `#[sqlx::test]` で PostGIS 統合テスト追加。現在28ユニットテストは通過済み
 - **Why**: ユニットテストはモック経由。実DBクエリの回帰テストが必要
 - **Effort**: S | **Priority**: P1
 - **Scope**: `/api/health` smoke test + `/api/area-data` bbox→GeoJSON統合テスト + seed data verification
 
-### セキュリティ強化（残り）
-- **What**: CORS明示設定（`ALLOWED_ORIGINS` env var対応）、レート制限（tower-governor）
-- **Why**: CorsLayer::permissive() のまま本番投入は危険
-- **Done**: bbox範囲制限（0.5°制限）、入力バリデーション（BBox/Coord value objects）は実装済み
-- **Effort**: S | **Priority**: P1
+### ~~セキュリティ強化~~ ✅
+- **Completed**: CORS明示設定 + レート制限実装済み
+- CORS: `ALLOWED_ORIGINS` env var → `CorsLayer` explicit origin whitelist（未設定時はpermissive dev mode）
+- Rate Limit: `tower-governor` IP-based token bucket（`RATE_LIMIT_RPM=120`, `RATE_LIMIT_BURST=20`デフォルト）
+- BBox範囲制限（0.5°制限）、入力バリデーション（BBox/Coord value objects）実装済み
+- 28 cargo tests passing, 0 clippy warnings
 
 ### XKT025/026 代替データ経路の確定
 - **What**: 液状化(XKT025)と洪水(XKT026)のreinfolib APIエンドポイントが存在しない可能性。代替ソースを確定させる

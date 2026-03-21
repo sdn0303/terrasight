@@ -2064,6 +2064,7 @@ dependencies = [
  "dotenvy",
  "envy",
  "futures",
+ "http",
  "realestate-api-core",
  "realestate-db",
  "realestate-geo-math",

@@ -1,8 +1,9 @@
 use axum::{Router, routing::get};
-use realestate_api_core::middleware::{request_id, response_time};
+use http::HeaderValue;
+use realestate_api_core::middleware::{rate_limit, request_id, response_time};
 use std::net::SocketAddr;
 use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 mod app_state;
 mod config;
@@ -35,6 +36,39 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState::new(pool, config.reinfolib_api_key.is_some());
 
+    // CORS: explicit origin whitelist in production, permissive in development.
+    let cors_layer = match config.parsed_origins() {
+        Some(origins) => {
+            let header_values: Vec<HeaderValue> = origins
+                .iter()
+                .filter_map(|o| o.parse::<HeaderValue>().ok())
+                .collect();
+            tracing::info!(
+                origins = ?origins,
+                "CORS restricted to explicit origins"
+            );
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::list(header_values))
+                .allow_methods(tower_http::cors::Any)
+                .allow_headers(tower_http::cors::Any)
+        }
+        None => {
+            tracing::warn!("ALLOWED_ORIGINS not set — CORS is permissive (dev mode)");
+            CorsLayer::permissive()
+        }
+    };
+
+    // Rate limiting: IP-based token bucket.
+    let rate_limit = rate_limit::rate_limit_layer(&rate_limit::RateLimitConfig {
+        requests_per_minute: config.rate_limit_rpm,
+        burst_size: config.rate_limit_burst,
+    });
+    tracing::info!(
+        rpm = config.rate_limit_rpm,
+        burst = config.rate_limit_burst,
+        "rate limiting enabled"
+    );
+
     let app = Router::new()
         .route("/api/health", get(handler::health::health))
         .with_state(state.health)
@@ -46,10 +80,12 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state.stats)
         .route("/api/trend", get(handler::trend::get_trend))
         .with_state(state.trend)
+        // Rate limiting must be AFTER with_state (needs peer address from axum::serve).
+        .layer(rate_limit)
         .layer(response_time::response_time_layer())
         .layer(request_id::request_id_layer())
         .layer(realestate_telemetry::http::trace_layer())
-        .layer(CorsLayer::permissive())
+        .layer(cors_layer)
         .layer(CompressionLayer::new());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
