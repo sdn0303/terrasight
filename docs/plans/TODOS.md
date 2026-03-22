@@ -1,6 +1,6 @@
 # TODOS
 
-> 最終更新: 2026-03-22 (P0完了)
+> 最終更新: 2026-03-23 (P0・P1全完了、残タスク整理)
 
 ---
 
@@ -12,110 +12,73 @@ _全P0タスク完了。_
 
 ## P1 — Phase 1内で対応
 
-### ~~cargo test 統合テスト拡充（BE）~~ ✅
-- **Completed**: axum-test による HTTP統合テスト11本追加。全5エンドポイント網羅
-- lib.rs 抽出で `build_router()` をテストから呼び出し可能に
-- テスト: health(1), area-data(5: 正常系3+異常系2), score(1), stats(1), trend(1), seed検証(2)
-- DATABASE_URL未設定時は graceful skip（CIでDB不要時も安全）
-- 合計39テスト（28 unit + 11 integration）、0 clippy warnings
-
-### ~~セキュリティ強化~~ ✅
-- **Completed**: CORS明示設定 + レート制限実装済み
-- CORS: `ALLOWED_ORIGINS` env var → `CorsLayer` explicit origin whitelist（未設定時はpermissive dev mode）
-- Rate Limit: `tower-governor` IP-based token bucket（`RATE_LIMIT_RPM=120`, `RATE_LIMIT_BURST=20`デフォルト）
-- BBox範囲制限（0.5°制限）、入力バリデーション（BBox/Coord value objects）実装済み
-- 28 cargo tests passing, 0 clippy warnings
-
-### XKT025/026 代替データ経路の確定
-- **What**: 液状化(XKT025)と洪水(XKT026)のreinfolib APIエンドポイントが存在しない可能性。代替ソースを確定させる
-- **Why**: 現在のDEMO_MODEでは動作するが実データ移行時に破綻
-- **Effort**: S | **Priority**: P1
-- **対応案**: 液状化→東京都建設局SHP変換、洪水→国土数値情報A31のGeoJSON
-
-### ~~layers.ts の endpoint フィールド整理~~ ✅
-- **Completed**: PR1のレイヤー拡張リファクタで `endpoint` フィールド除去済み。`source: "api" | "static"` に置換
-
-### L01 複数年度インポート手順
-- **What**: Sparkline用に5年分（2020-2024）の地価公示データをインポートする手順を実装
-- **Why**: 投資スコアの「地価トレンド」算出とSparkline表示に必要
-- **Effort**: S | **Priority**: P1
+_全P1タスク完了。_
 
 ---
 
-## Completed
+## P1.5 — Phase 1完成に向けた残作業
 
-### ~~useMapData メモリリーク修正~~ ✅
-- **Completed**: TanStack Query移行で解決済み
-- `useMapData.ts` → `use-area-data.ts` (TanStack Query) にリファクタ。手動debounceRef不要に
-- map-view.tsx / year-slider.tsx のtimerRefも `useEffect` cleanup済み
+> 今回のP1実装（データパイプライン、J-SHIS、reinfolibモック）から派生するインテグレーション作業。
+> Phase 1を「デモ可能」にするための最後のステップ群。
 
-### ~~MapLibre addSource エラーハンドリング~~ ✅
-- **Completed**: PR1 (feature/pr1-layer-expansion)
-- try/catch wrapper added to map-view.tsx handleLoad
+### L01 実データ投入 + seed更新
+- **What**: `import-l01.py` を実DBに実行し、seed_dev.sqlの15行→20,914行に置換。Sparkline表示が動作することを確認
+- **Why**: dry-run確認済みだが実DBへの投入がまだ。地価トレンドAPI(`/api/v1/trend`)が実データで動く状態にする
+- **Effort**: XS (15min) | **Priority**: P1.5
+- **Command**: `export DATABASE_URL=... && python3 scripts/import-l01.py`
 
-### ~~WebGL Context Lost リカバリー~~ ✅
-- **Completed**: PR1 (feature/pr1-layer-expansion)
-- webglcontextlost/restored event handlers + toast overlay + reload button
+### J-SHIS → スコア計算への統合
+- **What**: `JshisClient` を `ComputeScoreUsecase` に注入し、地震リスクスコア（30年超過確率 + AVS30地盤増幅）を投資スコアに反映
+- **Why**: J-SHIS APIクライアント実装済みだがスコア計算に未接続。地震リスクは不動産投資の重要指標
+- **Effort**: S | **Priority**: P1.5
+- **Files**: `src/usecase/compute_score.rs`, `src/app_state.rs`
 
-### ~~レイヤートグル中の fetch レースコンディション~~ ✅
-- **Completed**: PR1 (feature/pr1-layer-expansion)
-- Static layers use `if (!visible) return null` pattern — Source unmount cancels fetch. No stale data possible.
+### 変換済みGeoJSON → PostGISバルクインポート
+- **What**: `data/geojson/` の14ファイル(zoning, flood, schools, medical, etc.)をPostGISテーブルにインポートするスクリプト作成
+- **Why**: seed_dev.sqlの少量データ(41行)から実データ(数万〜64万行)への移行。AreaRepository経由のAPI応答が実用的になる
+- **Effort**: M | **Priority**: P1.5
+- **Note**: A31b洪水データ(643K features, 597MB)は要パフォーマンス検証
 
-### ~~page.tsx レイヤー宣言的レンダリングリファクタ~~ ✅
-- **Completed**: PR1 (feature/pr1-layer-expansion)
-- Component registry pattern + source field in layers.ts + two loops (static/API)
+### ReinfolibDataSource → AppState接続
+- **What**: `create_reinfolib_source()` factory を `AppState::new()` に組み込み、usecaseから使用可能にする
+- **Why**: trait + 2実装 + factoryは完成しているが、AppStateへの配線がまだ
+- **Effort**: XS (30min) | **Priority**: P1.5
+- **Files**: `src/app_state.rs`, 必要なusecaseファイル
 
-### ~~Vitest テスト基盤構築（FE）~~ ✅
-- **Completed**: PR2 (feature/pr2-vitest-foundation)
-- 43テスト: layers.ts設定整合性(17) + map-store拡張(8) + ui-store(6) + 既存(12)
-- layers.test.ts / map-store-extended.test.ts / ui-store.test.ts
-
-### ~~Rust Axum バックエンド移行~~ ✅
-- **Completed**: Clean Architecture実装済み (handler/usecase/domain/infra)
-- 5 APIエンドポイント: health, area-data, score, stats, trend
-- 25 cargo tests passing, clippy clean
-- Workspace: 5 lib crates (telemetry, geo-math, db, api-core, mlit-client)
-- PostGIS schema migration + GIST indexes on all geometry columns
-- 全SQLパラメータバインド済み（$1, $2）、format!()なし
-
-### ~~PostGIS seed データ作成~~ ✅
-- **Completed**: migrations/20260322000001_seed_dev.sql
-- 東京駅周辺: land_prices(15行/5年分), zoning(5), flood_risk(4), steep_slope(3), schools(8), medical(6)
-- 冪等INSERT（WHERE NOT EXISTS）で再実行安全
-- scripts/seed-dev.sh でワンコマンド投入
-
-### reinfolib API モック/スタブ
-- **What**: reinfolib_mock.rsでモックレスポンスを提供し、APIキー取得前の並行開発を可能にする
-- **Why**: APIキー申請は2-4週かかる可能性。Phase 2の不動産取引価格レイヤー(#8)開発をブロックしない
-- **Effort**: S (human 3h / CC 15min) | **Priority**: P1
-- **File**: `services/backend/src/infra/reinfolib_mock.rs`
+### FE: 新レイヤー表示対応（液状化・地震動・鉄道・駅）
+- **What**: 変換済みGeoJSON(pl, jshis-seismic, n02-railway, s12-stations)をMapLibreレイヤーとして追加
+- **Why**: データは準備済み（4ファイル）だがフロントエンドのlayers.ts + コンポーネントが未追加
+- **Effort**: M | **Priority**: P1.5
+- **Files**: `layers.ts`, `page.tsx`, 各static layerコンポーネント
 
 ---
 
 ## P2 — SaaS化フェーズ
 
+### CI/CDパイプライン
+- **What**: GitHub Actions で clippy + cargo test + pnpm test + build + deploy
+- **Why**: 手動テスト依存はスケールしない。PR毎の自動チェックが必要
+- **Effort**: S | **Priority**: P2-high
+- **Blocked by**: なし（今すぐ着手可能）
+
+### 認証方針の決定
+- **What**: JWT vs セッションベースの方向性を決定。Phase 2で実装
+- **Why**: Axum の tower middleware 構成と AppState に影響
+- **Effort**: S（決定のみ）| **Priority**: P2-high
+
+### 全国対応の性能検証
+- **What**: まず首都圏4県（東京+神奈川+埼玉+千葉）で性能テスト、bbox P99 < 100msを基準に
+- **Why**: A31b洪水(643K features)投入後にクエリ性能が劣化する可能性。パーティショニングの必要性を検証
+- **Effort**: M | **Priority**: P2-high
+
 ### 可観測性基盤（FE pino追加）
 - **What**: FE側にpino構造化ログ追加。BE側はtracing + tracing-subscriber + telemetry crate実装済み
 - **Effort**: XS | **Priority**: P2
 
-### CI/CDパイプライン
-- **What**: GitHub Actions で clippy + cargo test + npm test + build + deploy
-- **Effort**: S | **Priority**: P2
-
-### 認証方針の決定
-- **What**: JWT vs セッションベースの方向性をPhase 1で決定。Phase 2で実装
-- **Why**: Axum の tower middleware 構成と AppState に影響
-- **Effort**: S（決定のみ）| **Priority**: P2
-
 ### Mapbox GL JS 切替検討
 - **What**: Phase 1はMapLibre維持。Globe view/terrain 3D/Mapbox Studioが必要になったら切替
 - **Why**: 3箇所の変更で低リスク。従量課金はSaaS収益でカバー
-- **Effort**: S | **Priority**: P2
-
-### 全国対応の性能検証
-- **What**: まず首都圏4県（東京+神奈川+埼玉+千葉）で性能テスト、bbox P99 < 100msを基準に
-- **Why**: 全国データ投入でクエリ性能が劣化する可能性。パーティショニングの必要性を検証
-- **Effort**: M | **Priority**: P2
+- **Effort**: S | **Priority**: P2（トリガー待ち）
 
 ### UIUX_SPEC.md 更新
 - **What**: CRT/Shadowbrokerテーマ参照をUrban Stratigraphyデザインシステムに更新
@@ -128,3 +91,45 @@ _全P0タスク完了。_
 - **Why**: globals.cssにデザイントークンが定義済みだがドキュメント化されていない。21レイヤー拡大後、デザインレビューの基準が不明確
 - **Effort**: S (human 4h / CC 15min) | **Priority**: P2
 - **File**: `DESIGN.md`
+
+---
+
+## Completed (P1)
+
+### ~~cargo test 統合テスト拡充（BE）~~ ✅
+- axum-test による HTTP統合テスト11本追加。全5エンドポイント網羅
+
+### ~~セキュリティ強化~~ ✅
+- CORS明示設定 + レート制限（tower-governor IP-based token bucket）
+
+### ~~XKT025/026 代替データ経路の確定~~ ✅
+- 液状化→東京都建設局PL分布図、洪水→国土数値情報A31b、J-SHIS液状化データなし確定
+- `scripts/convert-geodata.py` (geopandas, 15データセット), `docs/research/2026-03-23-data-inventory.md`
+
+### ~~layers.ts の endpoint フィールド整理~~ ✅
+- `source: "api" | "static"` に置換
+
+### ~~L01 複数年度インポート手順~~ ✅
+- `scripts/import-l01.py` (5年分 20,914行, dry-run確認済み)
+
+### ~~reinfolib API モック/スタブ~~ ✅
+- `ReinfolibDataSource` trait + `PostgisFallback` + `LiveReinfolib` stub + factory
+
+### ~~J-SHIS API クライアント~~ ✅
+- `jshis.rs` 3エンドポイント, wiremockテスト10本, 合計82テスト
+
+## Completed (P0以前)
+
+<details>
+<summary>展開して表示</summary>
+
+- ~~useMapData メモリリーク修正~~ ✅ — TanStack Query移行
+- ~~MapLibre addSource エラーハンドリング~~ ✅ — PR1
+- ~~WebGL Context Lost リカバリー~~ ✅ — PR1
+- ~~レイヤートグル中の fetch レースコンディション~~ ✅ — PR1
+- ~~page.tsx レイヤー宣言的レンダリングリファクタ~~ ✅ — PR1
+- ~~Vitest テスト基盤構築（FE）~~ ✅ — PR2 (43テスト)
+- ~~Rust Axum バックエンド移行~~ ✅ — Clean Architecture + 5 API endpoints
+- ~~PostGIS seed データ作成~~ ✅ — 東京駅周辺41行
+
+</details>
