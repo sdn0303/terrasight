@@ -3,6 +3,7 @@ pub mod pg_health_repository;
 pub mod pg_score_repository;
 pub mod pg_stats_repository;
 pub mod pg_trend_repository;
+pub mod reinfolib_mock;
 
 /// Convert a database error to a domain error.
 ///
