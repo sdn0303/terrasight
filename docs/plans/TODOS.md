@@ -1,6 +1,6 @@
 # TODOS
 
-> 最終更新: 2026-03-23 (P0・P1全完了、残タスク整理)
+> 最終更新: 2026-03-23 (P1.5 4/5完了、残タスクはDB実データ投入のみ)
 
 ---
 
@@ -18,38 +18,18 @@ _全P1タスク完了。_
 
 ## P1.5 — Phase 1完成に向けた残作業
 
-> 今回のP1実装（データパイプライン、J-SHIS、reinfolibモック）から派生するインテグレーション作業。
-> Phase 1を「デモ可能」にするための最後のステップ群。
-
 ### L01 実データ投入 + seed更新
 - **What**: `import-l01.py` を実DBに実行し、seed_dev.sqlの15行→20,914行に置換。Sparkline表示が動作することを確認
 - **Why**: dry-run確認済みだが実DBへの投入がまだ。地価トレンドAPI(`/api/v1/trend`)が実データで動く状態にする
 - **Effort**: XS (15min) | **Priority**: P1.5
 - **Command**: `export DATABASE_URL=... && python3 scripts/import-l01.py`
 
-### J-SHIS → スコア計算への統合
-- **What**: `JshisClient` を `ComputeScoreUsecase` に注入し、地震リスクスコア（30年超過確率 + AVS30地盤増幅）を投資スコアに反映
-- **Why**: J-SHIS APIクライアント実装済みだがスコア計算に未接続。地震リスクは不動産投資の重要指標
-- **Effort**: S | **Priority**: P1.5
-- **Files**: `src/usecase/compute_score.rs`, `src/app_state.rs`
-
-### 変換済みGeoJSON → PostGISバルクインポート
-- **What**: `data/geojson/` の14ファイル(zoning, flood, schools, medical, etc.)をPostGISテーブルにインポートするスクリプト作成
-- **Why**: seed_dev.sqlの少量データ(41行)から実データ(数万〜64万行)への移行。AreaRepository経由のAPI応答が実用的になる
-- **Effort**: M | **Priority**: P1.5
-- **Note**: A31b洪水データ(643K features, 597MB)は要パフォーマンス検証
-
-### ReinfolibDataSource → AppState接続
-- **What**: `create_reinfolib_source()` factory を `AppState::new()` に組み込み、usecaseから使用可能にする
-- **Why**: trait + 2実装 + factoryは完成しているが、AppStateへの配線がまだ
+### GeoJSON実データ投入
+- **What**: `import-geojson.py` を実DBに実行し、9データセット736,703行を投入
+- **Why**: スクリプト・マイグレーション作成済みだが実DBへの投入がまだ
 - **Effort**: XS (30min) | **Priority**: P1.5
-- **Files**: `src/app_state.rs`, 必要なusecaseファイル
-
-### FE: 新レイヤー表示対応（液状化・地震動・鉄道・駅）
-- **What**: 変換済みGeoJSON(pl, jshis-seismic, n02-railway, s12-stations)をMapLibreレイヤーとして追加
-- **Why**: データは準備済み（4ファイル）だがフロントエンドのlayers.ts + コンポーネントが未追加
-- **Effort**: M | **Priority**: P1.5
-- **Files**: `layers.ts`, `page.tsx`, 各static layerコンポーネント
+- **Command**: `export DATABASE_URL=... && python3 scripts/import-geojson.py`
+- **Note**: A31b洪水データ(638K行)は `--batch-size 2000` 推奨
 
 ---
 
@@ -117,6 +97,18 @@ _全P1タスク完了。_
 
 ### ~~J-SHIS API クライアント~~ ✅
 - `jshis.rs` 3エンドポイント, wiremockテスト10本, 合計82テスト
+
+### ~~J-SHIS → スコア計算への統合~~ ✅
+- `ComputeScoreUsecase` に `Option<Arc<JshisClient>>` 注入、4因子リスク計算（flood=0.25, seismic=0.30, steep=0.15, ground_amp=0.30）
+
+### ~~ReinfolibDataSource → AppState接続~~ ✅
+- `&Config` 参照をcomposition rootに伝播、factory自動選択
+
+### ~~変換済みGeoJSON → PostGISバルクインポートスクリプト~~ ✅
+- `import-geojson.py` 9データセット736,703行対応、dry-run確認済み、マイグレーション追加
+
+### ~~FE: 新レイヤー表示対応（液状化・地震動・鉄道）~~ ✅
+- 3新レイヤーコンポーネント + layers.ts + CSS variables、24レイヤー体制（21→24）、134テスト通過
 
 ## Completed (P0以前)
 
