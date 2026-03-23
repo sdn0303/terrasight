@@ -33,6 +33,7 @@ Exit codes:
 """
 
 from __future__ import annotations
+from typing import Any
 
 import argparse
 import os
@@ -67,7 +68,7 @@ def geojson_path(year: int) -> Path:
     return GEOJSON_DIR / f"l01-{year}-tokyo.geojson"
 
 
-def parse_database_url(url: str) -> dict[str, str | int]:
+def parse_database_url(url: str) -> dict[str, Any]:
     """Parse a postgresql:// URL into psycopg2 connect kwargs.
 
     Handles both ``postgresql://`` and ``postgres://`` schemes.
@@ -80,7 +81,7 @@ def parse_database_url(url: str) -> dict[str, str | int]:
             f"DATABASE_URL must use postgresql:// scheme, got: {parsed.scheme!r}"
         )
 
-    kwargs: dict[str, str | int] = {
+    kwargs: dict[str, Any] = {
         "host": parsed.hostname or "localhost",
         "port": parsed.port or 5432,
         "dbname": parsed.path.lstrip("/"),
@@ -166,7 +167,7 @@ def extract_rows(
 
 def import_year(
     year: int,
-    conn_kwargs: dict[str, str | int],
+    conn_kwargs: dict[str, Any],
     *,
     dry_run: bool,
 ) -> int:
