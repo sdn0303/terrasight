@@ -9,10 +9,10 @@ export function useTrend(
 ) {
   return useQuery({
     queryKey: queryKeys.trend.coord(lat ?? 0, lng ?? 0, years),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       if (lat === null) throw new Error("lat is required");
       if (lng === null) throw new Error("lng is required");
-      return fetchTrend(lat, lng, years);
+      return fetchTrend(lat, lng, years, signal);
     },
     enabled: lat !== null && lng !== null,
   });

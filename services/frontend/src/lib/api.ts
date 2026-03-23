@@ -81,9 +81,12 @@ async function get<T>(
   schema: z.ZodType<T>,
   path: string,
   params?: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<T> {
   const searchParams = params ? new URLSearchParams(params) : undefined;
-  const data: unknown = await api.get(path, { searchParams }).json();
+  const data: unknown = await api
+    .get(path, { searchParams, signal: signal ?? null })
+    .json();
   return schema.parse(data);
 }
 
@@ -96,37 +99,61 @@ export interface BBox {
   east: number;
 }
 
-export function fetchHealth() {
-  return get(HealthResponse, "api/health");
+export function fetchHealth(signal?: AbortSignal) {
+  return get(HealthResponse, "api/health", undefined, signal);
 }
 
-export function fetchAreaData(bbox: BBox, layers: string[]) {
-  return get(AreaDataResponse, "api/area-data", {
-    south: String(bbox.south),
-    west: String(bbox.west),
-    north: String(bbox.north),
-    east: String(bbox.east),
-    layers: layers.join(","),
-  });
+export function fetchAreaData(
+  bbox: BBox,
+  layers: string[],
+  signal?: AbortSignal,
+) {
+  return get(
+    AreaDataResponse,
+    "api/area-data",
+    {
+      south: String(bbox.south),
+      west: String(bbox.west),
+      north: String(bbox.north),
+      east: String(bbox.east),
+      layers: layers.join(","),
+    },
+    signal,
+  );
 }
 
-export function fetchScore(lat: number, lng: number) {
-  return get(ScoreResponse, "api/score", {
-    lat: String(lat),
-    lng: String(lng),
-  });
+export function fetchScore(lat: number, lng: number, signal?: AbortSignal) {
+  return get(
+    ScoreResponse,
+    "api/score",
+    {
+      lat: String(lat),
+      lng: String(lng),
+    },
+    signal,
+  );
 }
 
-export function fetchStats(bbox: BBox) {
-  return get(StatsResponse, "api/stats", {
-    south: String(bbox.south),
-    west: String(bbox.west),
-    north: String(bbox.north),
-    east: String(bbox.east),
-  });
+export function fetchStats(bbox: BBox, signal?: AbortSignal) {
+  return get(
+    StatsResponse,
+    "api/stats",
+    {
+      south: String(bbox.south),
+      west: String(bbox.west),
+      north: String(bbox.north),
+      east: String(bbox.east),
+    },
+    signal,
+  );
 }
 
-export function fetchTrend(lat: number, lng: number, years?: number) {
+export function fetchTrend(
+  lat: number,
+  lng: number,
+  years?: number,
+  signal?: AbortSignal,
+) {
   const params: Record<string, string> = {
     lat: String(lat),
     lng: String(lng),
@@ -134,5 +161,5 @@ export function fetchTrend(lat: number, lng: number, years?: number) {
   if (years !== undefined) {
     params.years = String(years);
   }
-  return get(TrendResponse, "api/trend", params);
+  return get(TrendResponse, "api/trend", params, signal);
 }

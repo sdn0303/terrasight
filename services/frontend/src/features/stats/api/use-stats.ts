@@ -7,9 +7,9 @@ export function useStats(bbox: BBox | null) {
     queryKey: queryKeys.stats.bbox(
       bbox ?? { south: 0, west: 0, north: 0, east: 0 },
     ),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       if (bbox === null) throw new Error("bbox is required");
-      return fetchStats(bbox);
+      return fetchStats(bbox, signal);
     },
     enabled: bbox !== null,
   });
