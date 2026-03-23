@@ -156,7 +156,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
       log.error({ err }, "failed to add 3D buildings layer");
     }
 
-    // ─── CRITICAL GAP FIX: WebGL context lost recovery ───
+    // ─── WebGL context lost recovery ───
     const canvas = map.getCanvas();
     const handleContextLost = (event: Event) => {
       event.preventDefault();
@@ -170,6 +170,12 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
 
     canvas.addEventListener("webglcontextlost", handleContextLost);
     canvas.addEventListener("webglcontextrestored", handleContextRestored);
+
+    // Cleanup: remove listeners when map is unmounted
+    return () => {
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+    };
   }, []);
 
   const handleForceReload = useCallback(() => {
@@ -188,8 +194,15 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
     if (!webglLost) return;
 
     const timer = setTimeout(() => {
-      // If still lost after timeout, the toast will show reload button
-      // (auto-recovery via browser is the primary path)
+      // If still lost after timeout, attempt triggerRepaint as last resort
+      if (mapRef.current) {
+        try {
+          mapRef.current.triggerRepaint();
+          log.info("attempted triggerRepaint after WebGL timeout");
+        } catch {
+          log.warn("triggerRepaint failed after WebGL timeout — user must reload");
+        }
+      }
     }, WEBGL_RECOVERY_TIMEOUT_MS);
 
     return () => clearTimeout(timer);
