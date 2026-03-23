@@ -40,7 +40,7 @@ export const LandPriceProperties = z.object({
   id: z.number(),
   price_per_sqm: z.number(),
   address: z.string(),
-  land_use: z.string(),
+  land_use: z.string().nullable(),
   year: z.number(),
 });
 
@@ -54,8 +54,8 @@ export const ZoningProperties = z.object({
 
 export const FloodProperties = z.object({
   id: z.number(),
-  depth_rank: z.number(),
-  river_name: z.string(),
+  depth_rank: z.string(), // MLIT text values e.g. "0.5m未満", "0.5-3.0m"
+  river_name: z.string().nullable(),
 });
 
 export const SteepSlopeProperties = z.object({
@@ -120,7 +120,7 @@ export const StatsResponse = z.object({
   risk: z.object({
     flood_area_ratio: z.number(),
     steep_slope_area_ratio: z.number(),
-    avg_composite_risk: z.number(),
+    composite_risk: z.number(),
   }),
   facilities: z.object({
     schools: z.number(),

@@ -123,9 +123,9 @@ export function DashboardStats() {
                 />
                 <StatCard
                   label="RISK"
-                  value={`${Math.round(stats.risk.avg_composite_risk * 100)}%`}
+                  value={`${Math.round(stats.risk.composite_risk * 100)}%`}
                   color={
-                    Math.round(stats.risk.avg_composite_risk * 100) > 30
+                    Math.round(stats.risk.composite_risk * 100) > 30
                       ? "var(--accent-danger)"
                       : "var(--accent-success)"
                   }
@@ -178,7 +178,7 @@ export function DashboardStats() {
 
   if (!stats) return null;
 
-  const riskPct = Math.round(stats.risk.avg_composite_risk * 100);
+  const riskPct = Math.round(stats.risk.composite_risk * 100);
 
   return (
     <div

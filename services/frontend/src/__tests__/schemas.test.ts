@@ -80,7 +80,7 @@ describe("StatsResponse schema", () => {
       risk: {
         flood_area_ratio: 0.15,
         steep_slope_area_ratio: 0.02,
-        avg_composite_risk: 0.18,
+        composite_risk: 0.18,
       },
       facilities: { schools: 12, medical: 28 },
       zoning_distribution: { 商業地域: 0.35, 住居地域: 0.65 },
