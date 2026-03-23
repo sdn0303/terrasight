@@ -14,8 +14,13 @@ export interface LayerConfig {
   defaultEnabled: boolean;
   /** CSS color token for the layer indicator dot */
   color: string;
-  /** Data source: 'api' layers receive FeatureCollection from useAreaData, 'static' layers load from /geojson/ */
-  source: "api" | "static";
+  /**
+   * Data source:
+   * - 'api' layers receive FeatureCollection from useAreaData
+   * - 'static' layers load from /geojson/ on mount
+   * - 'timeseries' layers have their own dedicated TanStack Query hooks (e.g. useLandPrices)
+   */
+  source: "api" | "static" | "timeseries";
   /** Fields displayed in the PopupCard on click-inspect */
   popupFields?: PopupField[];
   /** MapLibre layer IDs that respond to click events (for interactiveLayerIds) */
@@ -26,11 +31,27 @@ export interface LayerConfig {
 
 export const LAYERS: LayerConfig[] = [
   {
+    id: "land_price_ts",
+    name: "Land Price (Time Series)",
+    nameJa: "地価公示（時系列）",
+    category: "value",
+    defaultEnabled: true,
+    color: "var(--layer-landprice)",
+    source: "timeseries",
+    popupFields: [
+      { key: "address", label: "所在地" },
+      { key: "price_per_sqm", label: "価格", suffix: "円/㎡" },
+      { key: "year", label: "年度" },
+      { key: "land_use", label: "用途" },
+    ],
+    interactiveLayerIds: ["land-price-extrusion-3d", "land-price-ts-circle"],
+  },
+  {
     id: "landprice",
     name: "Land Price",
     nameJa: "地価公示",
     category: "value",
-    defaultEnabled: true,
+    defaultEnabled: false,
     color: "var(--layer-landprice)",
     source: "api",
     popupFields: [
@@ -379,6 +400,8 @@ export const ALL_INTERACTIVE_LAYER_IDS: string[] = LAYERS.flatMap(
 );
 
 /** Get layers by source type */
-export function getLayersBySource(source: "api" | "static"): LayerConfig[] {
+export function getLayersBySource(
+  source: "api" | "static" | "timeseries",
+): LayerConfig[] {
   return LAYERS.filter((l) => l.source === source);
 }

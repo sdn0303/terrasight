@@ -10,6 +10,9 @@ pub enum DomainError {
     #[error("Bounding box exceeds maximum allowed area (0.5 degrees per side)")]
     BBoxTooLarge,
 
+    #[error("Invalid year: {0}")]
+    InvalidYear(String),
+
     #[error("Required parameter missing: {0}")]
     MissingParameter(String),
 

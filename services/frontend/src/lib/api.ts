@@ -4,6 +4,7 @@ import { logger } from "./logger";
 import {
   AreaDataResponse,
   HealthResponse,
+  LandPriceTimeSeriesResponse,
   ScoreResponse,
   StatsResponse,
   TrendResponse,
@@ -143,6 +144,22 @@ export function fetchStats(bbox: BBox, signal?: AbortSignal) {
       west: String(bbox.west),
       north: String(bbox.north),
       east: String(bbox.east),
+    },
+    signal,
+  );
+}
+
+export function fetchLandPrices(
+  bbox: BBox,
+  year: number,
+  signal?: AbortSignal,
+) {
+  return get(
+    LandPriceTimeSeriesResponse,
+    "api/v1/land-prices",
+    {
+      year: String(year),
+      bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
     },
     signal,
   );

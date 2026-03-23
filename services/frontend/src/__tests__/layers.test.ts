@@ -7,8 +7,8 @@ import {
 } from "@/lib/layers";
 
 describe("LAYERS configuration", () => {
-  it("has 24 layers total", () => {
-    expect(LAYERS).toHaveLength(24);
+  it("has 25 layers total", () => {
+    expect(LAYERS).toHaveLength(25);
   });
 
   it("every layer has required fields", () => {
@@ -17,7 +17,7 @@ describe("LAYERS configuration", () => {
       expect(layer.name, `${layer.id}: name`).toBeTruthy();
       expect(layer.nameJa, `${layer.id}: nameJa`).toBeTruthy();
       expect(layer.color, `${layer.id}: color`).toBeTruthy();
-      expect(["api", "static"]).toContain(layer.source);
+      expect(["api", "static", "timeseries"]).toContain(layer.source);
       expect(["value", "risk", "ground", "infra", "orientation"]).toContain(
         layer.category,
       );
@@ -61,9 +61,10 @@ describe("LAYERS configuration", () => {
     }
   });
 
-  it("default enabled layers include landprice and zoning", () => {
+  it("default enabled layers include land_price_ts and zoning (landprice off)", () => {
     const defaults = LAYERS.filter((l) => l.defaultEnabled).map((l) => l.id);
-    expect(defaults).toContain("landprice");
+    expect(defaults).toContain("land_price_ts");
+    expect(defaults).not.toContain("landprice");
     expect(defaults).toContain("zoning");
   });
 
@@ -129,10 +130,11 @@ describe("getLayersBySource", () => {
     }
   });
 
-  it("API + static = total layers", () => {
+  it("API + static + timeseries = total layers", () => {
     const api = getLayersBySource("api");
     const staticL = getLayersBySource("static");
-    expect(api.length + staticL.length).toBe(LAYERS.length);
+    const timeseries = getLayersBySource("timeseries");
+    expect(api.length + staticL.length + timeseries.length).toBe(LAYERS.length);
   });
 });
 

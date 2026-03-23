@@ -161,6 +161,26 @@ The `<Source>` data prop points to a static file path like `"/geojson/admin-boun
 
 Some layers compose multiple sub-layers (e.g., AdminBoundaryLayer renders fill + line + symbol).
 
+### Map Paint Colors (MapLibre Exception)
+
+MapLibre GL paint expressions do not support CSS custom properties -- they require raw hex values. The following hardcoded hex values in map layer components are intentional deviations from the CSS variable system. If the brand palette changes, these must be updated manually.
+
+**Land Price Extrusion Color Ramp** (source: `land-price-extrusion-layer.tsx`):
+
+| Hex | Price Range (¥/m²) | Label |
+|---|---|---|
+| `#3b82f6` (blue) | ~100,000 | Low |
+| `#22c55e` (green) | ~300,000 | Mid |
+| `#eab308` (yellow) | ~500,000 | High |
+| `#ef4444` (red) | ~1,000,000 | Very high |
+| `#a855f7` (purple) | ~3,000,000+ | Premium |
+
+**3D Building Extrusion** (source: `map-view.tsx`):
+
+| Hex | Usage |
+|---|---|
+| `#1e1e2e` | Building fill color (dark blue-grey, recedes against `--bg-primary`) |
+
 ### PopupCard Pattern
 
 A single, config-driven `PopupCard` component handles click-inspect for all layers. It reads `popupFields` from the `LayerConfig` in `layers.ts` and renders key-value rows. No per-layer popup templates exist.

@@ -1,6 +1,7 @@
 pub mod area_data;
 pub mod error;
 pub mod health;
+pub mod land_price;
 pub mod request;
 pub mod response;
 pub mod score;

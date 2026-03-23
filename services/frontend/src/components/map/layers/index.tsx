@@ -5,6 +5,7 @@ export { FloodHistoryLayer } from "./flood-history-layer";
 export { FloodLayer } from "./flood-layer";
 export { GeologyLayer } from "./geology-layer";
 export { LandformLayer } from "./landform-layer";
+export { LandPriceExtrusionLayer } from "./land-price-extrusion-layer";
 export { LandpriceLayer } from "./landprice-layer";
 export { LandslideLayer } from "./landslide-layer";
 export { LiquefactionLayer } from "./liquefaction-layer";

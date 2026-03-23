@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::domain::constants::TREND_DEFAULT_YEARS;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, Coord, LayerType};
+use crate::domain::value_object::{BBox, Coord, LayerType, Year};
 
 /// Bounding box query parameters for `/api/area-data` and `/api/stats`.
 ///
@@ -74,6 +74,65 @@ impl AreaDataQuery {
     }
 }
 
+/// Land price query parameters for `GET /api/v1/land-prices`.
+///
+/// Expects `year` (integer) and `bbox` as a comma-separated string
+/// `"sw_lng,sw_lat,ne_lng,ne_lat"` (longitude-first, RFC 7946 order).
+///
+/// # Example query string
+///
+/// ```text
+/// ?year=2023&bbox=139.70,35.65,139.80,35.70
+/// ```
+#[derive(Debug, Deserialize)]
+pub struct LandPriceQuery {
+    pub year: i32,
+    /// Comma-separated bounding box: `sw_lng,sw_lat,ne_lng,ne_lat`.
+    pub bbox: String,
+}
+
+impl LandPriceQuery {
+    /// Parse and validate into domain value objects `(Year, BBox)`.
+    ///
+    /// The bbox string must contain exactly four comma-separated `f64` values
+    /// in the order `sw_lng, sw_lat, ne_lng, ne_lat` (longitude before latitude,
+    /// consistent with RFC 7946 coordinate order).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::MissingParameter`] when the bbox string cannot be
+    /// parsed, and propagates [`DomainError::InvalidYear`] /
+    /// [`DomainError::InvalidCoordinate`] / [`DomainError::BBoxTooLarge`] from
+    /// the domain value object constructors.
+    pub fn into_domain(self) -> Result<(Year, BBox), DomainError> {
+        let year = Year::new(self.year)?;
+
+        let parts: Vec<f64> = self
+            .bbox
+            .split(',')
+            .map(|s| {
+                s.trim()
+                    .parse::<f64>()
+                    .map_err(|_| DomainError::MissingParameter("bbox".into()))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if parts.len() != 4 {
+            return Err(DomainError::MissingParameter(
+                "bbox must have exactly 4 values: sw_lng,sw_lat,ne_lng,ne_lat".into(),
+            ));
+        }
+
+        // bbox format: sw_lng, sw_lat, ne_lng, ne_lat  (longitude first — RFC 7946)
+        let (sw_lng, sw_lat, ne_lng, ne_lat) = (parts[0], parts[1], parts[2], parts[3]);
+
+        // BBox::new expects (south, west, north, east)
+        let bbox = BBox::new(sw_lat, sw_lng, ne_lat, ne_lng)?;
+
+        Ok((year, bbox))
+    }
+}
+
 /// Trend query parameters (includes optional `years`).
 #[derive(Debug, Deserialize)]
 pub struct TrendQuery {
@@ -141,6 +200,47 @@ mod tests {
             north: 35.70,
             east: 139.80,
             layers: "".into(),
+        };
+        assert!(q.into_domain().is_err());
+    }
+
+    #[test]
+    fn land_price_query_valid() {
+        let q = LandPriceQuery {
+            year: 2023,
+            bbox: "139.70,35.65,139.80,35.70".into(),
+        };
+        let (year, bbox) = q.into_domain().unwrap();
+        assert_eq!(year.value(), 2023);
+        assert!((bbox.west() - 139.70).abs() < f64::EPSILON);
+        assert!((bbox.south() - 35.65).abs() < f64::EPSILON);
+        assert!((bbox.east() - 139.80).abs() < f64::EPSILON);
+        assert!((bbox.north() - 35.70).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn land_price_query_invalid_bbox_string() {
+        let q = LandPriceQuery {
+            year: 2023,
+            bbox: "not,valid,bbox".into(),
+        };
+        assert!(q.into_domain().is_err());
+    }
+
+    #[test]
+    fn land_price_query_invalid_year() {
+        let q = LandPriceQuery {
+            year: 1999,
+            bbox: "139.70,35.65,139.80,35.70".into(),
+        };
+        assert!(q.into_domain().is_err());
+    }
+
+    #[test]
+    fn land_price_query_bbox_wrong_field_count() {
+        let q = LandPriceQuery {
+            year: 2023,
+            bbox: "139.70,35.65,139.80".into(),
         };
         assert!(q.into_domain().is_err());
     }

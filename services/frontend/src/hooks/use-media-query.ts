@@ -7,10 +7,9 @@ import { useEffect, useState } from "react";
  * Initialises synchronously on the server to `false` (SSR-safe).
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia(query).matches;
-  });
+  // Always initialise to false — matches SSR output and avoids hydration mismatch.
+  // The real value is set in useEffect after mount.
+  const [matches, setMatches] = useState(false);
 
   useEffect(() => {
     const mediaQueryList = window.matchMedia(query);
