@@ -23,16 +23,37 @@ pub const TREND_CAGR_MULTIPLIER: f64 = 500.0;
 // ---------------------------------------------------------------------------
 
 /// Weight assigned to flood risk when computing the point-based risk score.
-pub const RISK_WEIGHT_FLOOD: f64 = 0.4;
+pub const RISK_WEIGHT_FLOOD: f64 = 0.25;
 
-/// Weight assigned to liquefaction risk when computing the point-based risk score.
-///
-/// Phase 1: the input value is always 0.0 (liquefaction data not yet ingested),
-/// so this weight has no practical effect until Phase 2 data is available.
-pub const RISK_WEIGHT_LIQUEFACTION: f64 = 0.4;
+/// Weight assigned to seismic hazard (30-year probability of intensity ≥ 6弱)
+/// when computing the point-based risk score.
+pub const RISK_WEIGHT_SEISMIC: f64 = 0.30;
 
 /// Weight assigned to steep-slope risk when computing the point-based risk score.
-pub const RISK_WEIGHT_STEEP: f64 = 0.2;
+pub const RISK_WEIGHT_STEEP: f64 = 0.15;
+
+/// Weight assigned to ground amplification (derived from AVS30) when computing
+/// the point-based risk score.
+pub const RISK_WEIGHT_GROUND_AMP: f64 = 0.30;
+
+/// AVS30 threshold (m/s) above which ground is classified as very firm.
+///
+/// Sites with AVS30 > this value receive a ground-amplification factor of 0.0.
+pub const RISK_AVS30_FIRM: f64 = 400.0;
+
+/// AVS30 threshold (m/s) below which ground is classified as soft.
+///
+/// Sites with AVS30 < this value receive a ground-amplification factor of
+/// [`RISK_GROUND_AMP_SOFT`].
+pub const RISK_AVS30_SOFT: f64 = 200.0;
+
+/// Ground amplification factor applied when AVS30 falls in the moderate range
+/// (200–400 m/s).
+pub const RISK_GROUND_AMP_MODERATE: f64 = 0.3;
+
+/// Ground amplification factor applied when AVS30 is below [`RISK_AVS30_SOFT`]
+/// (soft ground with high seismic amplification risk).
+pub const RISK_GROUND_AMP_SOFT: f64 = 0.8;
 
 // ---------------------------------------------------------------------------
 // Risk scoring — area-based statistics (bbox / polygon query)

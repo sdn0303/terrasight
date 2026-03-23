@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
         realestate_db::pool::create_pool(&config.database_url, config.db_max_connections).await?;
 
     // Build the core router from lib.rs (routes + request-id + response-time).
-    let app = realestate_api::build_router(pool);
+    let app = realestate_api::build_router(pool, &config);
 
     // CORS: explicit origin whitelist in production, permissive in development.
     let cors_layer = match config.parsed_origins() {

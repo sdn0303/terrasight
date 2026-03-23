@@ -21,8 +21,11 @@ use app_state::AppState;
 ///
 /// CORS, rate limiting, and compression are added in `main.rs` because they
 /// depend on runtime configuration and are not needed for integration tests.
-pub fn build_router(pool: PgPool) -> Router {
-    let state = AppState::new(pool, false);
+///
+/// `config` is forwarded to [`AppState::new`] to select the correct reinfolib
+/// data source (`PostgisFallback` vs `LiveReinfolib`).
+pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
+    let state = AppState::new(pool, config);
 
     Router::new()
         .route("/api/health", get(handler::health::health))

@@ -21,7 +21,18 @@ async fn test_server() -> Option<TestServer> {
     let pool = realestate_db::pool::create_pool(&db_url, 5)
         .await
         .expect("failed to connect to test database");
-    let router = realestate_api::build_router(pool);
+    // No API key in tests — PostgisFallback is selected automatically.
+    let config = realestate_api::config::Config {
+        database_url: db_url,
+        reinfolib_api_key: None,
+        port: 8000,
+        db_max_connections: 5,
+        rust_log_format: None,
+        allowed_origins: None,
+        rate_limit_rpm: 120,
+        rate_limit_burst: 20,
+    };
+    let router = realestate_api::build_router(pool, &config);
     Some(TestServer::new(router))
 }
 

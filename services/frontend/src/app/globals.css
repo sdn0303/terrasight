@@ -65,6 +65,9 @@
   --layer-population: #c084fc;
   --layer-urban-plan: #34d399;
   --layer-tsunami: #38bdf8;
+  --layer-liquefaction: #eab308;
+  --layer-seismic: #ef4444;
+  --layer-railway: #22d3ee;
 
   /* ─── shadcn/ui theme (zinc dark) ───────────── */
   --radius: 0.5rem;
