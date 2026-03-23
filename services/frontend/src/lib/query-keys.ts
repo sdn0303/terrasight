@@ -20,4 +20,8 @@ export const queryKeys = {
     coord: (lat: number, lng: number, years?: number) =>
       ["trend", lat, lng, years] as const,
   },
+  landPrices: {
+    all: ["land-prices"] as const,
+    byYear: (bbox: BBox, year: number) => ["land-prices", bbox, year] as const,
+  },
 };

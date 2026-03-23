@@ -10,6 +10,7 @@ impl ErrorMapping for DomainError {
         match self {
             Self::InvalidCoordinate(_) => StatusCode::BAD_REQUEST,
             Self::BBoxTooLarge => StatusCode::BAD_REQUEST,
+            Self::InvalidYear(_) => StatusCode::BAD_REQUEST,
             Self::MissingParameter(_) => StatusCode::BAD_REQUEST,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::Database(_) => StatusCode::SERVICE_UNAVAILABLE,
@@ -20,6 +21,7 @@ impl ErrorMapping for DomainError {
         match self {
             Self::InvalidCoordinate(_) => "INVALID_PARAMS",
             Self::BBoxTooLarge => "BBOX_TOO_LARGE",
+            Self::InvalidYear(_) => "INVALID_PARAMS",
             Self::MissingParameter(_) => "INVALID_PARAMS",
             Self::NotFound => "NOT_FOUND",
             Self::Database(_) => "DB_UNAVAILABLE",

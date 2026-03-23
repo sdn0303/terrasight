@@ -65,6 +65,18 @@ pub trait TrendRepository: Send + Sync {
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError>;
 }
 
+// ─── Land Prices (dedicated v1 endpoint) ─────────────
+
+#[async_trait]
+pub trait LandPriceRepository: Send + Sync {
+    /// Fetch land price GeoJSON features filtered by year and bounding box.
+    async fn find_by_year_and_bbox(
+        &self,
+        year: &Year,
+        bbox: &BBox,
+    ) -> Result<Vec<GeoFeature>, DomainError>;
+}
+
 // ─── Health ──────────────────────────────────────────
 
 #[async_trait]

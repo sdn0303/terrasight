@@ -1,4 +1,4 @@
-use crate::domain::constants::{BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX};
+use crate::domain::constants::{BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX, YEAR_MAX, YEAR_MIN};
 use crate::domain::error::DomainError;
 
 /// Bounding box with enforced invariants:
@@ -90,6 +90,45 @@ impl Coord {
     }
     pub fn lng(&self) -> f64 {
         self.lng
+    }
+}
+
+/// Calendar year for land price data queries.
+///
+/// Fields are private; only the validated constructor can create instances.
+///
+/// # Examples
+///
+/// ```
+/// use realestate_api::domain::value_object::Year;
+///
+/// let year = Year::new(2023).unwrap();
+/// assert_eq!(year.value(), 2023);
+/// assert!(Year::new(1999).is_err());
+/// assert!(Year::new(2101).is_err());
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct Year {
+    value: i32,
+}
+
+impl Year {
+    /// Construct a validated `Year`.
+    ///
+    /// Returns [`DomainError::InvalidYear`] if `value` is outside
+    /// `[YEAR_MIN, YEAR_MAX]` (currently 2000–2100).
+    pub fn new(value: i32) -> Result<Self, DomainError> {
+        if !(YEAR_MIN..=YEAR_MAX).contains(&value) {
+            return Err(DomainError::InvalidYear(format!(
+                "year must be between {YEAR_MIN} and {YEAR_MAX}, got {value}"
+            )));
+        }
+        Ok(Self { value })
+    }
+
+    /// Return the raw year integer.
+    pub fn value(self) -> i32 {
+        self.value
     }
 }
 
@@ -213,6 +252,26 @@ mod tests {
     fn coord_accepts_valid() {
         let c = Coord::new(35.68, 139.76).unwrap();
         assert!((c.lat() - 35.68).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn year_rejects_too_low() {
+        assert!(Year::new(1999).is_err());
+        assert!(Year::new(0).is_err());
+    }
+
+    #[test]
+    fn year_rejects_too_high() {
+        assert!(Year::new(2101).is_err());
+        assert!(Year::new(9999).is_err());
+    }
+
+    #[test]
+    fn year_accepts_valid() {
+        let y = Year::new(2023).expect("2023 is within valid range");
+        assert_eq!(y.value(), 2023);
+        assert!(Year::new(2000).is_ok());
+        assert!(Year::new(2100).is_ok());
     }
 
     #[test]

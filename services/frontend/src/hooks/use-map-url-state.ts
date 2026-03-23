@@ -2,6 +2,7 @@
 
 import {
   parseAsFloat,
+  parseAsInteger,
   parseAsString,
   useQueryStates,
 } from "nuqs";
@@ -15,7 +16,8 @@ const mapParams = {
   z: parseAsFloat.withDefault(MAP_CONFIG.zoom),
   pitch: parseAsFloat.withDefault(MAP_CONFIG.pitch),
   bearing: parseAsFloat.withDefault(MAP_CONFIG.bearing),
-  layers: parseAsString.withDefault("landprice,zoning"),
+  layers: parseAsString.withDefault("land_price_ts,zoning"),
+  year: parseAsInteger.withDefault(2024),
 };
 
 export function useMapUrlState() {

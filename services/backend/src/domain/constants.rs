@@ -137,6 +137,16 @@ pub const TREND_MIN_YEARS: i32 = 1;
 pub const TREND_MAX_YEARS: i32 = 20;
 
 // ---------------------------------------------------------------------------
+// Year validation bounds (for land price queries)
+// ---------------------------------------------------------------------------
+
+/// Minimum valid year for land price data queries.
+pub const YEAR_MIN: i32 = 2000;
+
+/// Maximum valid year for land price data queries.
+pub const YEAR_MAX: i32 = 2100;
+
+// ---------------------------------------------------------------------------
 // Coordinate validation bounds
 // ---------------------------------------------------------------------------
 

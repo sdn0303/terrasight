@@ -153,6 +153,13 @@ export const HealthResponse = z.object({
   version: z.string(),
 });
 
+// ─── Land price time-series response ─────────────────
+export const LandPriceTimeSeriesResponse =
+  featureCollection(LandPriceProperties);
+export type LandPriceTimeSeriesResponse = z.infer<
+  typeof LandPriceTimeSeriesResponse
+>;
+
 // ─── Export inferred types ────────────────────────────
 export type AreaDataResponse = z.infer<typeof AreaDataResponse>;
 export type ScoreResponse = z.infer<typeof ScoreResponse>;
