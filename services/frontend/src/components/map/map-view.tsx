@@ -17,7 +17,10 @@ import type {
 import { Map as MapGL, NavigationControl } from "react-map-gl/maplibre";
 import { DEBOUNCE_MS, MAP_CONFIG } from "@/lib/constants";
 import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
+import { logger } from "@/lib/logger";
 import { useMapStore } from "@/stores/map-store";
+
+const log = logger.child({ module: "map-view" });
 
 interface MapViewProps {
   children?: ReactNode;
@@ -89,7 +92,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
 
       map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
     } catch (err) {
-      console.error("[MapView] Failed to add terrain source:", err);
+      log.error({ err }, "failed to add terrain source");
     }
 
     // Add 3D building extrusion layer using CARTO vector tiles
@@ -150,18 +153,18 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         );
       }
     } catch (err) {
-      console.error("[MapView] Failed to add 3D buildings layer:", err);
+      log.error({ err }, "failed to add 3D buildings layer");
     }
 
     // ─── CRITICAL GAP FIX: WebGL context lost recovery ───
     const canvas = map.getCanvas();
     const handleContextLost = (event: Event) => {
       event.preventDefault();
-      console.warn("[MapView] WebGL context lost — attempting recovery");
+      log.warn("webgl context lost — attempting recovery");
       setWebglLost(true);
     };
     const handleContextRestored = () => {
-      console.info("[MapView] WebGL context restored");
+      log.info("webgl context restored");
       setWebglLost(false);
     };
 
