@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS railways (
     line_name       text,
     operator_name   text,
     station_name    text,
-    geom            geometry(LineString, 4326) NOT NULL,
+    geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS stations (
     station_code    text,
     operator_name   text,
     line_name       text,
-    geom            geometry(LineString, 4326) NOT NULL,
+    geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 

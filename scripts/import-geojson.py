@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS railways (
     line_name       text,
     operator_name   text,
     station_name    text,
-    geom            geometry(LineString, 4326) NOT NULL,
+    geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_railways_geom ON railways USING GIST (geom);
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS stations (
     station_code    text,
     operator_name   text,
     line_name       text,
-    geom            geometry(LineString, 4326) NOT NULL,
+    geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_stations_geom ON stations USING GIST (geom);
@@ -401,8 +401,14 @@ def geom_to_ewkt(geom: Any, *, force_multi: bool = False) -> str | None:
     if geom.has_z:
         geom = transform(_drop_z, geom)
 
-    if force_multi and geom.geom_type == "Polygon":
-        geom = MultiPolygon([geom])
+    if force_multi:
+        if geom.geom_type == "Polygon":
+            geom = MultiPolygon([geom])
+        elif geom.geom_type == "MultiPolygon":
+            pass  # already correct type
+        else:
+            # Skip non-polygon geometries (LineString, GeometryCollection, etc.)
+            return None
 
     return f"SRID=4326;{geom.wkt}"
 

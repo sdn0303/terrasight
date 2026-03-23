@@ -218,6 +218,10 @@ def import_year(
                     INSERT INTO land_prices
                         (price_per_sqm, address, land_use, geom, year)
                     VALUES %s
+                    ON CONFLICT (address, year) DO UPDATE
+                        SET price_per_sqm = EXCLUDED.price_per_sqm,
+                            land_use = EXCLUDED.land_use,
+                            geom = EXCLUDED.geom
                     """,
                     [
                         (
