@@ -1,6 +1,6 @@
 # TODOS
 
-> 最終更新: 2026-03-23 (P1.5 4/5完了、残タスクはDB実データ投入のみ)
+> 最終更新: 2026-03-23 (Phase 1完了 🎉 — P0/P1/P1.5全完了、次はP2 SaaS化)
 
 ---
 
@@ -18,18 +18,7 @@ _全P1タスク完了。_
 
 ## P1.5 — Phase 1完成に向けた残作業
 
-### L01 実データ投入 + seed更新
-- **What**: `import-l01.py` を実DBに実行し、seed_dev.sqlの15行→20,914行に置換。Sparkline表示が動作することを確認
-- **Why**: dry-run確認済みだが実DBへの投入がまだ。地価トレンドAPI(`/api/v1/trend`)が実データで動く状態にする
-- **Effort**: XS (15min) | **Priority**: P1.5
-- **Command**: `export DATABASE_URL=... && python3 scripts/import-l01.py`
-
-### GeoJSON実データ投入
-- **What**: `import-geojson.py` を実DBに実行し、9データセット736,703行を投入
-- **Why**: スクリプト・マイグレーション作成済みだが実DBへの投入がまだ
-- **Effort**: XS (30min) | **Priority**: P1.5
-- **Command**: `export DATABASE_URL=... && python3 scripts/import-geojson.py`
-- **Note**: A31b洪水データ(638K行)は `--batch-size 2000` 推奨
+_全P1.5タスク完了。_ DB実データ投入(757K行) + API動作検証済み。
 
 ---
 
@@ -68,7 +57,7 @@ _全P1タスク完了。_
 
 ### DESIGN.md 作成
 - **What**: Urban Stratigraphyデザインシステムの公式ドキュメント（カラートークン、タイポグラフィ、コンポーネントパターン）
-- **Why**: globals.cssにデザイントークンが定義済みだがドキュメント化されていない。21レイヤー拡大後、デザインレビューの基準が不明確
+- **Why**: globals.cssにデザイントークンが定義済みだがドキュメント化されていない。24レイヤー拡大後、デザインレビューの基準が不明確
 - **Effort**: S (human 4h / CC 15min) | **Priority**: P2
 - **File**: `DESIGN.md`
 
@@ -109,6 +98,19 @@ _全P1タスク完了。_
 
 ### ~~FE: 新レイヤー表示対応（液状化・地震動・鉄道）~~ ✅
 - 3新レイヤーコンポーネント + layers.ts + CSS variables、24レイヤー体制（21→24）、134テスト通過
+
+### ~~L01 実データ投入~~ ✅
+- `import-l01.py` で5年分20,914行をPostGISに投入。ON CONFLICT (address, year) UPSERT対応
+
+### ~~GeoJSON実データ投入~~ ✅
+- `import-geojson.py` で9データセット736,504行を投入（flood 638K, medical 42K, zoning 21K, liquefaction 20K, schools 8K, railways 4K, stations 3K, steep 75, seismic 25）
+- mixed geometry対応: railways/stations DDLを`geometry(Geometry, 4326)`に修正、非Polygon geometryフィルタ追加
+
+### ~~レート制限500エラー修正~~ ✅
+- `axum::serve`に`into_make_service_with_connect_info::<SocketAddr>()`を追加。PeerIpKeyExtractorがConnectInfoを取得できず全リクエスト500になる問題を修正
+
+### ~~API動作検証（実データ）~~ ✅
+- 全5エンドポイント（health, trend, score, stats, area-data）をPostGIS 757K行に対してE2E検証済み
 
 ## Completed (P0以前)
 
