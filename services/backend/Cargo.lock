@@ -2065,6 +2065,7 @@ dependencies = [
  "envy",
  "futures",
  "http",
+ "mlit-client",
  "realestate-api-core",
  "realestate-db",
  "realestate-geo-math",
