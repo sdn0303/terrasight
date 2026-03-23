@@ -4,12 +4,11 @@ import {
   CATEGORIES,
   LAYERS,
   getLayersBySource,
-  type LayerConfig,
 } from "@/lib/layers";
 
 describe("LAYERS configuration", () => {
-  it("has 21 layers total", () => {
-    expect(LAYERS).toHaveLength(21);
+  it("has 24 layers total", () => {
+    expect(LAYERS).toHaveLength(24);
   });
 
   it("every layer has required fields", () => {
