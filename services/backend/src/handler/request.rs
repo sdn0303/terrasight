@@ -45,11 +45,15 @@ pub struct AreaDataQuery {
     pub east: f64,
     #[serde(default)]
     pub layers: String,
+    /// Map zoom level used to compute per-layer feature limits.
+    /// Defaults to 14 (street level) when not provided.
+    #[serde(default = "default_zoom")]
+    pub zoom: u32,
 }
 
 impl AreaDataQuery {
-    /// Convert to domain types: validated BBox + parsed LayerType list.
-    pub fn into_domain(self) -> Result<(BBox, Vec<LayerType>), DomainError> {
+    /// Convert to domain types: validated BBox + parsed LayerType list + zoom.
+    pub fn into_domain(self) -> Result<(BBox, Vec<LayerType>, u32), DomainError> {
         let bbox = BBox::new(self.south, self.west, self.north, self.east)?;
 
         let layers: Vec<LayerType> = self
@@ -70,8 +74,12 @@ impl AreaDataQuery {
             return Err(DomainError::MissingParameter("layers".into()));
         }
 
-        Ok((bbox, layers))
+        Ok((bbox, layers, self.zoom))
     }
+}
+
+fn default_zoom() -> u32 {
+    14
 }
 
 /// Land price query parameters for `GET /api/v1/land-prices`.
@@ -83,16 +91,21 @@ impl AreaDataQuery {
 ///
 /// ```text
 /// ?year=2023&bbox=139.70,35.65,139.80,35.70
+/// ?year=2023&bbox=139.70,35.65,139.80,35.70&zoom=16
 /// ```
 #[derive(Debug, Deserialize)]
 pub struct LandPriceQuery {
     pub year: i32,
     /// Comma-separated bounding box: `sw_lng,sw_lat,ne_lng,ne_lat`.
     pub bbox: String,
+    /// Map zoom level used to compute the feature limit.
+    /// Defaults to 14 (street level) when not provided.
+    #[serde(default = "default_zoom")]
+    pub zoom: u32,
 }
 
 impl LandPriceQuery {
-    /// Parse and validate into domain value objects `(Year, BBox)`.
+    /// Parse and validate into domain value objects `(Year, BBox, zoom)`.
     ///
     /// The bbox string must contain exactly four comma-separated `f64` values
     /// in the order `sw_lng, sw_lat, ne_lng, ne_lat` (longitude before latitude,
@@ -104,7 +117,7 @@ impl LandPriceQuery {
     /// parsed, and propagates [`DomainError::InvalidYear`] /
     /// [`DomainError::InvalidCoordinate`] / [`DomainError::BBoxTooLarge`] from
     /// the domain value object constructors.
-    pub fn into_domain(self) -> Result<(Year, BBox), DomainError> {
+    pub fn into_domain(self) -> Result<(Year, BBox, u32), DomainError> {
         let year = Year::new(self.year)?;
 
         let parts: Vec<f64> = self
@@ -129,7 +142,7 @@ impl LandPriceQuery {
         // BBox::new expects (south, west, north, east)
         let bbox = BBox::new(sw_lat, sw_lng, ne_lat, ne_lng)?;
 
-        Ok((year, bbox))
+        Ok((year, bbox, self.zoom))
     }
 }
 
@@ -187,9 +200,11 @@ mod tests {
             north: 35.70,
             east: 139.80,
             layers: "landprice,flood,unknown".into(),
+            zoom: 14,
         };
-        let (_, layers) = q.into_domain().unwrap();
+        let (_, layers, zoom) = q.into_domain().unwrap();
         assert_eq!(layers.len(), 2);
+        assert_eq!(zoom, 14);
     }
 
     #[test]
@@ -200,6 +215,7 @@ mod tests {
             north: 35.70,
             east: 139.80,
             layers: "".into(),
+            zoom: 14,
         };
         assert!(q.into_domain().is_err());
     }
@@ -209,13 +225,15 @@ mod tests {
         let q = LandPriceQuery {
             year: 2023,
             bbox: "139.70,35.65,139.80,35.70".into(),
+            zoom: 14,
         };
-        let (year, bbox) = q.into_domain().unwrap();
+        let (year, bbox, zoom) = q.into_domain().unwrap();
         assert_eq!(year.value(), 2023);
         assert!((bbox.west() - 139.70).abs() < f64::EPSILON);
         assert!((bbox.south() - 35.65).abs() < f64::EPSILON);
         assert!((bbox.east() - 139.80).abs() < f64::EPSILON);
         assert!((bbox.north() - 35.70).abs() < f64::EPSILON);
+        assert_eq!(zoom, 14);
     }
 
     #[test]
@@ -223,6 +241,7 @@ mod tests {
         let q = LandPriceQuery {
             year: 2023,
             bbox: "not,valid,bbox".into(),
+            zoom: 14,
         };
         assert!(q.into_domain().is_err());
     }
@@ -232,6 +251,7 @@ mod tests {
         let q = LandPriceQuery {
             year: 1999,
             bbox: "139.70,35.65,139.80,35.70".into(),
+            zoom: 14,
         };
         assert!(q.into_domain().is_err());
     }
@@ -241,6 +261,7 @@ mod tests {
         let q = LandPriceQuery {
             year: 2023,
             bbox: "139.70,35.65,139.80".into(),
+            zoom: 14,
         };
         assert!(q.into_domain().is_err());
     }

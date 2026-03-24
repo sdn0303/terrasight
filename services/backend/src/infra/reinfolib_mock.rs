@@ -32,6 +32,13 @@ use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::domain::repository::AreaRepository;
 use crate::domain::value_object::BBox;
 
+/// Default zoom level used when `PostgisFallback` delegates to `AreaRepository`.
+///
+/// The `ReinfolibDataSource` trait does not carry zoom context (it predates
+/// the zoom-aware limit feature). Using zoom 14 (street level) ensures a
+/// reasonable feature count for the PostGIS fallback path.
+const FALLBACK_ZOOM: u32 = 14;
+
 // ─── PostgisFallback ─────────────────────────────────────────────────────────
 
 /// PostGIS-backed implementation of [`ReinfolibDataSource`].
@@ -65,33 +72,45 @@ impl ReinfolibDataSource for PostgisFallback {
     ) -> Result<Vec<GeoFeature>, DomainError> {
         // The PostGIS `land_prices` table stores all years; the `year` parameter
         // is ignored here. A future enhancement could add a WHERE year = $5 filter.
-        self.area_repo.find_land_prices(bbox).await
+        self.area_repo
+            .find_land_prices(bbox, FALLBACK_ZOOM)
+            .await
+            .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_zoning(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
-        self.area_repo.find_zoning(bbox).await
+        self.area_repo
+            .find_zoning(bbox, FALLBACK_ZOOM)
+            .await
+            .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_schools(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
-        self.area_repo.find_schools(bbox).await
+        self.area_repo
+            .find_schools(bbox, FALLBACK_ZOOM)
+            .await
+            .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_medical(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
-        self.area_repo.find_medical(bbox).await
+        self.area_repo
+            .find_medical(bbox, FALLBACK_ZOOM)
+            .await
+            .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_hazard_areas(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
         // Merge flood-risk and steep-slope results to approximate XKT016 coverage.
         let (flood, steep) = tokio::try_join!(
-            self.area_repo.find_flood_risk(bbox),
-            self.area_repo.find_steep_slope(bbox),
+            self.area_repo.find_flood_risk(bbox, FALLBACK_ZOOM),
+            self.area_repo.find_steep_slope(bbox, FALLBACK_ZOOM),
         )?;
-        let mut merged = flood;
-        merged.extend(steep);
+        let mut merged = flood.features;
+        merged.extend(steep.features);
         Ok(merged)
     }
 }
@@ -240,7 +259,7 @@ mod tests {
     use async_trait::async_trait;
 
     use super::PostgisFallback;
-    use crate::domain::entity::{GeoFeature, GeoJsonGeometry};
+    use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
     use crate::domain::error::DomainError;
     use crate::domain::reinfolib::ReinfolibDataSource;
     use crate::domain::repository::AreaRepository;
@@ -293,42 +312,62 @@ mod tests {
         }
     }
 
+    fn stub_layer_result(geo_type: &str) -> LayerResult {
+        LayerResult {
+            features: vec![stub_feature(geo_type)],
+            truncated: false,
+            limit: 100,
+        }
+    }
+
     #[async_trait]
     impl AreaRepository for StubAreaRepo {
-        async fn find_land_prices(&self, _bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+        async fn find_land_prices(
+            &self,
+            _bbox: &BBox,
+            _zoom: u32,
+        ) -> Result<LayerResult, DomainError> {
             self.land_prices_calls
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![stub_feature("Point")])
+            Ok(stub_layer_result("Point"))
         }
 
-        async fn find_zoning(&self, _bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+        async fn find_zoning(&self, _bbox: &BBox, _zoom: u32) -> Result<LayerResult, DomainError> {
             self.zoning_calls
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![stub_feature("Polygon")])
+            Ok(stub_layer_result("Polygon"))
         }
 
-        async fn find_flood_risk(&self, _bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+        async fn find_flood_risk(
+            &self,
+            _bbox: &BBox,
+            _zoom: u32,
+        ) -> Result<LayerResult, DomainError> {
             self.flood_risk_calls
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![stub_feature("Polygon")])
+            Ok(stub_layer_result("Polygon"))
         }
 
-        async fn find_steep_slope(&self, _bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+        async fn find_steep_slope(
+            &self,
+            _bbox: &BBox,
+            _zoom: u32,
+        ) -> Result<LayerResult, DomainError> {
             self.steep_slope_calls
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![stub_feature("Polygon")])
+            Ok(stub_layer_result("Polygon"))
         }
 
-        async fn find_schools(&self, _bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+        async fn find_schools(&self, _bbox: &BBox, _zoom: u32) -> Result<LayerResult, DomainError> {
             self.schools_calls
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![stub_feature("Point")])
+            Ok(stub_layer_result("Point"))
         }
 
-        async fn find_medical(&self, _bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+        async fn find_medical(&self, _bbox: &BBox, _zoom: u32) -> Result<LayerResult, DomainError> {
             self.medical_calls
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![stub_feature("Point")])
+            Ok(stub_layer_result("Point"))
         }
     }
 

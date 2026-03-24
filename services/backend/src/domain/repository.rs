@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use crate::domain::entity::*;
+use crate::domain::entity::{LayerResult, *};
 use crate::domain::error::DomainError;
 use crate::domain::value_object::*;
 
@@ -12,12 +12,12 @@ use crate::domain::value_object::*;
 
 #[async_trait]
 pub trait AreaRepository: Send + Sync {
-    async fn find_land_prices(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError>;
-    async fn find_zoning(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError>;
-    async fn find_flood_risk(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError>;
-    async fn find_steep_slope(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError>;
-    async fn find_schools(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError>;
-    async fn find_medical(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError>;
+    async fn find_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+    async fn find_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+    async fn find_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+    async fn find_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+    async fn find_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+    async fn find_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
 }
 
 // ─── Score ───────────────────────────────────────────
@@ -69,12 +69,16 @@ pub trait TrendRepository: Send + Sync {
 
 #[async_trait]
 pub trait LandPriceRepository: Send + Sync {
-    /// Fetch land price GeoJSON features filtered by year and bounding box.
+    /// Fetch land price GeoJSON features filtered by year, bounding box, and zoom.
+    ///
+    /// The `zoom` level is used to compute a dynamic feature limit via
+    /// `compute_feature_limit`. Returns [`LayerResult`] with truncation metadata.
     async fn find_by_year_and_bbox(
         &self,
         year: &Year,
         bbox: &BBox,
-    ) -> Result<Vec<GeoFeature>, DomainError>;
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError>;
 }
 
 // ─── Health ──────────────────────────────────────────

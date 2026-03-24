@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::domain::entity::GeoFeature;
+use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
 use crate::domain::repository::AreaRepository;
 use crate::domain::value_object::{BBox, LayerType};
@@ -17,13 +17,17 @@ impl GetAreaDataUsecase {
 
     /// Fetch GeoJSON features for the requested layers within the bounding box.
     ///
-    /// Layers are queried in parallel via `tokio::try_join!` when multiple are
-    /// requested (P1 review fix: avoid sequential execution).
+    /// `zoom` is forwarded to each repository method so that dynamic per-layer
+    /// limits can be computed via `compute_feature_limit`.
+    ///
+    /// Layers are queried in parallel via `futures::future::try_join_all` (P1
+    /// review fix: avoid sequential execution).
     pub async fn execute(
         &self,
         bbox: &BBox,
         layers: &[LayerType],
-    ) -> Result<HashMap<LayerType, Vec<GeoFeature>>, DomainError> {
+        zoom: u32,
+    ) -> Result<HashMap<LayerType, LayerResult>, DomainError> {
         if layers.is_empty() {
             return Err(DomainError::MissingParameter("layers".into()));
         }
@@ -37,20 +41,22 @@ impl GetAreaDataUsecase {
                 let bbox = bbox.clone();
                 let layer = *layer;
                 async move {
-                    let features = match layer {
-                        LayerType::LandPrice => repo.find_land_prices(&bbox).await,
-                        LayerType::Zoning => repo.find_zoning(&bbox).await,
-                        LayerType::Flood => repo.find_flood_risk(&bbox).await,
-                        LayerType::SteepSlope => repo.find_steep_slope(&bbox).await,
-                        LayerType::Schools => repo.find_schools(&bbox).await,
-                        LayerType::Medical => repo.find_medical(&bbox).await,
+                    let result = match layer {
+                        LayerType::LandPrice => repo.find_land_prices(&bbox, zoom).await,
+                        LayerType::Zoning => repo.find_zoning(&bbox, zoom).await,
+                        LayerType::Flood => repo.find_flood_risk(&bbox, zoom).await,
+                        LayerType::SteepSlope => repo.find_steep_slope(&bbox, zoom).await,
+                        LayerType::Schools => repo.find_schools(&bbox, zoom).await,
+                        LayerType::Medical => repo.find_medical(&bbox, zoom).await,
                     }?;
                     tracing::debug!(
                         layer = layer.as_str(),
-                        row_count = features.len(),
+                        row_count = result.features.len(),
+                        truncated = result.truncated,
+                        limit = result.limit,
                         "layer rows fetched"
                     );
-                    Ok::<_, DomainError>((layer, features))
+                    Ok::<_, DomainError>((layer, result))
                 }
             })
             .collect();
