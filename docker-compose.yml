@@ -45,6 +45,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    volumes:
+      - ./data/fgb:/app/public/data/fgb:ro
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000
     ports:
