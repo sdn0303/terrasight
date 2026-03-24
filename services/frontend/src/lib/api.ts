@@ -107,6 +107,7 @@ export function fetchHealth(signal?: AbortSignal) {
 export function fetchAreaData(
   bbox: BBox,
   layers: string[],
+  zoom: number,
   signal?: AbortSignal,
 ) {
   return get(
@@ -118,6 +119,7 @@ export function fetchAreaData(
       north: String(bbox.north),
       east: String(bbox.east),
       layers: layers.join(","),
+      zoom: String(Math.floor(zoom)),
     },
     signal,
   );
@@ -152,6 +154,7 @@ export function fetchStats(bbox: BBox, signal?: AbortSignal) {
 export function fetchLandPrices(
   bbox: BBox,
   year: number,
+  zoom: number,
   signal?: AbortSignal,
 ) {
   return get(
@@ -160,6 +163,7 @@ export function fetchLandPrices(
     {
       year: String(year),
       bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
+      zoom: String(Math.floor(zoom)),
     },
     signal,
   );

@@ -50,7 +50,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats bbox={TEST_BBOX} />);
+    render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     expect(screen.getByLabelText("Area statistics loading")).toBeInTheDocument();
   });
@@ -64,7 +64,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats bbox={TEST_BBOX} />);
+    render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     const region = screen.getByRole("region", { name: "Area statistics" });
     expect(region).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats bbox={TEST_BBOX} />);
+    render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     // composite_risk = 0.18 → 18%
     expect(screen.getByText("18%")).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats bbox={TEST_BBOX} />);
+    render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     // 45% should render with danger color
     const riskValue = screen.getByText("45%");
@@ -119,7 +119,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    const { container } = render(<DashboardStats bbox={TEST_BBOX} />);
+    const { container } = render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     expect(container.innerHTML).toBe("");
   });
@@ -134,7 +134,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats bbox={TEST_BBOX} />);
+    render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     const toggleBtn = screen.getByLabelText("Show area statistics");
     expect(toggleBtn).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats bbox={TEST_BBOX} />);
+    render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
     // 12 schools + 28 medical = 40
     expect(screen.getByText("40")).toBeInTheDocument();

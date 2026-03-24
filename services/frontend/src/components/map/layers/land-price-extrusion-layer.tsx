@@ -1,13 +1,11 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
 import {
   PRICE_COLOR_STOPS,
   PRICE_HEIGHT_STOPS,
 } from "@/features/land-prices/constants";
-import { pointsToPolygons } from "@/features/land-prices/utils/points-to-polygons";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface Props {
@@ -21,15 +19,14 @@ export function LandPriceExtrusionLayer({
   visible,
   isFetching = false,
 }: Props) {
-  const polygonData = useMemo(() => pointsToPolygons(data), [data]);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
-  if (!visible || polygonData.features.length === 0) return null;
+  if (!visible || data.features.length === 0) return null;
 
   // Decision 9: mobile renders only circle layer at all zoom levels
   if (isMobile) {
     return (
-      <Source id="land-price-extrusion" type="geojson" data={polygonData}>
+      <Source id="land-price-extrusion" type="geojson" data={data}>
         <Layer
           id="land-price-ts-circle"
           type="circle"
@@ -56,7 +53,7 @@ export function LandPriceExtrusionLayer({
   const circleOpacityTarget = isFetching ? 0.3 : 0.85;
 
   return (
-    <Source id="land-price-extrusion" type="geojson" data={polygonData}>
+    <Source id="land-price-extrusion" type="geojson" data={data}>
       {/* Decision 5: 3D columns begin fading in at zoom 11, fully opaque at 12 */}
       <Layer
         id="land-price-extrusion-3d"

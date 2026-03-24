@@ -10,7 +10,7 @@ export function useLandPrices(bbox: BBox | null, year: number, zoom: number) {
     ),
     queryFn: ({ signal }) => {
       if (bbox === null) throw new Error("bbox is required");
-      return fetchLandPrices(bbox, year, signal);
+      return fetchLandPrices(bbox, year, zoom, signal);
     },
     enabled: bbox !== null && zoom >= 10,
     staleTime: 60_000,

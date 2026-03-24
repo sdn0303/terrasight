@@ -116,7 +116,7 @@ describe("useStats", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(() => useStats(BBOX), { wrapper });
+    const { result } = renderHook(() => useStats(BBOX, 12), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.land_price.count).toBe(45);
@@ -128,7 +128,7 @@ describe("useStats", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(() => useStats(null), { wrapper });
+    const { result } = renderHook(() => useStats(null, 12), { wrapper });
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(mockFetchStats).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe("useStats", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    renderHook(() => useStats(BBOX), { wrapper });
+    renderHook(() => useStats(BBOX, 12), { wrapper });
 
     await waitFor(() =>
       expect(mockFetchStats).toHaveBeenCalledWith(BBOX, expect.any(AbortSignal)),
@@ -275,7 +275,7 @@ describe("useAreaData", () => {
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(
-      () => useAreaData(BBOX, ["landprice"]),
+      () => useAreaData(BBOX, ["landprice"], 12),
       { wrapper },
     );
 
@@ -290,7 +290,7 @@ describe("useAreaData", () => {
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(
-      () => useAreaData(null, ["landprice"]),
+      () => useAreaData(null, ["landprice"], 12),
       { wrapper },
     );
 
@@ -303,7 +303,7 @@ describe("useAreaData", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(() => useAreaData(BBOX, []), {
+    const { result } = renderHook(() => useAreaData(BBOX, [], 12), {
       wrapper,
     });
 
@@ -318,12 +318,13 @@ describe("useAreaData", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    renderHook(() => useAreaData(BBOX, ["landprice"]), { wrapper });
+    renderHook(() => useAreaData(BBOX, ["landprice"], 12), { wrapper });
 
     await waitFor(() =>
       expect(mockFetchAreaData).toHaveBeenCalledWith(
         BBOX,
         ["landprice"],
+        12,
         expect.any(AbortSignal),
       ),
     );

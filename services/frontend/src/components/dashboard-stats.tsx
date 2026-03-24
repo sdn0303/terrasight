@@ -43,8 +43,8 @@ function StatCard({
   );
 }
 
-export function DashboardStats({ bbox }: { bbox: BBox | null }) {
-  const { data: stats, isLoading } = useStats(bbox);
+export function DashboardStats({ bbox, zoom }: { bbox: BBox | null; zoom: number }) {
+  const { data: stats, isLoading } = useStats(bbox, zoom);
   const isTablet = useMediaQuery("(min-width: 768px)");
   const isDesktop = useMediaQuery("(min-width: 1280px)");
   const isMobile = !isTablet;

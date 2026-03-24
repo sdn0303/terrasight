@@ -1,10 +1,6 @@
 import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  BUFFER_DEG,
-  pointsToPolygons,
-} from "@/features/land-prices/utils/points-to-polygons";
 import { queryKeys } from "@/lib/query-keys";
 import { LandPriceTimeSeriesResponse } from "@/lib/schemas";
 import { createQueryWrapper } from "./test-utils";
@@ -48,12 +44,23 @@ const BBOX = { south: 35.6, west: 139.7, north: 35.8, east: 139.9 };
 
 const VALID_LAND_PRICE_FC = {
   type: "FeatureCollection" as const,
+  truncated: false,
+  count: 1,
+  limit: 5000,
   features: [
     {
       type: "Feature" as const,
       geometry: {
-        type: "Point" as const,
-        coordinates: [139.767, 35.681],
+        type: "Polygon" as const,
+        coordinates: [
+          [
+            [139.767, 35.681],
+            [139.768, 35.681],
+            [139.768, 35.682],
+            [139.767, 35.682],
+            [139.767, 35.681],
+          ],
+        ],
       },
       properties: {
         id: 1,
@@ -72,130 +79,17 @@ beforeEach(() => {
   mockUseMediaQuery.mockReturnValue(false);
 });
 
-// ─── pointsToPolygons utility ────────────────────────
-
-describe("pointsToPolygons", () => {
-  const LNG = 139.767;
-  const LAT = 35.681;
-
-  const singlePointFC = {
-    type: "FeatureCollection" as const,
-    features: [
-      {
-        type: "Feature" as const,
-        geometry: { type: "Point" as const, coordinates: [LNG, LAT] },
-        properties: {
-          price_per_sqm: 500000,
-          address: "千代田区",
-          year: 2024,
-          land_use: "商業",
-        },
-      },
-    ],
-  };
-
-  it("converts a Point feature to a Polygon feature", () => {
-    const result = pointsToPolygons(singlePointFC);
-    expect(result.type).toBe("FeatureCollection");
-    expect(result.features).toHaveLength(1);
-    expect(result.features[0]?.geometry.type).toBe("Polygon");
-  });
-
-  it("creates a valid GeoJSON ring: 5 coordinates, first equals last", () => {
-    const result = pointsToPolygons(singlePointFC);
-    const ring = (
-      result.features[0]?.geometry as {
-        type: "Polygon";
-        coordinates: number[][][];
-      }
-    ).coordinates[0];
-    expect(ring).toHaveLength(5);
-    expect(ring?.[0]).toEqual(ring?.[4]);
-  });
-
-  it("creates a square polygon with correct buffer offsets", () => {
-    const result = pointsToPolygons(singlePointFC);
-    const ring = (
-      result.features[0]?.geometry as {
-        type: "Polygon";
-        coordinates: number[][][];
-      }
-    ).coordinates[0];
-    expect(ring?.[0]).toEqual([LNG - BUFFER_DEG, LAT - BUFFER_DEG]);
-    expect(ring?.[1]).toEqual([LNG + BUFFER_DEG, LAT - BUFFER_DEG]);
-    expect(ring?.[2]).toEqual([LNG + BUFFER_DEG, LAT + BUFFER_DEG]);
-    expect(ring?.[3]).toEqual([LNG - BUFFER_DEG, LAT + BUFFER_DEG]);
-  });
-
-  it("preserves feature properties", () => {
-    const result = pointsToPolygons(singlePointFC);
-    expect(result.features[0]?.properties).toEqual(
-      singlePointFC.features[0]?.properties,
-    );
-  });
-
-  it("returns empty FeatureCollection when input is empty", () => {
-    const empty = { type: "FeatureCollection" as const, features: [] };
-    const result = pointsToPolygons(empty);
-    expect(result.features).toHaveLength(0);
-  });
-
-  it("filters out non-Point features", () => {
-    const mixed = {
-      type: "FeatureCollection" as const,
-      features: [
-        {
-          type: "Feature" as const,
-          geometry: {
-            type: "LineString" as const,
-            coordinates: [
-              [LNG, LAT],
-              [LNG + 0.01, LAT + 0.01],
-            ],
-          },
-          properties: { price_per_sqm: 100000 },
-        },
-        ...singlePointFC.features,
-      ],
-    };
-    const result = pointsToPolygons(mixed);
-    // Only the Point feature should be converted
-    expect(result.features).toHaveLength(1);
-    expect(result.features[0]?.geometry.type).toBe("Polygon");
-  });
-
-  it("converts multiple Point features", () => {
-    const multi = {
-      type: "FeatureCollection" as const,
-      features: [
-        {
-          type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [139.7, 35.6] },
-          properties: { price_per_sqm: 200000 },
-        },
-        {
-          type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [139.8, 35.7] },
-          properties: { price_per_sqm: 400000 },
-        },
-      ],
-    };
-    const result = pointsToPolygons(multi);
-    expect(result.features).toHaveLength(2);
-    for (const f of result.features) {
-      expect(f.geometry.type).toBe("Polygon");
-    }
-  });
-});
-
 // ─── LandPriceTimeSeriesResponse schema ──────────────
 
 describe("LandPriceTimeSeriesResponse schema", () => {
-  it("parses a valid GeoJSON FeatureCollection", () => {
+  it("parses a valid LayerResponseDto with Polygon geometry", () => {
     const result = LandPriceTimeSeriesResponse.parse(VALID_LAND_PRICE_FC);
     expect(result.type).toBe("FeatureCollection");
     expect(result.features).toHaveLength(1);
     expect(result.features[0]?.properties.price_per_sqm).toBe(1200000);
+    expect(result.truncated).toBe(false);
+    expect(result.count).toBe(1);
+    expect(result.limit).toBe(5000);
   });
 
   it("parses a FeatureCollection with null land_use", () => {
@@ -216,7 +110,13 @@ describe("LandPriceTimeSeriesResponse schema", () => {
   });
 
   it("parses an empty FeatureCollection", () => {
-    const data = { type: "FeatureCollection" as const, features: [] };
+    const data = {
+      type: "FeatureCollection" as const,
+      features: [],
+      truncated: false,
+      count: 0,
+      limit: 5000,
+    };
     const result = LandPriceTimeSeriesResponse.parse(data);
     expect(result.features).toHaveLength(0);
   });
@@ -229,10 +129,24 @@ describe("LandPriceTimeSeriesResponse schema", () => {
   it("rejects a feature missing required property price_per_sqm", () => {
     const data = {
       type: "FeatureCollection" as const,
+      truncated: false,
+      count: 1,
+      limit: 5000,
       features: [
         {
           type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [139.767, 35.681] },
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [
+              [
+                [139.767, 35.681],
+                [139.768, 35.681],
+                [139.768, 35.682],
+                [139.767, 35.682],
+                [139.767, 35.681],
+              ],
+            ],
+          },
           properties: {
             id: 1,
             address: "千代田区",
@@ -246,21 +160,9 @@ describe("LandPriceTimeSeriesResponse schema", () => {
     expect(() => LandPriceTimeSeriesResponse.parse(data)).toThrow();
   });
 
-  it("rejects when coordinates are not a [lng, lat] tuple", () => {
-    const data = {
-      type: "FeatureCollection" as const,
-      features: [
-        {
-          type: "Feature" as const,
-          geometry: {
-            type: "Point" as const,
-            coordinates: [139.767], // missing second element
-          },
-          properties: VALID_LAND_PRICE_FC.features[0]?.properties,
-        },
-      ],
-    };
-    expect(() => LandPriceTimeSeriesResponse.parse(data)).toThrow();
+  it("rejects when truncated field is missing", () => {
+    const { truncated: _truncated, ...withoutTruncated } = VALID_LAND_PRICE_FC;
+    expect(() => LandPriceTimeSeriesResponse.parse(withoutTruncated)).toThrow();
   });
 });
 
@@ -323,7 +225,7 @@ describe("useLandPrices", () => {
     expect(mockFetchLandPrices).not.toHaveBeenCalled();
   });
 
-  it("forwards AbortSignal to fetchLandPrices", async () => {
+  it("forwards AbortSignal and zoom to fetchLandPrices", async () => {
     mockFetchLandPrices.mockResolvedValueOnce(VALID_LAND_PRICE_FC);
     const { useLandPrices } = await import(
       "@/features/land-prices/api/use-land-prices"
@@ -336,6 +238,7 @@ describe("useLandPrices", () => {
       expect(mockFetchLandPrices).toHaveBeenCalledWith(
         BBOX,
         2024,
+        12,
         expect.any(AbortSignal),
       ),
     );
@@ -362,6 +265,7 @@ describe("useLandPrices", () => {
     expect(mockFetchLandPrices).toHaveBeenLastCalledWith(
       BBOX,
       2023,
+      12,
       expect.any(AbortSignal),
     );
   });
@@ -554,7 +458,7 @@ describe("LandPriceExtrusionLayer", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("renders Source when visible with valid point data on desktop", async () => {
+  it("renders Source when visible with valid polygon data on desktop", async () => {
     // desktop: mockUseMediaQuery returns false (not mobile)
     mockUseMediaQuery.mockReturnValue(false);
     const { LandPriceExtrusionLayer } = await import(

@@ -35,6 +35,15 @@ function featureCollection<P extends z.ZodTypeAny>(properties: P) {
   });
 }
 
+/** LayerResponseDto — wraps FeatureCollection with server-side truncation metadata. */
+function layerResponse<P extends z.ZodTypeAny>(properties: P) {
+  return featureCollection(properties).extend({
+    truncated: z.boolean(),
+    count: z.number().int().nonnegative(),
+    limit: z.number().int().nonnegative(),
+  });
+}
+
 // ─── Layer property schemas ───────────────────────────
 export const LandPriceProperties = z.object({
   id: z.number(),
@@ -78,12 +87,12 @@ export const MedicalProperties = z.object({
 
 // ─── Area data response ───────────────────────────────
 export const AreaDataResponse = z.object({
-  landprice: featureCollection(LandPriceProperties).optional(),
-  zoning: featureCollection(ZoningProperties).optional(),
-  flood: featureCollection(FloodProperties).optional(),
-  steep_slope: featureCollection(SteepSlopeProperties).optional(),
-  schools: featureCollection(SchoolProperties).optional(),
-  medical: featureCollection(MedicalProperties).optional(),
+  landprice: layerResponse(LandPriceProperties).optional(),
+  zoning: layerResponse(ZoningProperties).optional(),
+  flood: layerResponse(FloodProperties).optional(),
+  steep_slope: layerResponse(SteepSlopeProperties).optional(),
+  schools: layerResponse(SchoolProperties).optional(),
+  medical: layerResponse(MedicalProperties).optional(),
 });
 
 // ─── Score response ───────────────────────────────────
@@ -155,7 +164,7 @@ export const HealthResponse = z.object({
 
 // ─── Land price time-series response ─────────────────
 export const LandPriceTimeSeriesResponse =
-  featureCollection(LandPriceProperties);
+  layerResponse(LandPriceProperties);
 export type LandPriceTimeSeriesResponse = z.infer<
   typeof LandPriceTimeSeriesResponse
 >;

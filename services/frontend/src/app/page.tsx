@@ -123,9 +123,22 @@ export default function Home() {
   );
 
   const layers = useMemo(() => [...visibleLayers], [visibleLayers]);
-  const { data: areaData, isLoading } = useAreaData(bbox, layers);
+  const { data: areaData, isLoading } = useAreaData(bbox, layers, viewState.zoom);
   const { data: health } = useHealth();
   const isZoomTooLow = viewState.zoom < 10;
+
+  const truncatedLayers = useMemo(() => {
+    if (!areaData) return [];
+    const result: { layer: string; count: number; limit: number }[] = [];
+    for (const key of Object.keys(areaData) as (keyof typeof areaData)[]) {
+      const layer = areaData[key];
+      if (layer?.truncated === true) {
+        result.push({ layer: key, count: layer.count, limit: layer.limit });
+      }
+    }
+    return result;
+  }, [areaData]);
+
   const {
     data: landPriceData,
     isFetching: isLandPriceFetching,
@@ -284,8 +297,9 @@ export default function Home() {
         zoom={viewState.zoom}
         isLoading={isLoading}
         isDemoMode={isDemoMode}
+        truncatedLayers={truncatedLayers}
       />
-      <DashboardStats bbox={bbox} />
+      <DashboardStats bbox={bbox} zoom={viewState.zoom} />
     </div>
   );
 }
