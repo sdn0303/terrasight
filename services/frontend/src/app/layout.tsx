@@ -1,6 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import type { Metadata } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Suspense } from "react";
 import { Providers } from "@/components/providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -20,7 +21,9 @@ export default function RootLayout({
       <body>
         <NuqsAdapter>
           <Providers>
-            <TooltipProvider>{children}</TooltipProvider>
+            <TooltipProvider>
+              <Suspense>{children}</Suspense>
+            </TooltipProvider>
           </Providers>
         </NuqsAdapter>
       </body>

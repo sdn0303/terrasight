@@ -14,9 +14,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   backend:
-    build: ./services/backend
+    build:
+      context: ./services/backend
+      target: runtime
     depends_on:
       db:
         condition: service_healthy
@@ -24,23 +27,35 @@ services:
       DATABASE_URL: postgres://app:${DB_PASSWORD:-devpass}@db:5432/realestate
       REINFOLIB_API_KEY: ${REINFOLIB_API_KEY:-}
       RUST_LOG: ${RUST_LOG:-info}
-      ALLOWED_ORIGINS: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:3001
     ports:
       - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
+    restart: unless-stopped
 
   frontend:
-    build: ./services/frontend
+    build:
+      context: ./services/frontend
+      target: runner
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000
     ports:
-      - "3000:3000"
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   pgdata:

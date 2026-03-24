@@ -15,5 +15,7 @@ export function useTrend(
       return fetchTrend(lat, lng, years, signal);
     },
     enabled: lat !== null && lng !== null,
+    staleTime: 60_000,
+    retry: 1,
   });
 }

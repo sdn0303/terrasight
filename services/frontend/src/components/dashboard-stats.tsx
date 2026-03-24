@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useStats } from "@/features/stats/api/use-stats";
-import { useMapStore } from "@/stores/map-store";
+import type { BBox } from "@/lib/api";
 
 function StatCard({
   label,
@@ -44,20 +43,7 @@ function StatCard({
   );
 }
 
-export function DashboardStats() {
-  const bbox = useMapStore(
-    useShallow((s) => {
-      const { latitude, longitude, zoom } = s.viewState;
-      const latRange = 180 / 2 ** zoom;
-      const lngRange = 360 / 2 ** zoom;
-      return {
-        south: latitude - latRange / 2,
-        west: longitude - lngRange / 2,
-        north: latitude + latRange / 2,
-        east: longitude + lngRange / 2,
-      };
-    }),
-  );
+export function DashboardStats({ bbox }: { bbox: BBox | null }) {
   const { data: stats, isLoading } = useStats(bbox);
   const isTablet = useMediaQuery("(min-width: 768px)");
   const isDesktop = useMediaQuery("(min-width: 1280px)");

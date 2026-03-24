@@ -12,5 +12,7 @@ export function useStats(bbox: BBox | null) {
       return fetchStats(bbox, signal);
     },
     enabled: bbox !== null,
+    staleTime: 60_000,
+    retry: 1,
   });
 }
