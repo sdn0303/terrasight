@@ -1,15 +1,17 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
 }
 
 export function FaultLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("national", "fault", visible);
+  if (!visible || !data) return null;
   return (
-    <Source id="fault" type="geojson" data="/geojson/fault-kanto.geojson">
+    <Source id="fault" type="geojson" data={data}>
       <Layer
         id="fault-confirmed"
         type="line"

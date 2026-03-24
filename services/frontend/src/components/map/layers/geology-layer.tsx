@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -19,7 +20,8 @@ const GEOLOGY_COLORS: [string, string][] = [
 ];
 
 export function GeologyLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "geology", visible);
+  if (!visible || !data) return null;
 
   const colorExpr: unknown[] = ["match", ["get", "geologyCategory2"]];
   for (const [category, color] of GEOLOGY_COLORS) {
@@ -28,7 +30,7 @@ export function GeologyLayer({ visible }: Props) {
   colorExpr.push("#71717a"); // fallback
 
   return (
-    <Source id="geology" type="geojson" data="/geojson/geology-tokyo.geojson">
+    <Source id="geology" type="geojson" data={data}>
       <Layer
         id="geology-fill"
         type="fill"

@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -17,7 +18,8 @@ const LANDFORM_COLORS: [string, string][] = [
 ];
 
 export function LandformLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "landform", visible);
+  if (!visible || !data) return null;
 
   const colorExpr: unknown[] = ["match", ["get", "landformCategory"]];
   for (const [category, color] of LANDFORM_COLORS) {
@@ -26,7 +28,7 @@ export function LandformLayer({ visible }: Props) {
   colorExpr.push("#71717a"); // fallback
 
   return (
-    <Source id="landform" type="geojson" data="/geojson/landform-tokyo.geojson">
+    <Source id="landform" type="geojson" data={data}>
       <Layer
         id="landform-fill"
         type="fill"
