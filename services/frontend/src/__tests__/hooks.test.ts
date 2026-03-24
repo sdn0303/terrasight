@@ -18,6 +18,11 @@ vi.mock("@/lib/api", () => ({
   fetchAreaData: (...args: unknown[]) => mockFetchAreaData(...args),
 }));
 
+// useSpatialEngineReady returns false so useStats exercises the API fallback path
+vi.mock("@/hooks/use-spatial-engine", () => ({
+  useSpatialEngineReady: () => false,
+}));
+
 // ─── Fixtures ────────────────────────────────────────
 
 const HEALTH_OK = {

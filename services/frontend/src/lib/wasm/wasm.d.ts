@@ -21,6 +21,7 @@ export interface ISpatialEngine {
   ): string;
   feature_count(layer_id: string): number;
   loaded_layers(): string;
+  compute_stats(south: number, west: number, north: number, east: number): string;
 }
 
 export interface IWasmModule {
@@ -49,5 +50,6 @@ declare module "/wasm/realestate_wasm.js" {
     ): string;
     feature_count(layer_id: string): number;
     loaded_layers(): string;
+    compute_stats(south: number, west: number, north: number, east: number): string;
   }
 }

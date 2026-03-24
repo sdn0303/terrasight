@@ -8,6 +8,11 @@ vi.mock("@/features/stats/api/use-stats", () => ({
   useStats: (...args: unknown[]) => mockUseStats(...args),
 }));
 
+// Prevent useSpatialEngineReady from running in jsdom (no Worker support)
+vi.mock("@/hooks/use-spatial-engine", () => ({
+  useSpatialEngineReady: () => false,
+}));
+
 const mockUseMediaQuery = vi.fn();
 vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: (query: string) => mockUseMediaQuery(query),

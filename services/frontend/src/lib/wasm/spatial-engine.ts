@@ -34,12 +34,18 @@ interface QueryResultMessage {
   geojson: string;
 }
 
+interface StatsResultMessage {
+  type: "stats-result";
+  id: number;
+  stats: string; // JSON string from WASM
+}
+
 interface ErrorMessage {
   type: "error";
   message: string;
 }
 
-type WorkerMessage = InitDoneMessage | QueryResultMessage | ErrorMessage;
+type WorkerMessage = InitDoneMessage | QueryResultMessage | StatsResultMessage | ErrorMessage;
 
 // ---------------------------------------------------------------------------
 // BBox type
@@ -56,10 +62,19 @@ export interface BBox {
 // Pending query bookkeeping
 // ---------------------------------------------------------------------------
 
-interface PendingQuery {
+interface PendingFeatureQuery {
+  kind: "query";
   resolve: (value: FeatureCollection) => void;
   reject: (reason: unknown) => void;
 }
+
+interface PendingStatsQuery {
+  kind: "stats";
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
+}
+
+type PendingQuery = PendingFeatureQuery | PendingStatsQuery;
 
 // ---------------------------------------------------------------------------
 // Adapter
@@ -154,8 +169,25 @@ export class SpatialEngineAdapter {
     const id = this.nextId++;
 
     return new Promise<FeatureCollection>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      this.pending.set(id, { kind: "query", resolve, reject });
       this.worker?.postMessage({ type: "query", id, bbox, layers });
+    });
+  }
+
+  /**
+   * Compute aggregate stats for a given bounding box using the in-memory
+   * WASM index. Returns a plain object matching the StatsResponse shape.
+   */
+  async computeStats(bbox: BBox): Promise<unknown> {
+    if (this.worker === null || !this._ready) {
+      throw new Error("SpatialEngineAdapter not ready");
+    }
+
+    const id = this.nextId++;
+
+    return new Promise<unknown>((resolve, reject) => {
+      this.pending.set(id, { kind: "stats", resolve, reject });
+      this.worker?.postMessage({ type: "compute-stats", id, bbox });
     });
   }
 
@@ -199,6 +231,10 @@ export class SpatialEngineAdapter {
         const pending = this.pending.get(msg.id);
         if (!pending) break;
         this.pending.delete(msg.id);
+        if (pending.kind !== "query") {
+          pending.reject(new Error("Unexpected query-result for non-query pending entry"));
+          break;
+        }
         try {
           const parsed = JSON.parse(msg.geojson) as unknown;
           // query_layers returns an object keyed by layer id whose values are
@@ -226,6 +262,23 @@ export class SpatialEngineAdapter {
             }
           }
           pending.resolve({ type: "FeatureCollection", features });
+        } catch (err) {
+          pending.reject(err);
+        }
+        break;
+      }
+
+      case "stats-result": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        if (pending.kind !== "stats") {
+          pending.reject(new Error("Unexpected stats-result for non-stats pending entry"));
+          break;
+        }
+        try {
+          const parsed = JSON.parse(msg.stats) as unknown;
+          pending.resolve(parsed);
         } catch (err) {
           pending.reject(err);
         }

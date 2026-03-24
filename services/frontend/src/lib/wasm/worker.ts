@@ -23,7 +23,13 @@ interface QueryMessage {
   layers: string[];
 }
 
-type IncomingMessage = InitMessage | QueryMessage;
+interface ComputeStatsMsg {
+  type: "compute-stats";
+  id: number;
+  bbox: { south: number; west: number; north: number; east: number };
+}
+
+type IncomingMessage = InitMessage | QueryMessage | ComputeStatsMsg;
 
 // ---------------------------------------------------------------------------
 // Outgoing message types (main thread receives these)
@@ -40,12 +46,18 @@ interface QueryResultMessage {
   geojson: string;
 }
 
+interface StatsResultMsg {
+  type: "stats-result";
+  id: number;
+  stats: string; // JSON string from WASM
+}
+
 interface ErrorMessage {
   type: "error";
   message: string;
 }
 
-type OutgoingMessage = InitDoneMessage | QueryResultMessage | ErrorMessage;
+type OutgoingMessage = InitDoneMessage | QueryResultMessage | StatsResultMsg | ErrorMessage;
 
 // ---------------------------------------------------------------------------
 // Worker state
@@ -153,6 +165,26 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     case "query":
       handleQuery(msg.id, msg.bbox, msg.layers);
       break;
+
+    case "compute-stats": {
+      if (!engine) {
+        send({ type: "error", message: "not initialized" });
+        break;
+      }
+      try {
+        const stats = engine.compute_stats(
+          msg.bbox.south,
+          msg.bbox.west,
+          msg.bbox.north,
+          msg.bbox.east,
+        );
+        send({ type: "stats-result", id: msg.id, stats });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        send({ type: "error", message: `compute_stats failed: ${message}` });
+      }
+      break;
+    }
 
     default: {
       // Exhaustive check
