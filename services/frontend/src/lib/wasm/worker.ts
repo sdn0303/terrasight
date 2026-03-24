@@ -1,0 +1,166 @@
+/// <reference lib="webworker" />
+
+import type { ISpatialEngine, IWasmModule } from "./wasm.d.ts";
+
+// ---------------------------------------------------------------------------
+// Message protocol types
+// ---------------------------------------------------------------------------
+
+interface LayerSpec {
+  id: string;
+  url: string;
+}
+
+interface InitMessage {
+  type: "init";
+  layers: LayerSpec[];
+}
+
+interface QueryMessage {
+  type: "query";
+  id: number;
+  bbox: { south: number; west: number; north: number; east: number };
+  layers: string[];
+}
+
+type IncomingMessage = InitMessage | QueryMessage;
+
+// ---------------------------------------------------------------------------
+// Outgoing message types (main thread receives these)
+// ---------------------------------------------------------------------------
+
+interface InitDoneMessage {
+  type: "init-done";
+  counts: Record<string, number>;
+}
+
+interface QueryResultMessage {
+  type: "query-result";
+  id: number;
+  geojson: string;
+}
+
+interface ErrorMessage {
+  type: "error";
+  message: string;
+}
+
+type OutgoingMessage = InitDoneMessage | QueryResultMessage | ErrorMessage;
+
+// ---------------------------------------------------------------------------
+// Worker state
+// ---------------------------------------------------------------------------
+
+let engine: ISpatialEngine | null = null;
+
+// ---------------------------------------------------------------------------
+// Helper: typed postMessage
+// ---------------------------------------------------------------------------
+
+function send(msg: OutgoingMessage): void {
+  postMessage(msg);
+}
+
+// ---------------------------------------------------------------------------
+// Handle "init"
+// ---------------------------------------------------------------------------
+
+async function handleInit(layers: LayerSpec[]): Promise<void> {
+  // Dynamic import of the WASM glue served from Next.js public/wasm/.
+  // The path is held in a variable so tsc does not attempt static module
+  // resolution of an absolute URL (which bundler moduleResolution cannot
+  // resolve at compile time). The cast to IWasmModule is safe: the shape is
+  // declared in wasm.d.ts and validated against the wasm-bindgen output.
+  const wasmGluePath = "/wasm/realestate_wasm.js";
+  const wasm = (await import(/* webpackIgnore: true */ wasmGluePath)) as IWasmModule;
+
+  await wasm.default();
+  engine = new wasm.SpatialEngine();
+
+  const results = await Promise.allSettled(
+    layers.map(async ({ id, url }) => {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `HTTP ${response.status} fetching layer "${id}" from ${url}`,
+        );
+      }
+      const buffer = await response.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      // engine is guaranteed non-null: assigned above before this map runs
+      const count = (engine as ISpatialEngine).load_layer(id, bytes);
+      return { id, count };
+    }),
+  );
+
+  const counts: Record<string, number> = {};
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      counts[result.value.id] = result.value.count;
+    } else {
+      // Log but do not crash — partial loads are acceptable
+      console.warn("[SpatialEngine worker] Layer load failed:", result.reason);
+    }
+  }
+
+  send({ type: "init-done", counts });
+}
+
+// ---------------------------------------------------------------------------
+// Handle "query"
+// ---------------------------------------------------------------------------
+
+function handleQuery(
+  id: number,
+  bbox: { south: number; west: number; north: number; east: number },
+  layers: string[],
+): void {
+  if (engine === null) {
+    send({ type: "error", message: "SpatialEngine not initialised" });
+    return;
+  }
+
+  try {
+    const geojson = engine.query_layers(
+      layers.join(","),
+      bbox.south,
+      bbox.west,
+      bbox.north,
+      bbox.east,
+    );
+    send({ type: "query-result", id, geojson });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    send({ type: "error", message: `query_layers failed: ${message}` });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Message dispatcher
+// ---------------------------------------------------------------------------
+
+self.onmessage = (event: MessageEvent<unknown>) => {
+  const msg = event.data as IncomingMessage;
+
+  switch (msg.type) {
+    case "init":
+      handleInit(msg.layers).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        send({ type: "error", message: `init failed: ${message}` });
+      });
+      break;
+
+    case "query":
+      handleQuery(msg.id, msg.bbox, msg.layers);
+      break;
+
+    default: {
+      // Exhaustive check
+      const _exhaustive: never = msg;
+      console.warn(
+        "[SpatialEngine worker] Unknown message type",
+        _exhaustive,
+      );
+    }
+  }
+};

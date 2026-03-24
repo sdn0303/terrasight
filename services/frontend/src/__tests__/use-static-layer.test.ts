@@ -16,6 +16,28 @@ vi.mock("@/lib/data-url", () => ({
     `/data/fgb/${prefCode}/${layerId}.fgb`,
 }));
 
+// WASM engine is not available in jsdom — default to fallback (not ready)
+vi.mock("@/lib/wasm/spatial-engine", () => ({
+  spatialEngine: {
+    ready: false,
+    init: vi.fn(),
+    dispose: vi.fn(),
+    query: vi.fn(),
+    onReady: vi.fn(() => () => undefined),
+  },
+}));
+
+// useSpatialEngineReady returns false so tests exercise the fallback path
+vi.mock("@/hooks/use-spatial-engine", () => ({
+  useSpatialEngineReady: () => false,
+}));
+
+// useMapStore: provide stable primitive viewState values
+vi.mock("@/stores/map-store", () => ({
+  useMapStore: (selector: (s: { viewState: { latitude: number; longitude: number; zoom: number } }) => unknown) =>
+    selector({ viewState: { latitude: 35.681, longitude: 139.767, zoom: 12 } }),
+}));
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Build a minimal ReadableStream-like body for fetch mock */
