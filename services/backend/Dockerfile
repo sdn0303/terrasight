@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # -----------------------------------------------------------------------
 # Stage 1: Builder — compile the Rust binary
 # -----------------------------------------------------------------------
@@ -8,8 +6,7 @@ FROM rust:1.94-slim-bookworm AS builder
 WORKDIR /app
 
 # System dependencies required for sqlx (OpenSSL) and native-tls
-RUN set -o pipefail && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         pkg-config \
         libssl-dev && \
@@ -18,7 +15,6 @@ RUN set -o pipefail && \
 # Dependency caching layer:
 # Copy ALL workspace manifests first so that `cargo build --release` can
 # cache dependency compilation independently of source changes.
-# The workspace has 6 members: root + 5 lib crates.
 COPY Cargo.toml Cargo.lock ./
 COPY lib/telemetry/Cargo.toml lib/telemetry/Cargo.toml
 COPY lib/geo-math/Cargo.toml lib/geo-math/Cargo.toml
@@ -42,8 +38,10 @@ COPY src/ src/
 COPY lib/ lib/
 COPY migrations/ migrations/
 
-# Touch main.rs so Cargo notices the source change and relinks the binary
-RUN touch src/main.rs && cargo build --release
+# Invalidate all workspace crate fingerprints so Cargo recompiles from real sources
+RUN touch src/main.rs && \
+    find lib -name "lib.rs" -exec touch {} + && \
+    cargo build --release
 
 # -----------------------------------------------------------------------
 # Stage 2: Runtime — minimal image with non-root user
@@ -54,10 +52,9 @@ LABEL maintainer="realestate-api"
 LABEL description="Real Estate Investment API — Rust Axum + PostGIS backend"
 LABEL version="0.1.0"
 
-# ca-certificates: required for TLS connections to external APIs (reinfolib)
-# curl: used by Docker Compose healthcheck (CMD curl -f http://localhost:8000/api/health)
-RUN set -o pipefail && \
-    apt-get update && \
+# ca-certificates: required for TLS connections to external APIs
+# curl: used by Docker Compose healthcheck
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl && \
@@ -71,5 +68,8 @@ COPY --from=builder /app/target/release/realestate-api /usr/local/bin/realestate
 USER appuser
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["curl", "-f", "http://localhost:8000/api/health"]
 
 ENTRYPOINT ["realestate-api"]

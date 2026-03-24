@@ -1,0 +1,26 @@
+# Build artifacts (rebuilt in Docker)
+target/
+
+# Version control
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Documentation
+*.md
+
+# Environment files
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Tests (not needed in production build)
+tests/
+
+# Misc
+*.log
