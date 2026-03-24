@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -29,7 +30,8 @@ const SOIL_COLORS: [string, string][] = [
 ];
 
 export function SoilLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "soil", visible);
+  if (!visible || !data) return null;
 
   const colorExpr: unknown[] = ["match", ["get", "soilCategory"]];
   for (const [category, color] of SOIL_COLORS) {
@@ -38,7 +40,7 @@ export function SoilLayer({ visible }: Props) {
   colorExpr.push("#71717a"); // fallback (未定義)
 
   return (
-    <Source id="soil" type="geojson" data="/geojson/soil-tokyo.geojson">
+    <Source id="soil" type="geojson" data={data}>
       <Layer
         id="soil-fill"
         type="fill"

@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -17,12 +18,13 @@ interface Props {
  * Source: MLIT 液状化危険度評価結果 (point data)
  */
 export function LiquefactionLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "liquefaction", visible);
+  if (!visible || !data) return null;
   return (
     <Source
       id="liquefaction"
       type="geojson"
-      data="/geojson/pl-liquefaction-tokyo.geojson"
+      data={data}
     >
       <Layer
         id="liquefaction-circle"

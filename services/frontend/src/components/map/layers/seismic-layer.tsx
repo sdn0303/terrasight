@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -19,12 +20,13 @@ interface Props {
  * - ≥ 0.02      → high:     red
  */
 export function SeismicLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("national", "seismic", visible);
+  if (!visible || !data) return null;
   return (
     <Source
       id="seismic"
       type="geojson"
-      data="/geojson/jshis-seismic-tokyo.geojson"
+      data={data}
     >
       {/* Polygon fill for fault rupture zones */}
       <Layer

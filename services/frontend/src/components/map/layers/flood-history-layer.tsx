@@ -1,18 +1,20 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
 }
 
 export function FloodHistoryLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "flood-history", visible);
+  if (!visible || !data) return null;
   return (
     <Source
       id="flood_history"
       type="geojson"
-      data="/geojson/flood-history-tokyo.geojson"
+      data={data}
     >
       <Layer
         id="flood-history-fill"

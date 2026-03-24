@@ -1,15 +1,17 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
 }
 
 export function VolcanoLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("national", "volcano", visible);
+  if (!visible || !data) return null;
   return (
-    <Source id="volcano" type="geojson" data="/geojson/volcano-kanto.geojson">
+    <Source id="volcano" type="geojson" data={data}>
       <Layer
         id="volcano-circle"
         type="circle"
