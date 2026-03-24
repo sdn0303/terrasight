@@ -3,6 +3,7 @@
 import type { FeatureCollection } from "geojson";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 import { ComparePanel } from "@/components/compare-panel";
 import { DashboardStats } from "@/components/dashboard-stats";
@@ -105,7 +106,14 @@ const API_LAYER_COMPONENTS: Record<
 
 export default function Home() {
   useMapUrlState();
-  const { viewState, visibleLayers, selectFeature, getBBox } = useMapStore();
+  const { visibleLayers, selectFeature, getBBox } = useMapStore(
+    useShallow((s) => ({
+      visibleLayers: s.visibleLayers,
+      selectFeature: s.selectFeature,
+      getBBox: s.getBBox,
+    })),
+  );
+  const viewState = useMapStore((s) => s.viewState);
   const { compareMode, setComparePoint } = useUIStore();
   const [bbox, setBbox] = useState(() => getBBox());
   const [populationYear, setPopulationYear] = useState(2020);
@@ -277,7 +285,7 @@ export default function Home() {
         isLoading={isLoading}
         isDemoMode={isDemoMode}
       />
-      <DashboardStats />
+      <DashboardStats bbox={bbox} />
     </div>
   );
 }

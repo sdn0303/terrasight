@@ -11,5 +11,7 @@ export function useScore(lat: number | null, lng: number | null) {
       return fetchScore(lat, lng, signal);
     },
     enabled: lat !== null && lng !== null,
+    staleTime: 60_000,
+    retry: 1,
   });
 }

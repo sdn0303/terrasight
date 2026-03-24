@@ -13,15 +13,9 @@ vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: (query: string) => mockUseMediaQuery(query),
 }));
 
-// Provide minimal map store state
-vi.mock("@/stores/map-store", () => ({
-  useMapStore: (selector: (s: unknown) => unknown) =>
-    selector({
-      viewState: { latitude: 35.681, longitude: 139.767, zoom: 12, pitch: 45, bearing: 0 },
-    }),
-}));
-
 // ─── Fixtures ────────────────────────────────────────
+
+const TEST_BBOX = { south: 35.65, west: 139.70, north: 35.70, east: 139.80 };
 
 const STATS = {
   land_price: {
@@ -56,7 +50,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats />);
+    render(<DashboardStats bbox={TEST_BBOX} />);
 
     expect(screen.getByLabelText("Area statistics loading")).toBeInTheDocument();
   });
@@ -70,7 +64,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats />);
+    render(<DashboardStats bbox={TEST_BBOX} />);
 
     const region = screen.getByRole("region", { name: "Area statistics" });
     expect(region).toBeInTheDocument();
@@ -89,7 +83,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats />);
+    render(<DashboardStats bbox={TEST_BBOX} />);
 
     // composite_risk = 0.18 → 18%
     expect(screen.getByText("18%")).toBeInTheDocument();
@@ -108,7 +102,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats />);
+    render(<DashboardStats bbox={TEST_BBOX} />);
 
     // 45% should render with danger color
     const riskValue = screen.getByText("45%");
@@ -125,7 +119,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    const { container } = render(<DashboardStats />);
+    const { container } = render(<DashboardStats bbox={TEST_BBOX} />);
 
     expect(container.innerHTML).toBe("");
   });
@@ -140,7 +134,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats />);
+    render(<DashboardStats bbox={TEST_BBOX} />);
 
     const toggleBtn = screen.getByLabelText("Show area statistics");
     expect(toggleBtn).toBeInTheDocument();
@@ -161,7 +155,7 @@ describe("DashboardStats", () => {
     });
 
     const { DashboardStats } = await import("@/components/dashboard-stats");
-    render(<DashboardStats />);
+    render(<DashboardStats bbox={TEST_BBOX} />);
 
     // 12 schools + 28 medical = 40
     expect(screen.getByText("40")).toBeInTheDocument();
