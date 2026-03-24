@@ -47,6 +47,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data/fgb:/app/public/data/fgb:ro
+      - ./services/frontend/public/wasm:/app/public/wasm:ro
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000
     ports:
