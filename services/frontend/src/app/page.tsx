@@ -2,7 +2,7 @@
 
 import type { FeatureCollection } from "geojson";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 import { ComparePanel } from "@/components/compare-panel";
@@ -47,6 +47,7 @@ import { useLandPrices } from "@/features/land-prices/api/use-land-prices";
 import { useMapUrlState } from "@/hooks/use-map-url-state";
 import type { LayerConfig } from "@/lib/layers";
 import { LAYERS } from "@/lib/layers";
+import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
@@ -106,6 +107,11 @@ const API_LAYER_COMPONENTS: Record<
 
 export default function Home() {
   useMapUrlState();
+
+  useEffect(() => {
+    spatialEngine.init();
+    return () => spatialEngine.dispose();
+  }, []);
   const { visibleLayers, selectFeature, getBBox } = useMapStore(
     useShallow((s) => ({
       visibleLayers: s.visibleLayers,
