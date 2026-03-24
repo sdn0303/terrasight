@@ -79,6 +79,22 @@ pub struct AreaStats {
     pub zoning_distribution: std::collections::HashMap<String, f64>,
 }
 
+/// Result of a per-layer bbox query with truncation metadata.
+///
+/// When the database returns more rows than `limit`, the repository fetches
+/// `limit + 1` rows (N+1 pattern), sets `truncated = true`, and returns
+/// only the first `limit` features. Callers can surface the `truncated` flag
+/// and `limit` to MapLibre GL clients so they know to zoom in for full data.
+#[derive(Debug, Clone)]
+pub struct LayerResult {
+    /// GeoJSON features returned (at most `limit` items).
+    pub features: Vec<GeoFeature>,
+    /// `true` when the result set was capped at `limit`.
+    pub truncated: bool,
+    /// The limit that was applied for this layer + zoom combination.
+    pub limit: i64,
+}
+
 /// Health check result (P0 fix: moved from Usecase to Domain).
 #[derive(Debug, Clone)]
 pub struct HealthStatus {

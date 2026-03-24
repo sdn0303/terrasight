@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
+use realestate_geo_math::spatial::{bbox_area_deg2, compute_feature_limit};
 use serde_json::json;
 use sqlx::PgPool;
 use tokio::time::timeout;
 
 use super::map_db_err;
-use crate::domain::entity::{GeoFeature, GeoJsonGeometry};
+use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
 use crate::domain::value_object::{BBox, Year};
@@ -31,12 +32,18 @@ impl LandPriceRepository for PgLandPriceRepository {
     /// Fetch land price features intersecting the given bounding box for the specified year.
     ///
     /// Uses `ST_Intersects` with `ST_MakeEnvelope` (SRID 4326) for spatial filtering.
+    /// Applies a dynamic feature limit computed from `zoom` and the bbox area.
+    /// Returns [`LayerResult`] with truncation metadata (N+1 pattern).
     #[tracing::instrument(skip(self))]
     async fn find_by_year_and_bbox(
         &self,
         year: &Year,
         bbox: &BBox,
-    ) -> Result<Vec<GeoFeature>, DomainError> {
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("landprice", area, zoom);
+
         let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
             r#"
             SELECT id, price_per_sqm, address, land_use, year,
@@ -44,12 +51,14 @@ impl LandPriceRepository for PgLandPriceRepository {
             FROM land_prices
             WHERE year = $5
               AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAND_PRICE_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
                 .bind(year.value())
+                .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
         .await
@@ -59,10 +68,11 @@ impl LandPriceRepository for PgLandPriceRepository {
         tracing::debug!(
             row_count = rows.len(),
             year = year.value(),
+            limit,
             "land_prices fetched"
         );
 
-        Ok(rows
+        let mut features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, price, address, land_use, row_year, geom)| {
                 to_geo_feature(
@@ -76,7 +86,18 @@ impl LandPriceRepository for PgLandPriceRepository {
                     }),
                 )
             })
-            .collect())
+            .collect();
+
+        let truncated = features.len() > limit as usize;
+        if truncated {
+            features.truncate(limit as usize);
+        }
+
+        Ok(LayerResult {
+            features,
+            truncated,
+            limit,
+        })
     }
 }
 

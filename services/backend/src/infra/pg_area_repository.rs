@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
+use realestate_geo_math::spatial::{bbox_area_deg2, compute_feature_limit};
 use serde_json::json;
 use sqlx::PgPool;
 
 use super::map_db_err;
-use crate::domain::entity::{GeoFeature, GeoJsonGeometry};
+use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::AreaRepository;
 use crate::domain::value_object::BBox;
@@ -19,25 +20,43 @@ impl PgAreaRepository {
     }
 }
 
+/// Apply the N+1 truncation pattern: fetch `limit + 1` rows, check if more
+/// exist, then return at most `limit` rows along with the truncation flag.
+fn apply_limit(mut rows: Vec<GeoFeature>, limit: i64) -> LayerResult {
+    let truncated = rows.len() > limit as usize;
+    if truncated {
+        rows.truncate(limit as usize);
+    }
+    LayerResult {
+        features: rows,
+        truncated,
+        limit,
+    }
+}
+
 #[async_trait]
 impl AreaRepository for PgAreaRepository {
     #[tracing::instrument(skip(self))]
-    async fn find_land_prices(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+    async fn find_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("landprice", area, zoom);
         let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
             r#"
             SELECT id, price_per_sqm, address, land_use, year,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM land_prices
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $5
             "#,
         );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "land_prices fetched");
+        tracing::debug!(row_count = rows.len(), limit, "land_prices fetched");
 
-        Ok(rows
+        let features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, price, address, land_use, year, geom)| {
                 to_geo_feature(
@@ -51,11 +70,15 @@ impl AreaRepository for PgAreaRepository {
                     }),
                 )
             })
-            .collect())
+            .collect();
+
+        Ok(apply_limit(features, limit))
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_zoning(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+    async fn find_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("zoning", area, zoom);
         let query = sqlx::query_as::<
             _,
             (
@@ -72,15 +95,17 @@ impl AreaRepository for PgAreaRepository {
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM zoning
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $5
             "#,
         );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "zoning fetched");
+        tracing::debug!(row_count = rows.len(), limit, "zoning fetched");
 
-        Ok(rows
+        let features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, zone_type, zone_code, far, bc, geom)| {
                 to_geo_feature(
@@ -94,26 +119,32 @@ impl AreaRepository for PgAreaRepository {
                     }),
                 )
             })
-            .collect())
+            .collect();
+
+        Ok(apply_limit(features, limit))
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_flood_risk(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+    async fn find_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("flood", area, zoom);
         let query = sqlx::query_as::<_, (i64, Option<String>, Option<String>, serde_json::Value)>(
             r#"
             SELECT id, depth_rank, river_name,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM flood_risk
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $5
             "#,
         );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "flood_risk fetched");
+        tracing::debug!(row_count = rows.len(), limit, "flood_risk fetched");
 
-        Ok(rows
+        let features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, depth_rank, river_name, geom)| {
                 to_geo_feature(
@@ -125,50 +156,62 @@ impl AreaRepository for PgAreaRepository {
                     }),
                 )
             })
-            .collect())
+            .collect();
+
+        Ok(apply_limit(features, limit))
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_steep_slope(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+    async fn find_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("steep_slope", area, zoom);
         let query = sqlx::query_as::<_, (i64, Option<String>, serde_json::Value)>(
             r#"
             SELECT id, area_name,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM steep_slope
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $5
             "#,
         );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "steep_slope fetched");
+        tracing::debug!(row_count = rows.len(), limit, "steep_slope fetched");
 
-        Ok(rows
+        let features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, area_name, geom)| {
                 to_geo_feature(geom, json!({ "id": id, "area_name": area_name }))
             })
-            .collect())
+            .collect();
+
+        Ok(apply_limit(features, limit))
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_schools(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+    async fn find_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("schools", area, zoom);
         let query = sqlx::query_as::<_, (i64, String, Option<String>, serde_json::Value)>(
             r#"
             SELECT id, name, school_type,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM schools
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $5
             "#,
         );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "schools fetched");
+        tracing::debug!(row_count = rows.len(), limit, "schools fetched");
 
-        Ok(rows
+        let features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, name, school_type, geom)| {
                 to_geo_feature(
@@ -176,11 +219,15 @@ impl AreaRepository for PgAreaRepository {
                     json!({ "id": id, "name": name, "school_type": school_type }),
                 )
             })
-            .collect())
+            .collect();
+
+        Ok(apply_limit(features, limit))
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_medical(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
+    async fn find_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let limit = compute_feature_limit("medical", area, zoom);
         let query =
             sqlx::query_as::<_, (i64, String, Option<String>, Option<i32>, serde_json::Value)>(
                 r#"
@@ -188,15 +235,17 @@ impl AreaRepository for PgAreaRepository {
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM medical_facilities
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $5
             "#,
             );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "medical_facilities fetched");
+        tracing::debug!(row_count = rows.len(), limit, "medical_facilities fetched");
 
-        Ok(rows
+        let features: Vec<GeoFeature> = rows
             .into_iter()
             .map(|(id, name, facility_type, bed_count, geom)| {
                 to_geo_feature(
@@ -209,7 +258,9 @@ impl AreaRepository for PgAreaRepository {
                     }),
                 )
             })
-            .collect())
+            .collect();
+
+        Ok(apply_limit(features, limit))
     }
 }
 
