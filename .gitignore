@@ -8,6 +8,25 @@ node_modules/
 .turbo/
 out/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz
+
 # Environment
 .env
 .env.local
@@ -37,3 +56,6 @@ tarpaulin-report.html
 
 # Logs
 *.log
+
+# Git worktree
+.claire/
