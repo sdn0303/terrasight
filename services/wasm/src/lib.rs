@@ -20,17 +20,25 @@
 //!
 //! // Query Tokyo 23ku
 //! const geojson = engine.query('geology', 35.53, 139.57, 35.82, 139.92);
+//!
+//! // Compute area statistics
+//! const stats = engine.compute_stats(35.53, 139.57, 35.82, 139.92);
 //! ```
 
 use std::collections::HashMap;
 
+use geo::{Coord, Rect};
 use wasm_bindgen::prelude::*;
 
 mod fgb_reader;
 mod spatial_index;
+mod stats;
 
 use fgb_reader::parse_fgb;
-use spatial_index::LayerIndex;
+use spatial_index::{LayerIndex, LayerStatsData};
+use stats::{
+    compute_area_ratio, compute_land_price_stats, compute_zoning_distribution,
+};
 
 /// Multi-layer spatial engine exposed to JavaScript.
 ///
@@ -143,6 +151,48 @@ impl SpatialEngine {
         // serde_json is infallible for Vec<&str>
         serde_json::to_string(&ids).unwrap_or_else(|_| "[]".to_string())
     }
+
+    /// Compute area statistics for the given bounding box.
+    ///
+    /// Returns a JSON string matching the backend `/api/stats` response shape:
+    ///
+    /// ```json
+    /// {
+    ///   "land_price": {
+    ///     "avg_per_sqm": 850000,
+    ///     "median_per_sqm": 720000,
+    ///     "min_per_sqm": 320000,
+    ///     "max_per_sqm": 3200000,
+    ///     "count": 45
+    ///   },
+    ///   "risk": {
+    ///     "flood_area_ratio": 0.15,
+    ///     "steep_slope_area_ratio": 0.02,
+    ///     "composite_risk": 0.10
+    ///   },
+    ///   "facilities": { "schools": 12, "medical": 28 },
+    ///   "zoning_distribution": { "商業地域": 0.35, "住居地域": 0.45 }
+    /// }
+    /// ```
+    ///
+    /// Missing layers degrade gracefully to zero / empty values.
+    ///
+    /// Coordinates follow RFC 7946 `[longitude, latitude]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JavaScript `Error` if JSON serialisation fails (should not
+    /// occur in practice).
+    pub fn compute_stats(
+        &self,
+        south: f64,
+        west: f64,
+        north: f64,
+        east: f64,
+    ) -> Result<String, JsValue> {
+        self.compute_stats_inner(south, west, north, east)
+            .map_err(|e| JsValue::from_str(&e))
+    }
 }
 
 impl SpatialEngine {
@@ -155,7 +205,7 @@ impl SpatialEngine {
     ) -> Result<u32, String> {
         let features = parse_fgb(fgb_bytes)?;
         let count = features.len() as u32;
-        let index = LayerIndex::from_parsed(features);
+        let index = LayerIndex::from_parsed(features, layer_id);
         self.layers.insert(layer_id.to_string(), index);
         Ok(count)
     }
@@ -199,7 +249,125 @@ impl SpatialEngine {
         serde_json::to_string(&result)
             .map_err(|e| format!("JSON serialisation error: {e}"))
     }
+
+    /// Internal compute_stats implementation returning `Result<_, String>`.
+    pub fn compute_stats_inner(
+        &self,
+        south: f64,
+        west: f64,
+        north: f64,
+        east: f64,
+    ) -> Result<String, String> {
+        let bbox_rect = Rect::new(
+            Coord { x: west, y: south },
+            Coord { x: east, y: north },
+        );
+
+        // --- Land price ---
+        let lp_stats = self
+            .layers
+            .get("landprice")
+            .map(|idx| {
+                let indices = idx.query_bbox(south, west, north, east);
+                compute_land_price_stats(&idx.stats_data, &indices)
+            })
+            .unwrap_or_else(|| {
+                compute_land_price_stats(&LayerStatsData::None, &[])
+            });
+
+        // --- Flood risk ---
+        let flood_ratio = self
+            .find_layer_ratio(&bbox_rect, south, west, north, east, &["flood-history", "flood"]);
+
+        // --- Steep slope risk ---
+        let steep_ratio = self
+            .find_layer_ratio(&bbox_rect, south, west, north, east, &["steep-slope", "steep_slope"]);
+
+        // --- Composite risk ---
+        let composite = (flood_ratio * RISK_WEIGHT_FLOOD + steep_ratio * RISK_WEIGHT_STEEP)
+            .clamp(0.0, 1.0);
+
+        // --- Schools ---
+        let schools = self
+            .layers
+            .get("schools")
+            .map(|idx| idx.query_bbox(south, west, north, east).len() as u32)
+            .unwrap_or(0);
+
+        // --- Medical ---
+        let medical = self
+            .layers
+            .get("medical")
+            .map(|idx| idx.query_bbox(south, west, north, east).len() as u32)
+            .unwrap_or(0);
+
+        // --- Zoning distribution ---
+        let zoning_dist = self
+            .layers
+            .get("zoning")
+            .map(|idx| {
+                let indices = idx.query_bbox(south, west, north, east);
+                compute_zoning_distribution(&bbox_rect, &idx.stats_data, &indices)
+            })
+            .unwrap_or_default();
+
+        // Build zoning_distribution as a JSON object (zone_type -> ratio).
+        let zoning_obj: serde_json::Map<String, serde_json::Value> = zoning_dist
+            .into_iter()
+            .map(|(zone, ratio)| (zone, serde_json::Value::from(ratio)))
+            .collect();
+
+        let response = serde_json::json!({
+            "land_price": {
+                "avg_per_sqm": lp_stats.avg_per_sqm,
+                "median_per_sqm": lp_stats.median_per_sqm,
+                "min_per_sqm": lp_stats.min_per_sqm,
+                "max_per_sqm": lp_stats.max_per_sqm,
+                "count": lp_stats.count,
+            },
+            "risk": {
+                "flood_area_ratio": flood_ratio,
+                "steep_slope_area_ratio": steep_ratio,
+                "composite_risk": composite,
+            },
+            "facilities": {
+                "schools": schools,
+                "medical": medical,
+            },
+            "zoning_distribution": serde_json::Value::Object(zoning_obj),
+        });
+
+        serde_json::to_string(&response)
+            .map_err(|e| format!("JSON serialisation error: {e}"))
+    }
+
+    /// Query the first matching layer from `candidates` and compute its area ratio.
+    ///
+    /// Returns `0.0` if none of the candidate layer ids are loaded.
+    fn find_layer_ratio(
+        &self,
+        bbox_rect: &Rect<f64>,
+        south: f64,
+        west: f64,
+        north: f64,
+        east: f64,
+        candidates: &[&str],
+    ) -> f64 {
+        for &layer_id in candidates {
+            if let Some(idx) = self.layers.get(layer_id) {
+                let indices = idx.query_bbox(south, west, north, east);
+                return compute_area_ratio(bbox_rect, &idx.stats_data, &indices);
+            }
+        }
+        0.0
+    }
 }
+
+/// Risk weight for flood area ratio (mirrors backend `domain/constants.rs`).
+const RISK_WEIGHT_FLOOD: f64 = 0.6;
+
+/// Risk weight for steep-slope area ratio (mirrors backend `domain/constants.rs`).
+const RISK_WEIGHT_STEEP: f64 = 0.4;
 
 impl Default for SpatialEngine {
     fn default() -> Self {
@@ -399,5 +567,125 @@ mod tests {
             .load_layer_inner("geology", &geology_bytes())
             .expect("load should succeed");
         assert_eq!(engine.feature_count("geology"), 133);
+    }
+
+    // -------------------------------------------------------------------------
+    // SpatialEngine::compute_stats_inner
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_stats_empty_engine_returns_all_zeros() {
+        let engine = SpatialEngine::new();
+        let json = engine
+            .compute_stats_inner(35.53, 139.57, 35.82, 139.92)
+            .expect("compute_stats_inner should succeed on empty engine");
+
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(v["land_price"]["count"], 0);
+        assert_eq!(v["land_price"]["avg_per_sqm"], 0.0);
+        assert_eq!(v["risk"]["flood_area_ratio"], 0.0);
+        assert_eq!(v["risk"]["steep_slope_area_ratio"], 0.0);
+        assert_eq!(v["risk"]["composite_risk"], 0.0);
+        assert_eq!(v["facilities"]["schools"], 0);
+        assert_eq!(v["facilities"]["medical"], 0);
+        assert!(
+            v["zoning_distribution"].as_object().unwrap().is_empty(),
+            "zoning_distribution should be empty"
+        );
+    }
+
+    #[test]
+    fn test_compute_stats_with_loaded_geology_layer_no_panic() {
+        // Geology is not a stats-relevant layer; verify graceful degradation.
+        let mut engine = SpatialEngine::new();
+        engine
+            .load_layer_inner("geology", &geology_bytes())
+            .expect("load should succeed");
+
+        let json = engine
+            .compute_stats_inner(35.53, 139.57, 35.82, 139.92)
+            .expect("compute_stats_inner should not panic with geology loaded");
+
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        // All stats keys must be present even without stats-relevant layers.
+        assert!(v.get("land_price").is_some());
+        assert!(v.get("risk").is_some());
+        assert!(v.get("facilities").is_some());
+        assert!(v.get("zoning_distribution").is_some());
+    }
+
+    #[test]
+    fn test_compute_stats_response_has_all_required_keys() {
+        let engine = SpatialEngine::new();
+        let json = engine
+            .compute_stats_inner(35.53, 139.57, 35.82, 139.92)
+            .expect("compute_stats_inner should succeed");
+
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        // Verify top-level keys
+        for key in &["land_price", "risk", "facilities", "zoning_distribution"] {
+            assert!(v.get(key).is_some(), "missing top-level key: {key}");
+        }
+
+        // Verify land_price sub-keys
+        for key in &["avg_per_sqm", "median_per_sqm", "min_per_sqm", "max_per_sqm", "count"] {
+            assert!(
+                v["land_price"].get(key).is_some(),
+                "missing land_price key: {key}"
+            );
+        }
+
+        // Verify risk sub-keys
+        for key in &["flood_area_ratio", "steep_slope_area_ratio", "composite_risk"] {
+            assert!(v["risk"].get(key).is_some(), "missing risk key: {key}");
+        }
+
+        // Verify facilities sub-keys
+        for key in &["schools", "medical"] {
+            assert!(v["facilities"].get(key).is_some(), "missing facilities key: {key}");
+        }
+    }
+
+    #[test]
+    fn test_compute_stats_flood_history_layer_contributes_to_risk() {
+        // Load geology as flood-history to exercise area ratio path.
+        // Geology contains polygon data so this exercises the code path.
+        let mut engine = SpatialEngine::new();
+        engine
+            .load_layer_inner("flood-history", &geology_bytes())
+            .expect("load should succeed");
+
+        let json = engine
+            .compute_stats_inner(35.53, 139.57, 35.82, 139.92)
+            .expect("compute_stats_inner should succeed");
+
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let flood_ratio = v["risk"]["flood_area_ratio"].as_f64().unwrap();
+        let composite = v["risk"]["composite_risk"].as_f64().unwrap();
+
+        // Ratios must be in valid range
+        assert!((0.0..=1.0).contains(&flood_ratio), "flood_ratio out of range: {flood_ratio}");
+        assert!((0.0..=1.0).contains(&composite), "composite out of range: {composite}");
+    }
+
+    #[test]
+    fn test_compute_stats_schools_layer_counts_hits() {
+        let mut engine = SpatialEngine::new();
+        // Load geology as "schools" — geology has features in Tokyo bbox,
+        // so we expect a non-zero count.
+        engine
+            .load_layer_inner("schools", &geology_bytes())
+            .expect("load should succeed");
+
+        let json = engine
+            .compute_stats_inner(35.53, 139.57, 35.82, 139.92)
+            .expect("compute_stats_inner should succeed");
+
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let school_count = v["facilities"]["schools"].as_u64().unwrap();
+        assert!(school_count > 0, "should count schools in Tokyo bbox");
     }
 }

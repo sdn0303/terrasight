@@ -8,6 +8,23 @@ use rstar::{AABB, PointDistance, RTree, RTreeObject};
 
 use crate::fgb_reader::ParsedFeature;
 
+/// Statistics data associated with a layer, extracted during loading.
+///
+/// The variant chosen depends on `layer_id` and determines what kind of
+/// spatial computation can be performed on the layer's features.
+pub enum LayerStatsData {
+    /// No stats-relevant data available for this layer.
+    None,
+    /// Land price points: price-per-sqm values indexed by feature position.
+    PricePoints(Vec<f64>),
+    /// Flood or steep-slope risk polygons indexed by feature position.
+    AreaPolygons(Vec<Option<geo::Geometry<f64>>>),
+    /// Zoning polygons: `(zone_type, geometry)` indexed by feature position.
+    ZoningPolygons(Vec<(String, Option<geo::Geometry<f64>>)>),
+    /// Facility point layers — only the hit count matters, no geometry stored.
+    PointCount,
+}
+
 /// An R-tree entry that maps a feature's bounding envelope to its index in
 /// [`LayerIndex::features_json`].
 struct IndexedFeature {
@@ -39,6 +56,8 @@ pub struct LayerIndex {
     tree: RTree<IndexedFeature>,
     /// Parallel storage of GeoJSON Feature strings, indexed by [`IndexedFeature::index`].
     features_json: Vec<String>,
+    /// Statistics data extracted at load time, keyed by feature index.
+    pub stats_data: LayerStatsData,
 }
 
 impl LayerIndex {
@@ -46,8 +65,12 @@ impl LayerIndex {
     ///
     /// Uses [`RTree::bulk_load`] for O(n log n) construction, which is faster
     /// than repeated insertions when all features are known upfront.
-    pub fn from_parsed(features: Vec<ParsedFeature>) -> Self {
+    ///
+    /// The `layer_id` determines which [`LayerStatsData`] variant is extracted.
+    pub fn from_parsed(features: Vec<ParsedFeature>, layer_id: &str) -> Self {
         let mut features_json: Vec<String> = Vec::with_capacity(features.len());
+        let stats_data = extract_stats_data(&features, layer_id);
+
         let entries: Vec<IndexedFeature> = features
             .into_iter()
             .enumerate()
@@ -63,6 +86,7 @@ impl LayerIndex {
         Self {
             tree: RTree::bulk_load(entries),
             features_json,
+            stats_data,
         }
     }
 
@@ -107,6 +131,51 @@ impl LayerIndex {
     }
 }
 
+/// Extract the appropriate [`LayerStatsData`] variant from parsed features
+/// based on the `layer_id`.
+fn extract_stats_data(features: &[ParsedFeature], layer_id: &str) -> LayerStatsData {
+    match layer_id {
+        "landprice" => {
+            let prices: Vec<f64> = features
+                .iter()
+                .map(|f| {
+                    f.properties
+                        .as_ref()
+                        .and_then(|p| p.get("price_per_sqm"))
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0)
+                })
+                .collect();
+            LayerStatsData::PricePoints(prices)
+        }
+        "flood-history" | "flood" | "steep-slope" | "steep_slope" => {
+            let geoms: Vec<Option<geo::Geometry<f64>>> = features
+                .iter()
+                .map(|f| f.geometry_geo.clone())
+                .collect();
+            LayerStatsData::AreaPolygons(geoms)
+        }
+        "zoning" => {
+            let pairs: Vec<(String, Option<geo::Geometry<f64>>)> = features
+                .iter()
+                .map(|f| {
+                    let zone_type = f
+                        .properties
+                        .as_ref()
+                        .and_then(|p| p.get("zone_type"))
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("")
+                        .to_string();
+                    (zone_type, f.geometry_geo.clone())
+                })
+                .collect();
+            LayerStatsData::ZoningPolygons(pairs)
+        }
+        "schools" | "medical" => LayerStatsData::PointCount,
+        _ => LayerStatsData::None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,7 +186,7 @@ mod tests {
     fn load_geology_index() -> LayerIndex {
         let bytes = std::fs::read(FGB_PATH).expect("geology.fgb should exist");
         let features = parse_fgb(&bytes).expect("parse_fgb should succeed");
-        LayerIndex::from_parsed(features)
+        LayerIndex::from_parsed(features, "geology")
     }
 
     #[test]
@@ -178,5 +247,25 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&geojson).unwrap();
         let features = parsed["features"].as_array().unwrap();
         assert_eq!(features.len(), 1, "out-of-bounds index should be silently skipped");
+    }
+
+    #[test]
+    fn from_parsed_geology_has_none_stats_data() {
+        let index = load_geology_index();
+        assert!(
+            matches!(index.stats_data, LayerStatsData::None),
+            "geology layer should have None stats data"
+        );
+    }
+
+    #[test]
+    fn from_parsed_schools_has_point_count_stats_data() {
+        let bytes = std::fs::read(FGB_PATH).expect("geology.fgb should exist");
+        let features = parse_fgb(&bytes).expect("parse_fgb should succeed");
+        let index = LayerIndex::from_parsed(features, "schools");
+        assert!(
+            matches!(index.stats_data, LayerStatsData::PointCount),
+            "schools layer should have PointCount stats data"
+        );
     }
 }

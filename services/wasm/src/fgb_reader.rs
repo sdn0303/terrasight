@@ -7,6 +7,7 @@
 use std::io::Cursor;
 
 use flatgeobuf::{FallibleStreamingIterator, FgbReader};
+use geo::{Coord, LineString, MultiPolygon, Point, Polygon};
 use geozero::FeatureAccess;
 use geozero::geojson::GeoJsonWriter;
 
@@ -24,6 +25,10 @@ pub struct ParsedFeature {
     pub max_y: f64,
     /// Complete GeoJSON `Feature` string, e.g. `{"type":"Feature","geometry":{...},"properties":{...}}`.
     pub geojson: String,
+    /// Parsed `geo` geometry for spatial computations. `None` if parsing fails.
+    pub geometry_geo: Option<geo::Geometry<f64>>,
+    /// Feature properties extracted from the GeoJSON. `None` if parsing fails.
+    pub properties: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// Parse raw FlatGeobuf bytes into a vector of [`ParsedFeature`] records.
@@ -66,16 +71,125 @@ pub fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, String> {
 
         let (min_x, min_y, max_x, max_y) = extract_bbox(&geojson)?;
 
+        // Best-effort extraction of geo geometry and properties from the GeoJSON string.
+        // Parse failures are silently converted to None.
+        let (geometry_geo, properties) = extract_geo_and_properties(&geojson);
+
         features.push(ParsedFeature {
             min_x,
             min_y,
             max_x,
             max_y,
             geojson,
+            geometry_geo,
+            properties,
         });
     }
 
     Ok(features)
+}
+
+/// Extract a `geo::Geometry` and a properties map from a GeoJSON Feature string.
+///
+/// Returns `(None, None)` on any parse failure — this is best-effort extraction.
+fn extract_geo_and_properties(
+    geojson: &str,
+) -> (
+    Option<geo::Geometry<f64>>,
+    Option<serde_json::Map<String, serde_json::Value>>,
+) {
+    let value: serde_json::Value = match serde_json::from_str(geojson) {
+        Ok(v) => v,
+        Err(_) => return (None, None),
+    };
+
+    let properties = value
+        .get("properties")
+        .and_then(|p| p.as_object())
+        .cloned();
+
+    let geometry = value.get("geometry");
+    let geo_geom = geometry.and_then(json_to_geo_geometry);
+
+    (geo_geom, properties)
+}
+
+/// Convert a GeoJSON geometry JSON value to a `geo::Geometry<f64>`.
+///
+/// Supports Point, LineString, Polygon, MultiPolygon. Returns `None` for
+/// unsupported types or malformed input.
+fn json_to_geo_geometry(geom: &serde_json::Value) -> Option<geo::Geometry<f64>> {
+    let geom_type = geom.get("type")?.as_str()?;
+    let coords = geom.get("coordinates")?;
+
+    match geom_type {
+        "Point" => {
+            let arr = coords.as_array()?;
+            if arr.len() < 2 {
+                return None;
+            }
+            let x = arr[0].as_f64()?;
+            let y = arr[1].as_f64()?;
+            Some(geo::Geometry::Point(Point::new(x, y)))
+        }
+        "LineString" => {
+            let ring = json_to_coord_vec(coords)?;
+            Some(geo::Geometry::LineString(LineString::new(ring)))
+        }
+        "Polygon" => {
+            let polygon = json_to_polygon(coords)?;
+            Some(geo::Geometry::Polygon(polygon))
+        }
+        "MultiPolygon" => {
+            let polys_arr = coords.as_array()?;
+            let polys: Vec<Polygon<f64>> = polys_arr
+                .iter()
+                .filter_map(json_to_polygon)
+                .collect();
+            if polys.is_empty() {
+                return None;
+            }
+            Some(geo::Geometry::MultiPolygon(MultiPolygon::new(polys)))
+        }
+        _ => None,
+    }
+}
+
+/// Convert a GeoJSON Polygon coordinates array to `geo::Polygon<f64>`.
+fn json_to_polygon(coords: &serde_json::Value) -> Option<Polygon<f64>> {
+    let rings = coords.as_array()?;
+    let mut rings_iter = rings.iter();
+
+    let exterior_coords = json_to_coord_vec(rings_iter.next()?)?;
+    let exterior = LineString::new(exterior_coords);
+
+    let interiors: Vec<LineString<f64>> = rings_iter
+        .filter_map(|ring| json_to_coord_vec(ring).map(LineString::new))
+        .collect();
+
+    Some(Polygon::new(exterior, interiors))
+}
+
+/// Convert a GeoJSON coordinate array (array of `[x, y, ...]`) to `Vec<Coord<f64>>`.
+fn json_to_coord_vec(arr: &serde_json::Value) -> Option<Vec<Coord<f64>>> {
+    let points = arr.as_array()?;
+    let coords: Vec<Coord<f64>> = points
+        .iter()
+        .filter_map(|pt| {
+            let pair = pt.as_array()?;
+            if pair.len() < 2 {
+                return None;
+            }
+            let x = pair[0].as_f64()?;
+            let y = pair[1].as_f64()?;
+            Some(Coord { x, y })
+        })
+        .collect();
+    if coords.is_empty() {
+        None
+    } else {
+        Some(coords)
+    }
 }
 
 /// Walk the `"coordinates"` subtree of a GeoJSON `Feature` string and return
@@ -256,5 +370,45 @@ mod tests {
         assert!((min_y - 35.0).abs() < 1e-9);
         assert!((max_x - 140.0).abs() < 1e-9);
         assert!((max_y - 36.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn parse_fgb_features_have_properties_field() {
+        let bytes = std::fs::read(FGB_PATH).expect("geology.fgb should exist");
+        let features = parse_fgb(&bytes).expect("parse_fgb should succeed");
+        // geology features should have properties extracted (even if empty map)
+        let has_some = features.iter().any(|f| f.properties.is_some());
+        assert!(has_some, "at least some features should have extracted properties");
+    }
+
+    #[test]
+    fn extract_geo_and_properties_point() {
+        let geojson =
+            r#"{"type":"Feature","geometry":{"type":"Point","coordinates":[139.75,35.68]},"properties":{"name":"test"}}"#;
+        let (geom, props) = extract_geo_and_properties(geojson);
+        assert!(geom.is_some(), "point geometry should be extracted");
+        assert!(props.is_some(), "properties should be extracted");
+        assert_eq!(
+            props.unwrap().get("name").and_then(|v| v.as_str()),
+            Some("test")
+        );
+    }
+
+    #[test]
+    fn extract_geo_and_properties_polygon() {
+        let geojson = r#"{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[139.0,35.0],[140.0,35.0],[140.0,36.0],[139.0,36.0],[139.0,35.0]]]},"properties":{}}"#;
+        let (geom, _props) = extract_geo_and_properties(geojson);
+        assert!(geom.is_some(), "polygon geometry should be extracted");
+        assert!(
+            matches!(geom, Some(geo::Geometry::Polygon(_))),
+            "should be a Polygon variant"
+        );
+    }
+
+    #[test]
+    fn extract_geo_and_properties_invalid_json_returns_none() {
+        let (geom, props) = extract_geo_and_properties("not json");
+        assert!(geom.is_none());
+        assert!(props.is_none());
     }
 }
