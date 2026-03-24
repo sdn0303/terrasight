@@ -16,6 +16,74 @@ pub fn bbox_area_deg2(south: f64, west: f64, north: f64, east: f64) -> f64 {
     (north - south).abs() * (east - west).abs()
 }
 
+/// Buffer size in degrees (~15m at Tokyo latitude 35.68°).
+pub const BUFFER_DEG: f64 = 0.00015;
+
+const MAX_FEATURES: i64 = 10_000;
+
+fn layer_density(layer: &str) -> f64 {
+    match layer {
+        "landprice" => 50_000.0,
+        "flood" => 150_000.0,
+        "zoning" => 20_000.0,
+        "steep_slope" => 17_000.0,
+        "schools" => 40_000.0,
+        "medical" => 27_000.0,
+        _ => 30_000.0,
+    }
+}
+
+/// Compute the feature limit for a given layer, bounding-box area, and zoom level.
+///
+/// Formula: `min(ceil(bbox_area × density), 10_000)`. If zoom < 10, the result
+/// is divided by 4. The minimum returned value is 1.
+///
+/// # Examples
+///
+/// ```
+/// use realestate_geo_math::spatial::compute_feature_limit;
+///
+/// assert_eq!(compute_feature_limit("flood", 0.02, 12), 3_000);
+/// assert_eq!(compute_feature_limit("flood", 1.0, 12), 10_000);
+/// ```
+pub fn compute_feature_limit(layer: &str, bbox_area_deg2: f64, zoom: u32) -> i64 {
+    let density = layer_density(layer);
+    let raw = (bbox_area_deg2 * density).ceil() as i64;
+    let capped = raw.min(MAX_FEATURES);
+    let adjusted = if zoom < 10 { capped / 4 } else { capped };
+    adjusted.max(1)
+}
+
+/// Create a closed polygon ring of 5 vertices forming a ~30m × 30m square
+/// around the given point.
+///
+/// Vertices are in counter-clockwise order: SW → SE → NE → NW → SW (close).
+/// Coordinates follow RFC 7946: `[longitude, latitude]`.
+///
+/// # Examples
+///
+/// ```
+/// use realestate_geo_math::spatial::{point_to_polygon, BUFFER_DEG};
+///
+/// let ring = point_to_polygon(139.7, 35.68);
+/// assert_eq!(ring[0], ring[4]);
+/// ```
+pub fn point_to_polygon(lng: f64, lat: f64) -> [[f64; 2]; 5] {
+    let diameter = 2.0 * BUFFER_DEG;
+    let w = lng - BUFFER_DEG;
+    let e = w + diameter; // ensures e - w == 2.0 * BUFFER_DEG exactly
+    let s = lat - BUFFER_DEG;
+    let n = s + diameter; // ensures n - s == 2.0 * BUFFER_DEG exactly
+
+    [
+        [w, s], // SW
+        [e, s], // SE
+        [e, n], // NE
+        [w, n], // NW
+        [w, s], // SW close
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,5 +110,53 @@ mod tests {
     #[test]
     fn bbox_zero_area_point() {
         assert_eq!(bbox_area_deg2(35.0, 139.0, 35.0, 139.0), 0.0);
+    }
+
+    // --- compute_feature_limit tests ---
+
+    #[test]
+    fn feature_limit_small_bbox_flood() {
+        // 0.02 deg² × 150_000 = 3_000
+        assert_eq!(compute_feature_limit("flood", 0.02, 12), 3_000);
+    }
+
+    #[test]
+    fn feature_limit_caps_at_max() {
+        // 1.0 × 150_000 = 150_000 → capped at 10_000
+        assert_eq!(compute_feature_limit("flood", 1.0, 12), 10_000);
+    }
+
+    #[test]
+    fn feature_limit_low_zoom_divides() {
+        // 0.5 × 150_000 = 75_000 → cap 10_000 → ÷4 = 2_500
+        assert_eq!(compute_feature_limit("flood", 0.5, 8), 2_500);
+    }
+
+    #[test]
+    fn feature_limit_unknown_layer_uses_default() {
+        assert!(compute_feature_limit("unknown", 0.01, 12) > 0);
+    }
+
+    // --- point_to_polygon tests ---
+
+    #[test]
+    fn point_to_polygon_creates_closed_ring() {
+        let ring = point_to_polygon(139.7, 35.68);
+        assert_eq!(ring.len(), 5);
+        assert_eq!(ring[0], ring[4]);
+    }
+
+    #[test]
+    fn point_to_polygon_buffer_size() {
+        let ring = point_to_polygon(139.7, 35.68);
+        let width = ring[1][0] - ring[0][0];
+        // f64 subtraction of two values ~139.7 introduces rounding error on the
+        // order of 1 ULP(139.7) ≈ 2.8e-14. Using 1e-10 as absolute tolerance
+        // is sufficient to confirm the width equals 2 × BUFFER_DEG.
+        assert!(
+            (width - 2.0 * BUFFER_DEG).abs() < 1e-10,
+            "expected width {}, got {width}",
+            2.0 * BUFFER_DEG
+        );
     }
 }
