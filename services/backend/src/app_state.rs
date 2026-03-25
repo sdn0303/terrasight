@@ -10,10 +10,12 @@ use crate::infra::pg_health_repository::PgHealthRepository;
 use crate::infra::pg_land_price_repository::PgLandPriceRepository;
 use crate::infra::pg_score_repository::PgScoreRepository;
 use crate::infra::pg_stats_repository::PgStatsRepository;
+use crate::infra::pg_tls_repository::PgTlsRepository;
 use crate::infra::pg_trend_repository::PgTrendRepository;
 use crate::infra::reinfolib_mock::create_reinfolib_source;
 use crate::usecase::check_health::CheckHealthUsecase;
 use crate::usecase::compute_score::ComputeScoreUsecase;
+use crate::usecase::compute_tls::ComputeTlsUsecase;
 use crate::usecase::get_area_data::GetAreaDataUsecase;
 use crate::usecase::get_land_prices::GetLandPricesUsecase;
 use crate::usecase::get_stats::GetStatsUsecase;
@@ -30,7 +32,7 @@ pub struct AppState {
     pub health: Arc<CheckHealthUsecase>,
     pub area_data: Arc<GetAreaDataUsecase>,
     pub land_prices: Arc<GetLandPricesUsecase>,
-    pub score: Arc<ComputeScoreUsecase>,
+    pub score: Arc<ComputeTlsUsecase>,
     pub stats: Arc<GetStatsUsecase>,
     pub trend: Arc<GetTrendUsecase>,
     /// Reinfolib geospatial data source.
@@ -68,6 +70,10 @@ impl AppState {
             }
         };
 
+        // Keep PgScoreRepository alive for the old ComputeScoreUsecase; both will be
+        // removed in a later cleanup step once TLS is verified end-to-end.
+        let _legacy_score_repo = Arc::new(PgScoreRepository::new(pool.clone()));
+
         Self {
             health: Arc::new(CheckHealthUsecase::new(
                 Arc::new(PgHealthRepository::new(pool.clone())),
@@ -79,8 +85,8 @@ impl AppState {
             land_prices: Arc::new(GetLandPricesUsecase::new(Arc::new(
                 PgLandPriceRepository::new(pool.clone()),
             ))),
-            score: Arc::new(ComputeScoreUsecase::new(
-                Arc::new(PgScoreRepository::new(pool.clone())),
+            score: Arc::new(ComputeTlsUsecase::new(
+                Arc::new(PgTlsRepository::new(pool.clone())),
                 jshis,
             )),
             stats: Arc::new(GetStatsUsecase::new(Arc::new(PgStatsRepository::new(
@@ -91,3 +97,8 @@ impl AppState {
         }
     }
 }
+
+// ComputeScoreUsecase is kept compiled (imported above) to preserve the old
+// code until cleanup. This type alias avoids a dead-code warning on the import.
+#[allow(dead_code)]
+type _LegacyScoreUsecase = ComputeScoreUsecase;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{LayerResult, *};
+use crate::domain::entity::{LayerResult, MedicalStats, SchoolStats, ZScoreResult, *};
 use crate::domain::error::DomainError;
 use crate::domain::value_object::*;
 
@@ -87,4 +87,34 @@ pub trait LandPriceRepository: Send + Sync {
 pub trait HealthRepository: Send + Sync {
     /// Check database connectivity (SELECT 1).
     async fn check_connection(&self) -> bool;
+}
+
+// ─── TLS (Total Location Score) ──────────────────────
+
+#[async_trait]
+pub trait TlsRepository: Send + Sync {
+    /// Multi-year land prices near the given coordinate (nearest address within 1km).
+    async fn find_nearest_prices(&self, coord: &Coord) -> Result<Vec<PriceRecord>, DomainError>;
+
+    /// Maximum flood depth rank within 500m buffer. `None` = outside any flood zone.
+    async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError>;
+
+    /// Whether steep slope hazard exists within 500m.
+    async fn has_steep_slope_nearby(&self, coord: &Coord) -> Result<bool, DomainError>;
+
+    /// School statistics within 800m: count, primary presence, junior-high presence.
+    async fn find_schools_nearby(&self, coord: &Coord) -> Result<SchoolStats, DomainError>;
+
+    /// Medical facility statistics within 1000m: hospital/clinic counts and total beds.
+    async fn find_medical_nearby(&self, coord: &Coord) -> Result<MedicalStats, DomainError>;
+
+    /// Floor area ratio at the given point from the containing zoning polygon.
+    /// `None` if the point is not within any zoning polygon.
+    async fn find_zoning_far(&self, coord: &Coord) -> Result<Option<f64>, DomainError>;
+
+    /// Z-score of the point's land price relative to all prices in the same zoning type.
+    async fn calc_price_z_score(&self, coord: &Coord) -> Result<ZScoreResult, DomainError>;
+
+    /// Count of land price records within 500m from the latest available year.
+    async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError>;
 }

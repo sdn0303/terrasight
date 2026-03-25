@@ -103,3 +103,27 @@ pub struct HealthStatus {
     pub reinfolib_key_set: bool,
     pub version: &'static str,
 }
+
+/// School accessibility details for TLS scoring.
+#[derive(Debug, Clone)]
+pub struct SchoolStats {
+    pub count_800m: i64,
+    pub has_primary: bool,
+    pub has_junior_high: bool,
+}
+
+/// Medical facility details for TLS scoring.
+#[derive(Debug, Clone)]
+pub struct MedicalStats {
+    pub hospital_count: i64,
+    pub clinic_count: i64,
+    pub total_beds: i64,
+}
+
+/// Z-score of ㎡ price within the same zoning type.
+#[derive(Debug, Clone)]
+pub struct ZScoreResult {
+    pub z_score: f64,
+    pub zone_type: String,
+    pub sample_count: i64,
+}
