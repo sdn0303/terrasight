@@ -96,22 +96,44 @@ export const AreaDataResponse = z.object({
 });
 
 // ─── Score response ───────────────────────────────────
-const ScoreComponent = z.object({
-  value: z.number(),
-  max: z.number(),
+const SubScoreDto = z.object({
+  id: z.string(),
+  score: z.number(),
+  available: z.boolean(),
   detail: z.record(z.string(), z.unknown()),
 });
 
-export const ScoreResponse = z.object({
+const AxisDto = z.object({
   score: z.number(),
-  components: z.object({
-    trend: ScoreComponent,
-    risk: ScoreComponent,
-    access: ScoreComponent,
-    yield_potential: ScoreComponent,
+  weight: z.number(),
+  confidence: z.number(),
+  sub: z.array(SubScoreDto),
+});
+
+export const TlsResponse = z.object({
+  location: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }),
+  tls: z.object({
+    score: z.number(),
+    grade: z.enum(["S", "A", "B", "C", "D", "E"]),
+    label: z.string(),
+  }),
+  axes: z.object({
+    disaster: AxisDto,
+    terrain: AxisDto,
+    livability: AxisDto,
+    future: AxisDto,
+    price: AxisDto,
+  }),
+  cross_analysis: z.object({
+    value_discovery: z.number(),
+    demand_signal: z.number(),
+    ground_safety: z.number(),
   }),
   metadata: z.object({
-    calculated_at: z.string(),
+    weight_preset: z.string(),
     data_freshness: z.string(),
     disclaimer: z.string(),
   }),
@@ -171,7 +193,7 @@ export type LandPriceTimeSeriesResponse = z.infer<
 
 // ─── Export inferred types ────────────────────────────
 export type AreaDataResponse = z.infer<typeof AreaDataResponse>;
-export type ScoreResponse = z.infer<typeof ScoreResponse>;
+export type TlsResponse = z.infer<typeof TlsResponse>;
 export type StatsResponse = z.infer<typeof StatsResponse>;
 export type TrendResponse = z.infer<typeof TrendResponse>;
 export type HealthResponse = z.infer<typeof HealthResponse>;

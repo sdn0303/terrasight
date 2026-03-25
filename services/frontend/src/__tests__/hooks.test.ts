@@ -49,16 +49,30 @@ const STATS_FIXTURE = {
   zoning_distribution: { 商業地域: 0.35 },
 };
 
+const makeAxis = (score: number) => ({
+  score,
+  weight: 0.2,
+  confidence: 0.9,
+  sub: [{ id: "sub1", score: score * 0.5, available: true, detail: {} }],
+});
+
 const SCORE_FIXTURE = {
-  score: 72,
-  components: {
-    trend: { value: 18, max: 25, detail: { cagr_5y: 0.032 } },
-    risk: { value: 22, max: 25, detail: { flood_overlap: 0.0 } },
-    access: { value: 15, max: 25, detail: { schools_1km: 3 } },
-    yield_potential: { value: 17, max: 25, detail: {} },
+  location: { lat: 35.681, lng: 139.767 },
+  tls: { score: 72, grade: "A" as const, label: "優良" },
+  axes: {
+    disaster: makeAxis(80),
+    terrain: makeAxis(75),
+    livability: makeAxis(70),
+    future: makeAxis(65),
+    price: makeAxis(60),
+  },
+  cross_analysis: {
+    value_discovery: 0.8,
+    demand_signal: 0.7,
+    ground_safety: 0.9,
   },
   metadata: {
-    calculated_at: "2026-03-20T10:30:00Z",
+    weight_preset: "default",
     data_freshness: "2024",
     disclaimer: "本スコアは参考値です。",
   },
@@ -169,7 +183,7 @@ describe("useScore", () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.score).toBe(72);
+    expect(result.current.data?.tls.score).toBe(72);
   });
 
   it("does not fetch when lat is null", async () => {

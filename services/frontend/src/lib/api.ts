@@ -5,7 +5,7 @@ import {
   AreaDataResponse,
   HealthResponse,
   LandPriceTimeSeriesResponse,
-  ScoreResponse,
+  TlsResponse,
   StatsResponse,
   TrendResponse,
 } from "./schemas";
@@ -127,7 +127,7 @@ export function fetchAreaData(
 
 export function fetchScore(lat: number, lng: number, signal?: AbortSignal) {
   return get(
-    ScoreResponse,
+    TlsResponse,
     "api/score",
     {
       lat: String(lat),

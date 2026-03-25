@@ -3,6 +3,20 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ScoreGauge } from "./score-gauge";
 import { ComponentBar } from "./component-bar";
+
+type TlsGrade = "S" | "A" | "B" | "C" | "D" | "E";
+
+function gradeColor(grade: TlsGrade): string {
+  const map: Record<TlsGrade, string> = {
+    S: "#10b981", // emerald
+    A: "#22c55e", // green
+    B: "#eab308", // yellow
+    C: "#f97316", // orange
+    D: "#ef4444", // red
+    E: "#991b1b", // dark-red
+  };
+  return map[grade];
+}
 import { Sparkline } from "./sparkline";
 import { useScore } from "@/features/score/api/use-score";
 import { useTrend } from "@/features/trend/api/use-trend";
@@ -68,7 +82,7 @@ function ScoreCardContent({
             style={{ color: "var(--text-primary)" }}
           >
             {String(
-              selectedFeature.properties["address"] ??
+              selectedFeature.properties.address ??
                 `${lat?.toFixed(4)}°N, ${lng?.toFixed(4)}°E`,
             )}
           </div>
@@ -91,34 +105,58 @@ function ScoreCardContent({
             >
               INVESTMENT SCORE
             </div>
-            <ScoreGauge score={score.score} />
+            <ScoreGauge score={score.tls.score} />
+            <div className="flex items-center gap-1.5 mb-2">
+              <span
+                className="text-sm font-medium"
+                style={{ color: gradeColor(score.tls.grade) }}
+              >
+                {score.tls.grade}
+              </span>
+              <span
+                className="text-[10px]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {score.tls.label}
+              </span>
+            </div>
             <div className="space-y-1.5 mt-3">
               <ComponentBar
-                label="trend"
-                value={score.components.trend.value}
-                max={score.components.trend.max}
+                label="災害"
+                value={score.axes.disaster.score}
+                max={100}
+                confidence={score.axes.disaster.confidence}
               />
               <ComponentBar
-                label="risk"
-                value={score.components.risk.value}
-                max={score.components.risk.max}
+                label="地盤"
+                value={score.axes.terrain.score}
+                max={100}
+                confidence={score.axes.terrain.confidence}
               />
               <ComponentBar
-                label="access"
-                value={score.components.access.value}
-                max={score.components.access.max}
+                label="利便性"
+                value={score.axes.livability.score}
+                max={100}
+                confidence={score.axes.livability.confidence}
               />
               <ComponentBar
-                label="yield"
-                value={score.components.yield_potential.value}
-                max={score.components.yield_potential.max}
+                label="将来性"
+                value={score.axes.future.score}
+                max={100}
+                confidence={score.axes.future.confidence}
+              />
+              <ComponentBar
+                label="価格"
+                value={score.axes.price.score}
+                max={100}
+                confidence={score.axes.price.confidence}
               />
             </div>
           </div>
         ) : null}
 
         {/* Pricing */}
-        {selectedFeature.properties["price_per_sqm"] !== undefined && (
+        {selectedFeature.properties.price_per_sqm !== undefined && (
           <div
             className="rounded-lg p-3"
             style={{ background: "var(--bg-tertiary)" }}
@@ -136,7 +174,7 @@ function ScoreCardContent({
               <span style={{ color: "var(--accent-cyan)" }}>
                 ¥
                 {Number(
-                  selectedFeature.properties["price_per_sqm"],
+                  selectedFeature.properties.price_per_sqm,
                 ).toLocaleString()}
               </span>
             </div>

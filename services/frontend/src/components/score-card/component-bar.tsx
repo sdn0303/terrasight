@@ -2,9 +2,10 @@ interface ComponentBarProps {
   label: string;
   value: number;
   max: number;
+  confidence?: number;
 }
 
-export function ComponentBar({ label, value, max }: ComponentBarProps) {
+export function ComponentBar({ label, value, max, confidence }: ComponentBarProps) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div
@@ -25,12 +26,21 @@ export function ComponentBar({ label, value, max }: ComponentBarProps) {
       >
         <div
           className="h-full rounded"
-          style={{ width: `${pct}%`, background: "var(--accent-cyan)" }}
+          style={{
+            width: `${pct}%`,
+            background: "var(--accent-cyan)",
+            opacity: confidence !== undefined ? confidence : 1,
+          }}
         />
       </div>
       <span style={{ color: "var(--text-secondary)" }}>
         {value}/{max}
       </span>
+      {confidence !== undefined && confidence < 1 && (
+        <span className="text-[8px]" style={{ color: "var(--text-muted)" }}>
+          {Math.round(confidence * 100)}%
+        </span>
+      )}
     </div>
   );
 }
