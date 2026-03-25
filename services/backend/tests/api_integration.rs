@@ -181,10 +181,9 @@ async fn area_data_rejects_missing_layers() {
 // ============================================================
 
 #[tokio::test]
-async fn score_returns_components_for_tokyo_station() {
+async fn score_returns_tls_for_tokyo_station() {
     require_db!(server);
 
-    // Tokyo Station coordinates (within seed data area)
     let resp = server
         .get("/api/score")
         .add_query_param("lat", "35.681")
@@ -194,12 +193,32 @@ async fn score_returns_components_for_tokyo_station() {
     resp.assert_status_ok();
 
     let body: Value = resp.json();
-    assert!(body["score"].is_number(), "score should be numeric");
-    assert!(body["components"]["trend"].is_object());
-    assert!(body["components"]["risk"].is_object());
-    assert!(body["components"]["access"].is_object());
-    assert!(body["components"]["yield_potential"].is_object());
-    assert!(body["metadata"]["disclaimer"].is_string());
+    // Location echo
+    assert!(body["location"]["lat"].is_number(), "location.lat");
+    assert!(body["location"]["lng"].is_number(), "location.lng");
+    // TLS summary
+    assert!(body["tls"]["score"].is_number(), "tls.score");
+    assert!(body["tls"]["grade"].is_string(), "tls.grade");
+    assert!(body["tls"]["label"].is_string(), "tls.label");
+    // Axes use `sub` (not `sub_scores`)
+    assert!(
+        body["axes"]["disaster"]["sub"].is_array(),
+        "axes.disaster.sub"
+    );
+    assert!(
+        body["axes"]["disaster"]["confidence"].is_number(),
+        "confidence"
+    );
+    // Metadata
+    assert!(
+        body["metadata"]["weight_preset"].is_string(),
+        "weight_preset in metadata"
+    );
+    assert!(
+        body["metadata"]["calculated_at"].is_string(),
+        "calculated_at"
+    );
+    assert!(body["metadata"]["disclaimer"].is_string(), "disclaimer");
 }
 
 // ============================================================

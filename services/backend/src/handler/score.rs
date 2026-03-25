@@ -31,5 +31,5 @@ pub async fn get_score(
         grade = output.grade.as_str(),
         "TLS score computed"
     );
-    Ok(Json(TlsResponse::from(output)))
+    Ok(Json(TlsResponse::new(coord.lat(), coord.lng(), output)))
 }
