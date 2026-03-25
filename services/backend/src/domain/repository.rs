@@ -20,26 +20,6 @@ pub trait AreaRepository: Send + Sync {
     async fn find_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
 }
 
-// ─── Score ───────────────────────────────────────────
-
-#[async_trait]
-pub trait ScoreRepository: Send + Sync {
-    /// Multi-year prices near the given coordinate (nearest address within 1km).
-    async fn find_nearest_prices(&self, coord: &Coord) -> Result<Vec<PriceRecord>, DomainError>;
-
-    /// Flood risk overlap ratio (0.0–1.0) within 500m buffer.
-    async fn calc_flood_overlap(&self, coord: &Coord) -> Result<f64, DomainError>;
-
-    /// Whether steep slope hazard exists within 500m.
-    async fn has_steep_slope_nearby(&self, coord: &Coord) -> Result<bool, DomainError>;
-
-    /// School count + nearest distance (m) within 1km.
-    async fn count_schools_nearby(&self, coord: &Coord) -> Result<(i64, f64), DomainError>;
-
-    /// Medical facility count + nearest distance (m) within 1km.
-    async fn count_medical_nearby(&self, coord: &Coord) -> Result<(i64, f64), DomainError>;
-}
-
 // ─── Stats ───────────────────────────────────────────
 
 #[async_trait]

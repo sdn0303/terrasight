@@ -170,29 +170,6 @@ impl LayerType {
     }
 }
 
-/// Investment score: 4 components each 0–25, total 0–100.
-#[derive(Debug, Clone)]
-pub struct InvestmentScore {
-    pub trend: ScoreComponent,
-    pub risk: ScoreComponent,
-    pub access: ScoreComponent,
-    pub yield_potential: ScoreComponent,
-    pub data_freshness: String,
-}
-
-impl InvestmentScore {
-    pub fn total(&self) -> f64 {
-        self.trend.value + self.risk.value + self.access.value + self.yield_potential.value
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ScoreComponent {
-    pub value: f64,
-    pub max: f64,
-    pub detail: serde_json::Value,
-}
-
 /// Trend analysis result produced by the usecase layer.
 #[derive(Debug, Clone)]
 pub struct TrendAnalysis {
