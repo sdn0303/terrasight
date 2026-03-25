@@ -48,6 +48,12 @@ cd services/frontend && pnpm install && pnpm tsc --noEmit && pnpm biome check . 
 - **WASM は O(n log n) 以上が対象**: 単純 O(n) ループ（加減算・オブジェクト生成）は JS で十分高速。WASM の FFI シリアライズコストが計算コストを上回る場合が多い
 - **リクエスト削減 > 計算高速化**: パフォーマンス問題の大半は「計算が遅い」ではなく「不要な処理が多すぎる」。まずリクエスト数・レンダリング回数を疑う
 
+## API Contract Rules
+
+- **Frontend Zod schema is source of truth**: Backend の Serialize DTO を実装する際は、対応する Zod スキーマのフィールド名・構造・ネスト位置を正確に一致させる。フロントとバックエンドを同時実装する場合でも、Zod スキーマを先に確定させてからバックエンド DTO を合わせる
+- **Zod `z.record()` は null を拒否**: Backend で optional/unavailable なオブジェクトフィールドは `json!(null)` ではなく `json!({})` を返す。`z.record(z.string(), z.unknown())` は object のみ受理し、null で Zod parse エラーになる
+- **Integration test で API contract を検証**: 新しい API レスポンス形式を実装したら、integration test でフィールドパス（`body["tls"]["label"]` 等）を明示的に assert する。Frontend Zod スキーマと同じフィールド名を検証すること
+
 ## Anti-patterns (MUST avoid)
 
 - Secrets in source code, Docker ENV, or CI logs
@@ -59,6 +65,8 @@ cd services/frontend && pnpm install && pnpm tsc --noEmit && pnpm biome check . 
 - 3+ table JOINs without `EXPLAIN ANALYZE`
 - `ubuntu-latest` in GitHub Actions (pin `ubuntu-24.04`)
 - Floating action tags in CI (pin to full SHA)
+- Backend DTO で `#[serde(rename)]` と Frontend Zod フィールド名のズレ放置（実装直後に integration test で検証する）
+- レガシーコードの `#[allow(dead_code)]` 温存（新実装が動作確認できたら即削除。並行存在はコードベースのノイズになる）
 
 ## Detailed Rules
 
