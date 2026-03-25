@@ -133,6 +133,7 @@ export const TlsResponse = z.object({
     ground_safety: z.number(),
   }),
   metadata: z.object({
+    calculated_at: z.string(),
     weight_preset: z.string(),
     data_freshness: z.string(),
     disclaimer: z.string(),

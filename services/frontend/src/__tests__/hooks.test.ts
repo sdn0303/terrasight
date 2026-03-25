@@ -72,6 +72,7 @@ const SCORE_FIXTURE = {
     ground_safety: 0.9,
   },
   metadata: {
+    calculated_at: "2026-03-25T10:00:00Z",
     weight_preset: "default",
     data_freshness: "2024",
     disclaimer: "本スコアは参考値です。",
