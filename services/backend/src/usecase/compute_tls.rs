@@ -230,7 +230,7 @@ impl ComputeTlsUsecase {
                             id: "transit",
                             score: l_transit,
                             available: transit_avail,
-                            detail: json!(null),
+                            detail: json!({}),
                         },
                         SubScoreOutput {
                             id: "education",
@@ -263,7 +263,7 @@ impl ComputeTlsUsecase {
                             id: "population",
                             score: p_pop,
                             available: pop_avail,
-                            detail: json!(null),
+                            detail: json!({}),
                         },
                         SubScoreOutput {
                             id: "price_trend",
