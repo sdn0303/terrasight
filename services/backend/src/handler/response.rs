@@ -3,7 +3,9 @@ use serde::Serialize;
 
 use crate::domain::constants::SCORE_DISCLAIMER;
 use crate::domain::entity::*;
+use crate::domain::scoring::tls::{CrossAnalysis, WeightPreset};
 use crate::domain::value_object::*;
+use crate::usecase::compute_tls::{AxesOutput, AxisOutput, SubScoreOutput, TlsOutput};
 
 pub use realestate_api_core::response::{FeatureCollectionDto, FeatureDto};
 
@@ -216,6 +218,120 @@ impl LayerResponseDto {
             truncated,
             count,
             limit,
+        }
+    }
+}
+
+// ─── TLS Response ─────────────────────────────────────────────────────────────
+
+/// Response for `GET /api/score` (TLS system).
+#[derive(Debug, Serialize)]
+pub struct TlsResponse {
+    pub tls: TlsSummaryDto,
+    pub axes: AxesDto,
+    pub cross_analysis: CrossAnalysisDto,
+    pub metadata: TlsMetadataDto,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TlsSummaryDto {
+    pub score: f64,
+    pub grade: &'static str,
+    pub grade_label: &'static str,
+    pub weight_preset: WeightPreset,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AxesDto {
+    pub disaster: AxisDto,
+    pub terrain: AxisDto,
+    pub livability: AxisDto,
+    pub future: AxisDto,
+    pub price: AxisDto,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AxisDto {
+    pub score: f64,
+    pub weight: f64,
+    pub confidence: f64,
+    pub sub_scores: Vec<SubScoreDto>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SubScoreDto {
+    pub id: &'static str,
+    pub score: f64,
+    pub available: bool,
+    pub detail: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CrossAnalysisDto {
+    pub value_discovery: f64,
+    pub demand_signal: f64,
+    pub ground_safety: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TlsMetadataDto {
+    pub calculated_at: String,
+    pub data_freshness: String,
+    pub disclaimer: String,
+}
+
+fn axis_to_dto(axis: AxisOutput) -> AxisDto {
+    AxisDto {
+        score: axis.score,
+        weight: axis.weight,
+        confidence: axis.confidence,
+        sub_scores: axis.sub_scores.into_iter().map(sub_score_to_dto).collect(),
+    }
+}
+
+fn sub_score_to_dto(s: SubScoreOutput) -> SubScoreDto {
+    SubScoreDto {
+        id: s.id,
+        score: s.score,
+        available: s.available,
+        detail: s.detail,
+    }
+}
+
+fn axes_to_dto(axes: AxesOutput) -> AxesDto {
+    AxesDto {
+        disaster: axis_to_dto(axes.disaster),
+        terrain: axis_to_dto(axes.terrain),
+        livability: axis_to_dto(axes.livability),
+        future: axis_to_dto(axes.future),
+        price: axis_to_dto(axes.price),
+    }
+}
+
+fn cross_analysis_to_dto(ca: CrossAnalysis) -> CrossAnalysisDto {
+    CrossAnalysisDto {
+        value_discovery: ca.value_discovery,
+        demand_signal: ca.demand_signal,
+        ground_safety: ca.ground_safety,
+    }
+}
+
+impl From<TlsOutput> for TlsResponse {
+    fn from(t: TlsOutput) -> Self {
+        Self {
+            tls: TlsSummaryDto {
+                score: t.score,
+                grade: t.grade.as_str(),
+                grade_label: t.grade.label(),
+                weight_preset: t.weight_preset,
+            },
+            axes: axes_to_dto(t.axes),
+            cross_analysis: cross_analysis_to_dto(t.cross_analysis),
+            metadata: TlsMetadataDto {
+                calculated_at: chrono::Utc::now().to_rfc3339(),
+                data_freshness: t.data_freshness,
+                disclaimer: SCORE_DISCLAIMER.to_string(),
+            },
         }
     }
 }

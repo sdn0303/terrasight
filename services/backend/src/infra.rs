@@ -3,6 +3,7 @@ pub mod pg_health_repository;
 pub mod pg_land_price_repository;
 pub mod pg_score_repository;
 pub mod pg_stats_repository;
+pub mod pg_tls_repository;
 pub mod pg_trend_repository;
 pub mod reinfolib_mock;
 

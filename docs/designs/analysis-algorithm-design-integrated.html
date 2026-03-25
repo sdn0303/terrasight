@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不動産総合分析アルゴリズム設計書 v1.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0d0d1a;
+    --bg2: #141428;
+    --bg3: #1a1a35;
+    --card: #1e1e3a;
+    --border: #2a2a50;
+    --text: #e0e0f0;
+    --text2: #a0a0c0;
+    --text3: #707090;
+    --accent: #7c6cf0;
+    --accent2: #a09cf0;
+    --green: #10b981;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --teal: #14b8a6;
+    --blue: #3b82f6;
+    --coral: #f97316;
+    --pink: #ec4899;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.8;
+    padding: 0;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  /* ─── Header ─── */
+  .doc-header {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 60px;
+  }
+  .doc-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .doc-header .subtitle {
+    font-size: 16px;
+    color: var(--text2);
+    font-weight: 300;
+  }
+  .doc-header .meta {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    font-size: 13px;
+    color: var(--text3);
+  }
+  .doc-header .meta span { display: flex; align-items: center; gap: 6px; }
+  .doc-header .meta .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ─── TOC ─── */
+  .toc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 60px;
+  }
+  .toc h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 16px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    columns: 2;
+    column-gap: 32px;
+  }
+  .toc li {
+    counter-increment: toc;
+    padding: 6px 0;
+    font-size: 14px;
+    break-inside: avoid;
+  }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero) " ";
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    margin-right: 8px;
+  }
+  .toc a { color: var(--text2); text-decoration: none; }
+  .toc a:hover { color: var(--accent2); }
+
+  /* ─── Sections ─── */
+  section { margin-bottom: 64px; }
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    background: rgba(124,108,240,0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 500;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 20px 0 8px;
+    color: var(--text2);
+  }
+  p { margin-bottom: 16px; color: var(--text2); }
+  strong { color: var(--text); font-weight: 500; }
+
+  /* ─── Diagram container ─── */
+  .diagram-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 32px 0;
+    overflow-x: auto;
+  }
+  .diagram-wrap .caption {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text3);
+    margin-top: 16px;
+    font-style: italic;
+  }
+  .diagram-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  /* ─── Tables ─── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--bg3);
+    color: var(--text2);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td { color: var(--text2); }
+  tr:hover td { background: rgba(124,108,240,0.03); }
+  td code {
+    background: var(--bg3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+  }
+
+  /* ─── Status badges ─── */
+  .ok { color: var(--green); }
+  .ng { color: var(--red); }
+  .warn { color: var(--amber); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+
+  /* ─── Code blocks ─── */
+  pre {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text2);
+  }
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .kw { color: var(--accent2); }
+  .cm { color: var(--text3); }
+  .fn { color: var(--teal); }
+  .num { color: var(--coral); }
+
+  /* ─── Formula box ─── */
+  .formula {
+    background: rgba(124,108,240,0.06);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--accent2);
+    line-height: 1.8;
+  }
+
+  /* ─── Callout ─── */
+  .callout {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 16px 0 24px;
+  }
+  .callout.green { border-left: 3px solid var(--green); }
+  .callout.amber { border-left: 3px solid var(--amber); }
+  .callout.red { border-left: 3px solid var(--red); }
+  .callout .label {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .callout.green .label { color: var(--green); }
+  .callout.amber .label { color: var(--amber); }
+  .callout.red .label { color: var(--red); }
+
+  /* ─── Score axis cards ─── */
+  .axis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .axis-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    border-top: 3px solid;
+  }
+  .axis-card h4 { margin: 0 0 4px; color: var(--text); font-size: 15px; }
+  .axis-card .weight { font-size: 13px; font-weight: 500; }
+  .axis-card .desc { font-size: 13px; color: var(--text3); margin-top: 8px; }
+  .axis-card.disaster { border-top-color: var(--red); }
+  .axis-card.disaster .weight { color: var(--red); }
+  .axis-card.terrain { border-top-color: var(--amber); }
+  .axis-card.terrain .weight { color: var(--amber); }
+  .axis-card.livability { border-top-color: var(--teal); }
+  .axis-card.livability .weight { color: var(--teal); }
+  .axis-card.future { border-top-color: var(--blue); }
+  .axis-card.future .weight { color: var(--blue); }
+  .axis-card.price { border-top-color: var(--green); }
+  .axis-card.price .weight { color: var(--green); }
+
+  /* ─── Phase timeline ─── */
+  .phase-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .phase-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+  }
+  .phase-card .phase-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 4px;
+  }
+  .phase-card h4 { margin: 0 0 6px; font-size: 15px; }
+  .phase-card .days { font-size: 12px; color: var(--text3); margin-bottom: 10px; }
+  .phase-card ul { list-style: none; padding: 0; }
+  .phase-card li { font-size: 13px; color: var(--text2); padding: 3px 0; padding-left: 16px; position: relative; }
+  .phase-card li::before { content: "›"; position: absolute; left: 0; color: var(--accent); }
+
+  /* ─── JSON response ─── */
+  .json-block {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text2);
+    margin: 16px 0 24px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .json-block .key { color: var(--accent2); }
+  .json-block .str { color: var(--teal); }
+  .json-block .num { color: var(--coral); }
+
+  /* ─── Footer ─── */
+  .doc-footer {
+    margin-top: 80px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  @media (max-width: 700px) {
+    .page { padding: 32px 20px; }
+    .toc ol { columns: 1; }
+    .axis-grid { grid-template-columns: 1fr; }
+    .phase-row { grid-template-columns: 1fr; }
+    .doc-header .meta { flex-direction: column; gap: 8px; }
+  }
+
+  @media print {
+    body { background: #fff; color: #222; }
+    .page { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════════════════════════════════ HEADER ═══════════════════════════════════════════ -->
+<header class="doc-header">
+  <h1>不動産総合分析アルゴリズム設計書</h1>
+  <p class="subtitle">5-Axis Location Scoring for Tokyo 23 Wards — Algorithm Design Specification v1.0</p>
+  <div class="meta">
+    <span><span class="dot" style="background:var(--green)"></span> 作成日: 2026-03-25</span>
+    <span><span class="dot" style="background:var(--accent)"></span> データ: 22 datasets / 6.3 GB</span>
+    <span><span class="dot" style="background:var(--teal)"></span> API稼働率: 6/19 layers (32%)</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════ TOC ═══════════════════════════════════════════ -->
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#framework">分析フレームワーク概観</a></li>
+    <li><a href="#status">現状アセスメント（実機調査結果）</a></li>
+    <li><a href="#tls">総合ロケーションスコア (TLS) 設計</a></li>
+    <li><a href="#s1">軸1: 災害リスクスコア (S1)</a></li>
+    <li><a href="#s2">軸2: 地盤・地形スコア (S2)</a></li>
+    <li><a href="#s3">軸3: 生活利便性スコア (S3)</a></li>
+    <li><a href="#s4">軸4: 将来性スコア (S4)</a></li>
+    <li><a href="#s5">軸5: 価格分析スコア (S5)</a></li>
+    <li><a href="#cross">クロス分析パターン</a></li>
+    <li><a href="#api">API 設計</a></li>
+    <li><a href="#roadmap">実装ロードマップ</a></li>
+    <li><a href="#sql">データ投入テンプレート</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════ 01 FRAMEWORK ═══════════════════════════════════════════ -->
+<section id="framework">
+  <h2><span class="num">01</span> 分析フレームワーク概観</h2>
+  <p>22種の公的データセット（国土数値情報、J-SHIS、東京都建設局、MLIT取引価格等）を5つの分析軸に分類し、地価公示ポイントごとに総合ロケーションスコア (TLS: 0-100) を算出する。</p>
+
+  <div class="diagram-wrap">
+<svg width="100%" viewBox="0 0 680 920" xmlns="http://www.w3.org/2000/svg">
+<style>
+  .th { font-size: 14px; font-weight: 500; fill: #e0e0f0; }
+  .ts { font-size: 12px; fill: #a0a0c0; }
+  .c-purple rect { fill: #1a1530; stroke: #534AB7; } .c-purple text.th { fill: #AFA9EC; } .c-purple text.ts { fill: #CECBF6; }
+  .c-red rect { fill: #2a1010; stroke: #A32D2D; } .c-red text.th { fill: #F09595; } .c-red text.ts { fill: #F7C1C1; }
+  .c-amber rect { fill: #2a1c08; stroke: #BA7517; } .c-amber text.th { fill: #EF9F27; } .c-amber text.ts { fill: #FAC775; }
+  .c-coral rect { fill: #2a1208; stroke: #993C1D; } .c-coral text.th { fill: #F0997B; } .c-coral text.ts { fill: #F5C4B3; }
+  .c-teal rect { fill: #042a20; stroke: #0F6E56; } .c-teal text.th { fill: #5DCAA5; } .c-teal text.ts { fill: #9FE1CB; }
+  .c-blue rect { fill: #0a1a30; stroke: #185FA5; } .c-blue text.th { fill: #85B7EB; } .c-blue text.ts { fill: #B5D4F4; }
+  .c-green rect { fill: #0a3020; stroke: #1D9E75; } .c-green text.th { fill: #5DCAA5; } .c-green text.ts { fill: #9FE1CB; }
+  .c-gray rect { fill: #22222a; stroke: #5F5E5A; } .c-gray text.th { fill: #B4B2A9; } .c-gray text.ts { fill: #D3D1C7; }
+  .arr { stroke: #666680; stroke-width: 1.5; } line[marker-end] { fill: none; }
+</style>
+<defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text class="th" x="340" y="30" text-anchor="middle">Total location score</text>
+<text class="ts" x="340" y="48" text-anchor="middle">5 axes weighted composite</text>
+<g class="c-purple"><rect x="240" y="62" width="200" height="48" rx="12" stroke-width="0.5"/><text class="th" x="340" y="86" text-anchor="middle" dominant-baseline="central">Total location score</text></g>
+<line x1="260" y1="110" x2="110" y2="170" class="arr" marker-end="url(#a1)"/><line x1="310" y1="110" x2="245" y2="170" class="arr" marker-end="url(#a1)"/><line x1="340" y1="110" x2="340" y2="170" class="arr" marker-end="url(#a1)"/><line x1="370" y1="110" x2="435" y2="170" class="arr" marker-end="url(#a1)"/><line x1="420" y1="110" x2="570" y2="170" class="arr" marker-end="url(#a1)"/>
+<g class="c-red"><rect x="40" y="170" width="140" height="56" rx="8" stroke-width="0.5"/><text class="th" x="110" y="190" text-anchor="middle" dominant-baseline="central">Disaster risk</text><text class="ts" x="110" y="210" text-anchor="middle" dominant-baseline="central">Weight: 25%</text></g>
+<g class="c-coral"><rect x="20" y="250" width="76" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="58" y="268" text-anchor="middle" dominant-baseline="central">Flood A31b</text></g><g class="c-coral"><rect x="102" y="250" width="76" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="140" y="268" text-anchor="middle" dominant-baseline="central">Seismic</text></g><g class="c-coral"><rect x="20" y="292" width="76" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="58" y="310" text-anchor="middle" dominant-baseline="central">Liquefac.</text></g><g class="c-coral"><rect x="102" y="292" width="76" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="140" y="310" text-anchor="middle" dominant-baseline="central">Tsunami</text></g><g class="c-coral"><rect x="60" y="334" width="80" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="100" y="352" text-anchor="middle" dominant-baseline="central">Landslide</text></g>
+<line x1="58" y1="226" x2="58" y2="248" class="arr" marker-end="url(#a1)"/><line x1="140" y1="226" x2="140" y2="248" class="arr" marker-end="url(#a1)"/>
+<g class="c-amber"><rect x="185" y="170" width="120" height="56" rx="8" stroke-width="0.5"/><text class="th" x="245" y="190" text-anchor="middle" dominant-baseline="central">Terrain</text><text class="ts" x="245" y="210" text-anchor="middle" dominant-baseline="central">Weight: 15%</text></g>
+<g class="c-amber"><rect x="185" y="250" width="120" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="245" y="268" text-anchor="middle" dominant-baseline="central">AVS30 (J-SHIS)</text></g><g class="c-amber"><rect x="185" y="292" width="120" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="245" y="310" text-anchor="middle" dominant-baseline="central">Landform class</text></g><g class="c-amber"><rect x="185" y="334" width="120" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="245" y="352" text-anchor="middle" dominant-baseline="central">Geology / Soil</text></g>
+<g class="c-teal"><rect x="310" y="170" width="120" height="56" rx="8" stroke-width="0.5"/><text class="th" x="370" y="190" text-anchor="middle" dominant-baseline="central">Livability</text><text class="ts" x="370" y="210" text-anchor="middle" dominant-baseline="central">Weight: 25%</text></g>
+<g class="c-teal"><rect x="316" y="250" width="108" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="370" y="268" text-anchor="middle" dominant-baseline="central">Stations S12</text></g><g class="c-teal"><rect x="316" y="292" width="108" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="370" y="310" text-anchor="middle" dominant-baseline="central">Schools P29</text></g><g class="c-teal"><rect x="316" y="334" width="108" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="370" y="352" text-anchor="middle" dominant-baseline="central">Medical P04</text></g>
+<g class="c-blue"><rect x="435" y="170" width="120" height="56" rx="8" stroke-width="0.5"/><text class="th" x="495" y="190" text-anchor="middle" dominant-baseline="central">Future potential</text><text class="ts" x="495" y="210" text-anchor="middle" dominant-baseline="central">Weight: 15%</text></g>
+<g class="c-blue"><rect x="440" y="250" width="110" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="495" y="268" text-anchor="middle" dominant-baseline="central">Pop. mesh 500m</text></g><g class="c-blue"><rect x="440" y="292" width="110" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="495" y="310" text-anchor="middle" dominant-baseline="central">Ridership trend</text></g><g class="c-blue"><rect x="440" y="334" width="110" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="495" y="352" text-anchor="middle" dominant-baseline="central">Zoning A29</text></g>
+<g class="c-green"><rect x="560" y="170" width="110" height="56" rx="8" stroke-width="0.5"/><text class="th" x="615" y="190" text-anchor="middle" dominant-baseline="central">Price analysis</text><text class="ts" x="615" y="210" text-anchor="middle" dominant-baseline="central">Weight: 20%</text></g>
+<g class="c-green"><rect x="558" y="250" width="114" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="615" y="268" text-anchor="middle" dominant-baseline="central">Land price L01</text></g><g class="c-green"><rect x="558" y="292" width="114" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="615" y="310" text-anchor="middle" dominant-baseline="central">Transactions CSV</text></g><g class="c-green"><rect x="558" y="334" width="114" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="615" y="352" text-anchor="middle" dominant-baseline="central">Price mesh L03-b</text></g>
+<line x1="40" y1="400" x2="640" y2="400" stroke="#444460" stroke-width="0.5" stroke-dasharray="4 4"/>
+<text class="th" x="340" y="430" text-anchor="middle">Analysis outputs</text>
+<g class="c-purple"><rect x="40" y="450" width="180" height="56" rx="8" stroke-width="0.5"/><text class="th" x="130" y="470" text-anchor="middle" dominant-baseline="central">Location scorecard</text><text class="ts" x="130" y="490" text-anchor="middle" dominant-baseline="central">Per-point 0-100 score</text></g>
+<g class="c-teal"><rect x="250" y="450" width="180" height="56" rx="8" stroke-width="0.5"/><text class="th" x="340" y="470" text-anchor="middle" dominant-baseline="central">Comparative heatmap</text><text class="ts" x="340" y="490" text-anchor="middle" dominant-baseline="central">Ward-level ranking</text></g>
+<g class="c-blue"><rect x="460" y="450" width="180" height="56" rx="8" stroke-width="0.5"/><text class="th" x="550" y="470" text-anchor="middle" dominant-baseline="central">Time-series trends</text><text class="ts" x="550" y="490" text-anchor="middle" dominant-baseline="central">20yr land price + pop</text></g>
+<line x1="40" y1="540" x2="640" y2="540" stroke="#444460" stroke-width="0.5" stroke-dasharray="4 4"/>
+<text class="th" x="340" y="570" text-anchor="middle">Data readiness (22 datasets / 6.3 GB)</text>
+<g class="c-green"><rect x="40" y="590" width="290" height="180" rx="10" stroke-width="0.5"/><text class="th" x="185" y="614" text-anchor="middle">Ready to use (16 datasets)</text></g>
+<text class="ts" x="56" y="640">L01 land prices (20yr)</text><text class="ts" x="56" y="658">A29 zoning, A31b flood, A33 landslide</text><text class="ts" x="56" y="676">A47 steep slope, A40 tsunami</text><text class="ts" x="56" y="694">P29 schools, P04 medical</text><text class="ts" x="56" y="712">N02 railway, S12 ridership (13yr)</text><text class="ts" x="56" y="730">500m pop mesh, J-SHIS seismic</text><text class="ts" x="56" y="748">PL liquefaction, transactions CSV</text>
+<g class="c-amber"><rect x="350" y="590" width="290" height="100" rx="10" stroke-width="0.5"/><text class="th" x="495" y="614" text-anchor="middle">Needs conversion / API</text></g>
+<text class="ts" x="366" y="640">PL分布図: SHP → GeoJSON conversion</text><text class="ts" x="366" y="658">Landform, geology, soil: format TBD</text><text class="ts" x="366" y="676">reinfolib API: key pending</text>
+<g class="c-red"><rect x="350" y="700" width="290" height="70" rx="10" stroke-width="0.5"/><text class="th" x="495" y="724" text-anchor="middle">Not available yet</text></g>
+<text class="ts" x="366" y="748">Crime rate, commercial facilities, climate</text>
+<text class="th" x="340" y="850" text-anchor="middle">Key cross-analysis patterns</text>
+<g class="c-gray"><rect x="40" y="865" width="190" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="135" y="883" text-anchor="middle" dominant-baseline="central">Disaster × Price = Value</text></g>
+<g class="c-gray"><rect x="245" y="865" width="190" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="340" y="883" text-anchor="middle" dominant-baseline="central">Livability × Pop = Demand</text></g>
+<g class="c-gray"><rect x="450" y="865" width="190" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="545" y="883" text-anchor="middle" dominant-baseline="central">Terrain × Disaster = Ground</text></g>
+</svg>
+    <p class="caption">Figure 1 — 5軸スコアリングフレームワークとデータ準備状況</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 02 STATUS ═══════════════════════════════════════════ -->
+<section id="status">
+  <h2><span class="num">02</span> 現状アセスメント（実機調査結果）</h2>
+  <p>localhost:3001 (Next.js) + localhost:8000 (Backend API) の稼働中モックを実機調査した結果。</p>
+
+  <div class="diagram-wrap">
+<svg width="100%" viewBox="0 0 680 780" xmlns="http://www.w3.org/2000/svg">
+<style>
+  .th { font-size: 14px; font-weight: 500; fill: #e0e0f0; }
+  .ts { font-size: 12px; fill: #a0a0c0; }
+  .c-green rect { fill: #0a3020; stroke: #1D9E75; } .c-green text.th { fill: #5DCAA5; } .c-green text.ts { fill: #9FE1CB; }
+  .c-red rect { fill: #2a1010; stroke: #A32D2D; } .c-red text.th { fill: #F09595; } .c-red text.ts { fill: #F7C1C1; }
+  .c-amber rect { fill: #2a1c08; stroke: #BA7517; } .c-amber text.th { fill: #EF9F27; } .c-amber text.ts { fill: #FAC775; }
+  .c-coral rect { fill: #2a1208; stroke: #993C1D; } .c-coral text.th { fill: #F0997B; } .c-coral text.ts { fill: #F5C4B3; }
+  .c-teal rect { fill: #042a20; stroke: #0F6E56; } .c-teal text.th { fill: #5DCAA5; } .c-teal text.ts { fill: #9FE1CB; }
+  .c-blue rect { fill: #0a1a30; stroke: #185FA5; } .c-blue text.th { fill: #85B7EB; } .c-blue text.ts { fill: #B5D4F4; }
+  .c-purple rect { fill: #1a1530; stroke: #534AB7; } .c-purple text.th { fill: #AFA9EC; } .c-purple text.ts { fill: #CECBF6; }
+  .c-gray rect { fill: #22222a; stroke: #5F5E5A; } .c-gray text.th { fill: #B4B2A9; } .c-gray text.ts { fill: #D3D1C7; }
+  .arr { stroke: #666680; stroke-width: 1.5; } line[marker-end] { fill: none; }
+</style>
+<defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text class="th" x="340" y="28" text-anchor="middle">Backend API layer status → scoring axes</text>
+<g class="c-green"><rect x="40" y="44" width="12" height="12" rx="2" stroke-width="0.5"/></g><text class="ts" x="58" y="54">200 OK (data flowing)</text>
+<g class="c-red"><rect x="200" y="44" width="12" height="12" rx="2" stroke-width="0.5"/></g><text class="ts" x="218" y="54">400 (not implemented)</text>
+<g class="c-amber"><rect x="370" y="44" width="12" height="12" rx="2" stroke-width="0.5"/></g><text class="ts" x="388" y="54">File exists, needs PostGIS import</text>
+<text class="th" x="120" y="82">Backend layers (19)</text>
+<g class="c-green"><rect x="20" y="94" width="110" height="28" rx="4" stroke-width="0.5"/><text class="ts" x="75" y="108" text-anchor="middle" dominant-baseline="central">landprice 974</text></g>
+<g class="c-green"><rect x="136" y="94" width="110" height="28" rx="4" stroke-width="0.5"/><text class="ts" x="191" y="108" text-anchor="middle" dominant-baseline="central">zoning 6,389</text></g>
+<g class="c-green"><rect x="20" y="126" width="110" height="28" rx="4" stroke-width="0.5"/><text class="ts" x="75" y="140" text-anchor="middle" dominant-baseline="central">flood 32,691</text></g>
+<g class="c-green"><rect x="136" y="126" width="110" height="28" rx="4" stroke-width="0.5"/><text class="ts" x="191" y="140" text-anchor="middle" dominant-baseline="central">schools 1,798</text></g>
+<g class="c-green"><rect x="20" y="158" width="110" height="28" rx="4" stroke-width="0.5"/><text class="ts" x="75" y="172" text-anchor="middle" dominant-baseline="central">medical 12,507</text></g>
+<g class="c-green"><rect x="136" y="158" width="110" height="28" rx="4" stroke-width="0.5"/><text class="ts" x="191" y="172" text-anchor="middle" dominant-baseline="central">steep_slope 2</text></g>
+<g class="c-red"><rect x="20" y="194" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="56" y="206" text-anchor="middle" dominant-baseline="central">seismic</text></g><g class="c-red"><rect x="96" y="194" width="76" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="134" y="206" text-anchor="middle" dominant-baseline="central">liquefac.</text></g><g class="c-red"><rect x="176" y="194" width="70" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="211" y="206" text-anchor="middle" dominant-baseline="central">tsunami</text></g>
+<g class="c-red"><rect x="20" y="222" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="56" y="234" text-anchor="middle" dominant-baseline="central">landslide</text></g><g class="c-red"><rect x="96" y="222" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="132" y="234" text-anchor="middle" dominant-baseline="central">stations</text></g><g class="c-red"><rect x="172" y="222" width="74" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="209" y="234" text-anchor="middle" dominant-baseline="central">populat.</text></g>
+<g class="c-red"><rect x="20" y="250" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="56" y="262" text-anchor="middle" dominant-baseline="central">landform</text></g><g class="c-red"><rect x="96" y="250" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="132" y="262" text-anchor="middle" dominant-baseline="central">geology</text></g><g class="c-red"><rect x="172" y="250" width="74" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="209" y="262" text-anchor="middle" dominant-baseline="central">railway</text></g>
+<g class="c-red"><rect x="20" y="278" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="56" y="290" text-anchor="middle" dominant-baseline="central">soil</text></g><g class="c-red"><rect x="96" y="278" width="72" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="132" y="290" text-anchor="middle" dominant-baseline="central">volcano</text></g><g class="c-red"><rect x="172" y="278" width="74" height="24" rx="4" stroke-width="0.5"/><text class="ts" x="209" y="290" text-anchor="middle" dominant-baseline="central">fault</text></g>
+<text class="th" x="490" y="82">5-axis scoring</text>
+<g class="c-coral"><rect x="380" y="94" width="260" height="52" rx="8" stroke-width="0.5"/><text class="th" x="406" y="112" dominant-baseline="central">S1 Disaster risk</text><text class="ts" x="406" y="132" dominant-baseline="central">flood + liq + seismic + tsunami + landslide</text></g>
+<g class="c-amber"><rect x="380" y="154" width="260" height="52" rx="8" stroke-width="0.5"/><text class="th" x="406" y="172" dominant-baseline="central">S2 Terrain quality</text><text class="ts" x="406" y="192" dominant-baseline="central">AVS30 + landform + geology</text></g>
+<g class="c-teal"><rect x="380" y="214" width="260" height="52" rx="8" stroke-width="0.5"/><text class="th" x="406" y="232" dominant-baseline="central">S3 Livability</text><text class="ts" x="406" y="252" dominant-baseline="central">transit + schools + medical</text></g>
+<g class="c-blue"><rect x="380" y="274" width="260" height="52" rx="8" stroke-width="0.5"/><text class="th" x="406" y="292" dominant-baseline="central">S4 Future potential</text><text class="ts" x="406" y="312" dominant-baseline="central">pop. trend + price CAGR + FAR capacity</text></g>
+<g class="c-green"><rect x="380" y="334" width="260" height="52" rx="8" stroke-width="0.5"/><text class="th" x="406" y="352" dominant-baseline="central">S5 Price analysis</text><text class="ts" x="406" y="372" dominant-baseline="central">relative value + tx volume</text></g>
+<line x1="130" y1="140" x2="378" y2="120" stroke="#F09595" stroke-width="1" marker-end="url(#a2)"/>
+<line x1="246" y1="172" x2="378" y2="130" stroke="#F09595" stroke-width="1" marker-end="url(#a2)"/>
+<line x1="92" y1="206" x2="378" y2="120" stroke="#F09595" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a2)"/>
+<line x1="246" y1="140" x2="378" y2="235" stroke="#5DCAA5" stroke-width="1" marker-end="url(#a2)"/>
+<line x1="130" y1="172" x2="378" y2="240" stroke="#5DCAA5" stroke-width="1" marker-end="url(#a2)"/>
+<line x1="130" y1="108" x2="378" y2="352" stroke="#97C459" stroke-width="1" marker-end="url(#a2)"/>
+<line x1="246" y1="108" x2="378" y2="292" stroke="#85B7EB" stroke-width="0.5" marker-end="url(#a2)"/>
+<line x1="246" y1="108" x2="378" y2="362" stroke="#97C459" stroke-width="0.5" marker-end="url(#a2)"/>
+<line x1="380" y1="400" x2="640" y2="400" stroke="#444460" stroke-width="0.5" stroke-dasharray="4 4"/>
+<g class="c-purple"><rect x="420" y="412" width="200" height="44" rx="10" stroke-width="0.5"/><text class="th" x="520" y="434" text-anchor="middle" dominant-baseline="central">TLS 0-100 (S/A/B/C/D/E)</text></g>
+<line x1="510" y1="386" x2="510" y2="410" stroke="#AFA9EC" stroke-width="1" marker-end="url(#a2)"/><line x1="520" y1="386" x2="520" y2="410" stroke="#AFA9EC" stroke-width="1" marker-end="url(#a2)"/><line x1="530" y1="386" x2="530" y2="410" stroke="#AFA9EC" stroke-width="1" marker-end="url(#a2)"/>
+<line x1="40" y1="480" x2="640" y2="480" stroke="#444460" stroke-width="0.5" stroke-dasharray="4 4"/>
+<text class="th" x="340" y="506" text-anchor="middle">Implementation phases</text>
+<g class="c-green"><rect x="40" y="520" width="190" height="100" rx="8" stroke-width="0.5"/><text class="th" x="135" y="544" text-anchor="middle">Phase 1: MVP score</text><text class="ts" x="135" y="564" text-anchor="middle">1-2 days</text></g><text class="ts" x="56" y="586">Uses 6 working layers</text><text class="ts" x="56" y="604">S1(flood) + S3 + S5</text>
+<g class="c-amber"><rect x="245" y="520" width="190" height="100" rx="8" stroke-width="0.5"/><text class="th" x="340" y="544" text-anchor="middle">Phase 2: Data import</text><text class="ts" x="340" y="564" text-anchor="middle">2-3 days</text></g><text class="ts" x="261" y="586">PostGIS: liq + stations</text><text class="ts" x="261" y="604">+ pop mesh + L01 20yr</text>
+<g class="c-blue"><rect x="450" y="520" width="190" height="100" rx="8" stroke-width="0.5"/><text class="th" x="545" y="544" text-anchor="middle">Phase 3: Full scoring</text><text class="ts" x="545" y="564" text-anchor="middle">1-2 days</text></g><text class="ts" x="466" y="586">J-SHIS API + all 5 axes</text><text class="ts" x="466" y="604">Weight slider UI</text>
+<line x1="232" y1="570" x2="243" y2="570" class="arr" marker-end="url(#a2)"/><line x1="437" y1="570" x2="448" y2="570" class="arr" marker-end="url(#a2)"/>
+<g class="c-gray"><rect x="40" y="640" width="600" height="120" rx="10" stroke-width="0.5"/><text class="th" x="340" y="666" text-anchor="middle">Key findings from live investigation</text></g>
+<text class="ts" x="56" y="692">6 of 19 layers return data (32%). Flood has 32K+ features — richest dataset.</text><text class="ts" x="56" y="712">PROPERTY INTEL panel already shows sparkline + CAGR — extend with score card.</text><text class="ts" x="56" y="732">DB connected + reinfolib key set. Terrain DEM (S3 elevation) returning 404.</text><text class="ts" x="56" y="752">Phase 1 is buildable today with existing working endpoints.</text>
+</svg>
+    <p class="caption">Figure 2 — バックエンドAPI稼働状況とスコアリング軸への接続マッピング</p>
+  </div>
+
+  <h3>フロントエンド MapLibre 状態</h3>
+  <p>ロード済みソースは zoning (GeoJSON) と land-price-extrusion (GeoJSON) の2つのみ。terrain-dem (raster-dem) は S3 elevation tiles が全て 404 を返している。PROPERTY INTEL パネルは地点クリックで住所・㎡単価・PRICE TREND (sparkline + CAGR) を既に表示しており、スコアカード拡張のベースとして利用可能。</p>
+
+  <div class="callout green">
+    <div class="label">Health endpoint</div>
+    <code>{"status": "ok", "db_connected": true, "reinfolib_key_set": true, "version": "0.1.0"}</code>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 03 TLS ═══════════════════════════════════════════ -->
+<section id="tls">
+  <h2><span class="num">03</span> 総合ロケーションスコア (TLS)</h2>
+  <p>地価公示ポイント（L01）を分析の起点とし、各ポイントに対して空間結合で周辺データを集約する。スコアはすべて 0-100 に正規化し、加重合計で TLS を算出する。全軸「高い = 良い」で統一。</p>
+
+  <div class="formula">
+TLS = 0.25 × S1<sub>災害</sub> + 0.15 × S2<sub>地盤</sub> + 0.25 × S3<sub>利便性</sub> + 0.15 × S4<sub>将来性</sub> + 0.20 × S5<sub>価格</sub>
+  </div>
+
+  <div class="axis-grid">
+    <div class="axis-card disaster"><h4>S1 災害リスク</h4><div class="weight">Weight 25%</div><div class="desc">洪水・液状化・地震・津波・土砂災害の複合評価。min()ペナルティで致命リスクを反映。</div></div>
+    <div class="axis-card terrain"><h4>S2 地盤・地形</h4><div class="weight">Weight 15%</div><div class="desc">AVS30 + 地形分類 + 地質。Phase 1 では AVS30 単独運用。</div></div>
+    <div class="axis-card livability"><h4>S3 生活利便性</h4><div class="weight">Weight 25%</div><div class="desc">トランジット（駅距離×乗降客数）+ 教育 + 医療のアクセシビリティ。</div></div>
+    <div class="axis-card future"><h4>S4 将来性</h4><div class="weight">Weight 15%</div><div class="desc">人口増減率 × 乗降客数トレンド × 容積率余裕。</div></div>
+    <div class="axis-card price"><h4>S5 価格分析</h4><div class="weight">Weight 20%</div><div class="desc">用途地域内偏差値（割安判定）+ 取引活性度。</div></div>
+  </div>
+
+  <h3>グレーディング</h3>
+  <table>
+    <thead><tr><th>TLS</th><th>Grade</th><th>Label</th><th>Color</th></tr></thead>
+    <tbody>
+      <tr><td>85-100</td><td><strong>S</strong></td><td>Excellent</td><td><span style="color:#10b981">■</span> Emerald</td></tr>
+      <tr><td>70-84</td><td><strong>A</strong></td><td>Very Good</td><td><span style="color:#22c55e">■</span> Green</td></tr>
+      <tr><td>55-69</td><td><strong>B</strong></td><td>Good</td><td><span style="color:#eab308">■</span> Yellow</td></tr>
+      <tr><td>40-54</td><td><strong>C</strong></td><td>Fair</td><td><span style="color:#f97316">■</span> Orange</td></tr>
+      <tr><td>25-39</td><td><strong>D</strong></td><td>Below Average</td><td><span style="color:#ef4444">■</span> Red</td></tr>
+      <tr><td>0-24</td><td><strong>E</strong></td><td>Poor</td><td><span style="color:#7f1d1d">■</span> Dark Red</td></tr>
+    </tbody>
+  </table>
+
+  <h3>重みプリセット</h3>
+  <table>
+    <thead><tr><th>プリセット</th><th>災害</th><th>地盤</th><th>利便性</th><th>将来性</th><th>価格</th></tr></thead>
+    <tbody>
+      <tr><td>バランス（デフォルト）</td><td>25%</td><td>15%</td><td>25%</td><td>15%</td><td>20%</td></tr>
+      <tr><td>投資重視</td><td>15%</td><td>10%</td><td>20%</td><td>25%</td><td>30%</td></tr>
+      <tr><td>居住重視</td><td>25%</td><td>15%</td><td>35%</td><td>10%</td><td>15%</td></tr>
+      <tr><td>防災重視</td><td>40%</td><td>25%</td><td>20%</td><td>5%</td><td>10%</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════ 04 S1 ═══════════════════════════════════════════ -->
+<section id="s1">
+  <h2><span class="num">04</span> 軸1: 災害リスクスコア (S1) — <span style="color:var(--red)">Weight 25%</span></h2>
+
+  <h3>入力データ</h3>
+  <table>
+    <thead><tr><th>サブ指標</th><th>データソース</th><th>取得</th><th>API</th><th>結合</th></tr></thead>
+    <tbody>
+      <tr><td>洪水浸水</td><td>A31b (GeoJSON)</td><td class="ok">✅</td><td class="ok">✅ <code>flood</code></td><td>ST_Contains</td></tr>
+      <tr><td>液状化</td><td>PL分布図 (SHP)</td><td class="ok">✅</td><td class="ng">❌ 要実装</td><td>ST_Contains</td></tr>
+      <tr><td>地震30年確率</td><td>J-SHIS API / SHP</td><td class="ok">✅</td><td class="ng">❌ 要実装</td><td>メッシュ結合</td></tr>
+      <tr><td>津波浸水</td><td>A40 (GML)</td><td class="ok">✅</td><td class="ng">❌ 要実装</td><td>ST_Contains</td></tr>
+      <tr><td>土砂災害警戒</td><td>A33 (GeoJSON)</td><td class="ok">✅</td><td class="ng">❌ 要実装</td><td>ST_Contains</td></tr>
+      <tr><td>急傾斜地</td><td>A47 (GML)</td><td class="ok">✅</td><td class="ok">✅ <code>steep_slope</code></td><td>ST_Contains</td></tr>
+    </tbody>
+  </table>
+
+  <h3>サブスコアマッピング</h3>
+  <h4>洪水浸水 (F_flood)</h4>
+  <table>
+    <thead><tr><th>depth_rank</th><th>浸水深</th><th>F_flood</th></tr></thead>
+    <tbody>
+      <tr><td>該当なし</td><td>0m</td><td>100</td></tr>
+      <tr><td>1</td><td>0.5m未満</td><td>80</td></tr>
+      <tr><td>2</td><td>0.5-3m</td><td>50</td></tr>
+      <tr><td>3</td><td>3-5m</td><td>20</td></tr>
+      <tr><td>4</td><td>5-10m</td><td>5</td></tr>
+      <tr><td>5</td><td>10m以上</td><td>0</td></tr>
+    </tbody>
+  </table>
+
+  <h4>液状化 (F_liq)</h4>
+  <table>
+    <thead><tr><th>PL値</th><th>意味</th><th>F_liq</th></tr></thead>
+    <tbody>
+      <tr><td>PL = 0</td><td>液状化なし</td><td>100</td></tr>
+      <tr><td>0 &lt; PL ≤ 5</td><td>低い</td><td>80</td></tr>
+      <tr><td>5 &lt; PL ≤ 15</td><td>やや高い</td><td>40</td></tr>
+      <tr><td>PL &gt; 15</td><td>高い</td><td>10</td></tr>
+    </tbody>
+  </table>
+
+  <h4>地震30年確率 (F_seis)</h4>
+  <table>
+    <thead><tr><th>確率</th><th>F_seis</th></tr></thead>
+    <tbody>
+      <tr><td>&lt; 3%</td><td>100</td></tr>
+      <tr><td>3-6%</td><td>75</td></tr>
+      <tr><td>6-26%</td><td>50</td></tr>
+      <tr><td>26-50%</td><td>25</td></tr>
+      <tr><td>&gt; 50%</td><td>5</td></tr>
+    </tbody>
+  </table>
+
+  <h4>津波 (F_tsun) / 土砂災害 (F_land)</h4>
+  <p>津波: 浸水深 0m=100, &lt;0.3m=85, 0.3-1m=60, 1-2m=35, &gt;2m=10。土砂: 該当なし=100, 警戒区域=40, 特別警戒=10。</p>
+
+  <h3>軸1合成式</h3>
+  <div class="formula">
+S1 = min(F_flood, F_liq, F_seis, F_tsun, F_land) × (0.3×F_flood + 0.25×F_liq + 0.25×F_seis + 0.1×F_tsun + 0.1×F_land) / 100
+  </div>
+  <div class="callout amber">
+    <div class="label">設計意図</div>
+    <p style="margin:0">加重平均だけだと「洪水危険だが地震は安全」で中間点に収まる。min() を掛けることで <strong>1つでも深刻なリスクがあれば全体スコアが大幅に下がる</strong> 構造にしている。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 05 S2 ═══════════════════════════════════════════ -->
+<section id="s2">
+  <h2><span class="num">05</span> 軸2: 地盤・地形スコア (S2) — <span style="color:var(--amber)">Weight 15%</span></h2>
+
+  <h4>AVS30 サブスコア (G_avs)</h4>
+  <p>J-SHIS 表層地盤API → AVS30（地表30m平均S波速度）。<code>/map/api/sstrct/V3/meshinfo.geojson?position={lng},{lat}&amp;epsg=4326</code></p>
+  <table>
+    <thead><tr><th>AVS30 (m/s)</th><th>地盤性状</th><th>G_avs</th></tr></thead>
+    <tbody>
+      <tr><td>&gt; 400</td><td>岩盤・堅固</td><td>100</td></tr>
+      <tr><td>300-400</td><td>砂礫・良好</td><td>85</td></tr>
+      <tr><td>200-300</td><td>普通</td><td>60</td></tr>
+      <tr><td>150-200</td><td>やや軟弱</td><td>35</td></tr>
+      <tr><td>&lt; 150</td><td>軟弱</td><td>10</td></tr>
+    </tbody>
+  </table>
+  <div class="formula">S2 = 0.50×G_avs + 0.30×G_form + 0.20×G_geo<br><small style="color:var(--text3)">Phase 1: S2 = G_avs（landform/geology/soil 確認後に拡張）</small></div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 06 S3 ═══════════════════════════════════════════ -->
+<section id="s3">
+  <h2><span class="num">06</span> 軸3: 生活利便性スコア (S3) — <span style="color:var(--teal)">Weight 25%</span></h2>
+
+  <h4>トランジットスコア (L_transit)</h4>
+  <div class="formula">
+nearest_dist = 最寄り駅までの距離(m)<br>
+distance_factor = max(0, 100 − nearest_dist / 8)<br>
+ridership_factor = min(100, log10(best_ridership) × 20)<br>
+multi_line_bonus = (1km以内の路線数 − 1) × 10<br>
+<br>
+L_transit = min(100, distance_factor×0.5 + ridership_factor×0.3 + multi_line_bonus×0.2)
+  </div>
+
+  <h4>教育スコア (L_edu)</h4>
+  <div class="formula">L_edu = min(100, school_count_800m × 12 + diversity_bonus)<br><small style="color:var(--text3)">diversity_bonus = (小学校あり + 中学校あり) × 15</small></div>
+
+  <h4>医療スコア (L_med)</h4>
+  <div class="formula">L_med = min(100, hospital_count×20 + clinic_count×5 + log10(total_beds+1)×10)</div>
+
+  <div class="formula">S3 = 0.45×L_transit + 0.25×L_edu + 0.30×L_med<br><small style="color:var(--text3)">Phase 1（駅未実装時）: S3 = 0.45×L_edu + 0.55×L_med</small></div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 07 S4 ═══════════════════════════════════════════ -->
+<section id="s4">
+  <h2><span class="num">07</span> 軸4: 将来性スコア (S4) — <span style="color:var(--blue)">Weight 15%</span></h2>
+
+  <h4>人口動態 (P_pop)</h4>
+  <p>500mメッシュ 2020→2050 増減率: +20%以上=100, +10-20%=85, 0-+10%=65, -10-0%=40, -20--10%=20, &lt;-20%=5</p>
+
+  <h4>地価トレンド (P_price)</h4>
+  <div class="formula">cagr = (price_2024 / price_2020)^(1/4) − 1<br>P_price = clamp(50 + cagr × 500, 0, 100)</div>
+
+  <h4>容積率余裕 (P_far)</h4>
+  <div class="formula">P_far = min(100, designated_far / 8)</div>
+
+  <div class="formula">S4 = 0.40×P_pop + 0.35×P_price + 0.25×P_far</div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 08 S5 ═══════════════════════════════════════════ -->
+<section id="s5">
+  <h2><span class="num">08</span> 軸5: 価格分析スコア (S5) — <span style="color:var(--green)">Weight 20%</span></h2>
+
+  <h4>相対バリュースコア (V_rel)</h4>
+  <p>同一用途地域内での㎡単価の偏差値（z-score）。z_score &lt; 0 = 中央値以下 = 割安 → スコア高い。</p>
+  <div class="formula">V_rel = clamp(50 − z_score × 20, 0, 100)</div>
+
+  <h4>取引活性度 (V_vol)</h4>
+  <div class="formula">V_vol = min(100, tx_count_500m_1yr × 5)</div>
+
+  <div class="formula">S5 = 0.65×V_rel + 0.35×V_vol</div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 09 CROSS ═══════════════════════════════════════════ -->
+<section id="cross">
+  <h2><span class="num">09</span> クロス分析パターン</h2>
+  <div class="axis-grid">
+    <div class="axis-card" style="border-top-color:var(--accent)">
+      <h4>バリューディスカバリー</h4>
+      <div class="formula" style="margin:8px 0 0;padding:8px 12px;font-size:13px">value = S1 × (100 − V_rel) / 100</div>
+      <div class="desc">安全なのに割安 = 市場の見落とし</div>
+    </div>
+    <div class="axis-card" style="border-top-color:var(--teal)">
+      <h4>需要予測</h4>
+      <div class="formula" style="margin:8px 0 0;padding:8px 12px;font-size:13px">demand = S3 × S4 / 100</div>
+      <div class="desc">利便性高 × 人口増 = 強い需要</div>
+    </div>
+    <div class="axis-card" style="border-top-color:var(--amber)">
+      <h4>地面の総合安全性</h4>
+      <div class="formula" style="margin:8px 0 0;padding:8px 12px;font-size:13px">ground = S1 × S2 / 100</div>
+      <div class="desc">災害リスク × 地盤品質の複合評価</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 10 API ═══════════════════════════════════════════ -->
+<section id="api">
+  <h2><span class="num">10</span> API 設計</h2>
+
+  <h3>スコア算出エンドポイント（新設）</h3>
+  <pre>GET /api/score?lat={lat}&amp;lng={lng}&amp;radius=500</pre>
+
+  <h3>レスポンス例</h3>
+  <div class="json-block"><pre>{
+  "<span class="key">location</span>": { "<span class="key">lat</span>": <span class="num">35.6812</span>, "<span class="key">lng</span>": <span class="num">139.7671</span> },
+  "<span class="key">tls</span>": { "<span class="key">score</span>": <span class="num">72</span>, "<span class="key">grade</span>": "<span class="str">A</span>", "<span class="key">label</span>": "<span class="str">Very Good</span>" },
+  "<span class="key">axes</span>": {
+    "<span class="key">disaster</span>": { "<span class="key">score</span>": <span class="num">65</span>, "<span class="key">weight</span>": <span class="num">0.25</span>,
+      "<span class="key">sub</span>": {
+        "<span class="key">flood</span>": { "<span class="key">score</span>": <span class="num">50</span>, "<span class="key">depth_rank</span>": <span class="num">2</span>, "<span class="key">river</span>": "<span class="str">隅田川</span>" },
+        "<span class="key">liquefaction</span>": { "<span class="key">score</span>": <span class="num">80</span>, "<span class="key">pl_class</span>": "<span class="str">low</span>" },
+        "<span class="key">seismic</span>": { "<span class="key">score</span>": <span class="num">55</span>, "<span class="key">prob_30yr</span>": <span class="num">0.12</span> }
+      }
+    },
+    "<span class="key">livability</span>": { "<span class="key">score</span>": <span class="num">82</span>, "<span class="key">weight</span>": <span class="num">0.25</span>,
+      "<span class="key">sub</span>": {
+        "<span class="key">transit</span>": { "<span class="key">score</span>": <span class="num">90</span>, "<span class="key">nearest_station</span>": "<span class="str">東京</span>", "<span class="key">distance_m</span>": <span class="num">320</span> },
+        "<span class="key">education</span>": { "<span class="key">score</span>": <span class="num">65</span>, "<span class="key">schools_800m</span>": <span class="num">4</span> },
+        "<span class="key">medical</span>": { "<span class="key">score</span>": <span class="num">88</span>, "<span class="key">facilities_1km</span>": <span class="num">45</span> }
+      }
+    }
+  },
+  "<span class="key">cross_analysis</span>": { "<span class="key">value_discovery</span>": <span class="num">39</span>, "<span class="key">demand_signal</span>": <span class="num">64</span> }
+}</pre></div>
+
+  <h3>ランキングエンドポイント（新設）</h3>
+  <pre>GET /api/ranking?south=...&amp;north=...&amp;west=...&amp;east=...&amp;sort=tls&amp;limit=50</pre>
+</section>
+
+<!-- ═══════════════════════════════════════════ 11 ROADMAP ═══════════════════════════════════════════ -->
+<section id="roadmap">
+  <h2><span class="num">11</span> 実装ロードマップ</h2>
+  <div class="phase-row">
+    <div class="phase-card" style="border-top: 3px solid var(--green)">
+      <div class="phase-num">PHASE 1</div>
+      <h4 style="color:var(--green)">MVP スコア</h4>
+      <div class="days">1-2 days</div>
+      <ul>
+        <li>稼働中6レイヤーで算出</li>
+        <li>S1(flood) + S3(edu+med) + S5</li>
+        <li><code>/api/score</code> 新設</li>
+        <li>PROPERTY INTEL にスコア表示</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="border-top: 3px solid var(--amber)">
+      <div class="phase-num">PHASE 2</div>
+      <h4 style="color:var(--amber)">データ投入</h4>
+      <div class="days">2-3 days</div>
+      <ul>
+        <li>PL分布図 → <code>liquefaction</code></li>
+        <li>S12+N02 → <code>stations</code></li>
+        <li>500m mesh → <code>population_mesh</code></li>
+        <li>L01 20年分 → 時系列対応</li>
+        <li>A33 / A40 → 土砂 / 津波</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="border-top: 3px solid var(--blue)">
+      <div class="phase-num">PHASE 3</div>
+      <h4 style="color:var(--blue)">全軸スコアリング</h4>
+      <div class="days">1-2 days</div>
+      <ul>
+        <li>J-SHIS API（地震 + AVS30）</li>
+        <li>全5軸の算出ロジック</li>
+        <li><code>/api/ranking</code> 新設</li>
+        <li>重み調整スライダーUI</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ 12 SQL ═══════════════════════════════════════════ -->
+<section id="sql">
+  <h2><span class="num">12</span> データ投入テンプレート</h2>
+
+  <h4>液状化テーブル</h4>
+  <pre>CREATE TABLE IF NOT EXISTS liquefaction (
+  id SERIAL PRIMARY KEY,
+  pl_class TEXT,
+  pl_value NUMERIC,
+  geom GEOMETRY(MultiPolygon, 4326)
+);
+CREATE INDEX idx_liquefaction_geom ON liquefaction USING GIST(geom);</pre>
+
+  <h4>駅テーブル</h4>
+  <pre>CREATE TABLE IF NOT EXISTS stations (
+  id SERIAL PRIMARY KEY,
+  station_name TEXT,
+  operator TEXT,
+  line_name TEXT,
+  ridership INTEGER,
+  year INTEGER,
+  geom GEOMETRY(Point, 4326)
+);
+CREATE INDEX idx_stations_geom ON stations USING GIST(geom);</pre>
+
+  <h4>人口メッシュテーブル</h4>
+  <pre>CREATE TABLE IF NOT EXISTS population_mesh (
+  id SERIAL PRIMARY KEY,
+  mesh_code TEXT,
+  pop_2020 INTEGER,
+  pop_2050 INTEGER,
+  change_rate NUMERIC,
+  geom GEOMETRY(Polygon, 4326)
+);
+CREATE INDEX idx_pop_mesh_geom ON population_mesh USING GIST(geom);</pre>
+
+  <h4>Phase 1 MVP スコア算出クエリ</h4>
+  <pre>WITH point AS (
+  SELECT geom FROM land_prices WHERE id = $1
+),
+flood_score AS (
+  SELECT COALESCE(
+    100 - MAX(CASE depth_rank
+      WHEN 1 THEN 20 WHEN 2 THEN 50 WHEN 3 THEN 80
+      WHEN 4 THEN 95 WHEN 5 THEN 100 ELSE 0 END
+    ), 100
+  ) AS score
+  FROM flood_risk, point
+  WHERE ST_Contains(flood_risk.geom, point.geom)
+),
+school_score AS (
+  SELECT LEAST(100, COUNT(*) * 12 +
+    (CASE WHEN bool_or(school_type = '小学校') THEN 15 ELSE 0 END) +
+    (CASE WHEN bool_or(school_type = '中学校') THEN 15 ELSE 0 END)
+  ) AS score
+  FROM schools, point
+  WHERE ST_DWithin(schools.geom::geography, point.geom::geography, 800)
+),
+medical_score AS (
+  SELECT LEAST(100,
+    COUNT(*) FILTER (WHERE facility_type = '病院') * 20 +
+    COUNT(*) FILTER (WHERE facility_type != '病院') * 5 +
+    LOG(GREATEST(SUM(bed_count), 1)) * 10
+  ) AS score
+  FROM medical_facilities, point
+  WHERE ST_DWithin(medical_facilities.geom::geography, point.geom::geography, 1000)
+)
+SELECT
+  fs.score AS s1_disaster,
+  (ss.score * 0.45 + ms.score * 0.55) AS s3_livability,
+  fs.score * 0.30 + (ss.score * 0.45 + ms.score * 0.55) * 0.35
+    AS tls_mvp
+FROM flood_score fs, school_score ss, medical_score ms;</pre>
+</section>
+
+<!-- ═══════════════════════════════════════════ FOOTER ═══════════════════════════════════════════ -->
+<footer class="doc-footer">
+  <p>不動産総合分析アルゴリズム設計書 v1.0 — Generated 2026-03-25</p>
+  <p>Data sources: 国土数値情報 (CC BY 4.0), J-SHIS, 東京都建設局 (CC BY 2.1 JP), MLIT 取引価格</p>
+</footer>
+
+</div>
+</body>
+</html>

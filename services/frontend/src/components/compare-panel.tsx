@@ -30,29 +30,29 @@ export function ComparePanel() {
     scoreA && scoreB
       ? [
           {
-            axis: "地価",
-            A: scoreA.components.trend.value,
-            B: scoreB.components.trend.value,
+            axis: "災害",
+            A: scoreA.axes.disaster.score,
+            B: scoreB.axes.disaster.score,
           },
           {
-            axis: "安全性",
-            A: scoreA.components.risk.value,
-            B: scoreB.components.risk.value,
+            axis: "地盤",
+            A: scoreA.axes.terrain.score,
+            B: scoreB.axes.terrain.score,
           },
           {
-            axis: "教育",
-            A: Math.min(scoreA.components.access.value, 12.5),
-            B: Math.min(scoreB.components.access.value, 12.5),
+            axis: "利便性",
+            A: scoreA.axes.livability.score,
+            B: scoreB.axes.livability.score,
           },
           {
-            axis: "医療",
-            A: Math.max(0, scoreA.components.access.value - 12.5),
-            B: Math.max(0, scoreB.components.access.value - 12.5),
+            axis: "将来性",
+            A: scoreA.axes.future.score,
+            B: scoreB.axes.future.score,
           },
           {
-            axis: "利回り",
-            A: scoreA.components.yield_potential.value,
-            B: scoreB.components.yield_potential.value,
+            axis: "価格",
+            A: scoreA.axes.price.score,
+            B: scoreB.axes.price.score,
           },
         ]
       : [];
@@ -129,7 +129,7 @@ export function ComparePanel() {
                     className="text-lg font-bold"
                     style={{ color: "var(--accent-cyan)" }}
                   >
-                    {Math.round(scoreA.score)}
+                    {Math.round(scoreA.tls.score)}
                   </div>
                 )}
               </div>
@@ -151,7 +151,7 @@ export function ComparePanel() {
                     className="text-lg font-bold"
                     style={{ color: "var(--accent-warning)" }}
                   >
-                    {Math.round(scoreB.score)}
+                    {Math.round(scoreB.tls.score)}
                   </div>
                 )}
               </div>
