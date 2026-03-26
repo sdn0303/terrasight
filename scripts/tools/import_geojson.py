@@ -89,22 +89,26 @@ class DatasetConfig:
         self.insert_columns = [c.target for c in self.columns]
 
 
-def _safe_text(val: Any) -> str | None:
-    """Convert a value to stripped text, or None for empty/sentinel values."""
+def _safe_text(val: Any) -> str:
+    """Convert a value to stripped text, or empty string for missing values.
+
+    Returns empty string (not None) to satisfy NOT NULL constraints in the
+    redesigned schema. All text columns use NOT NULL DEFAULT ''.
+    """
     if val is None:
-        return None
+        return ""
     s = str(val).strip()
-    return None if s in ("", "_", "nan") else s
+    return "" if s in ("_", "nan") else s
 
 
-def _safe_int(val: Any) -> int | None:
-    """Convert a value to int, or None."""
+def _safe_int(val: Any) -> int:
+    """Convert a value to int, or 0 for missing values."""
     if val is None:
-        return None
+        return 0
     try:
         return int(float(val))
     except (TypeError, ValueError):
-        return None
+        return 0
 
 
 def _safe_float(val: Any) -> float | None:

@@ -141,10 +141,10 @@ def extract_rows(
             continue
         address = str(address_raw).strip()
 
-        # Land use is optional; normalise sentinel values to None
-        land_use: str | None
+        # Land use: NOT NULL in new schema, use empty string for missing
+        land_use: str
         if land_use_raw is None or str(land_use_raw).strip() in ("", "_"):
-            land_use = None
+            land_use = ""
         else:
             land_use = str(land_use_raw).strip()
 
