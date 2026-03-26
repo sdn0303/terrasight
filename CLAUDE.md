@@ -68,6 +68,54 @@ cd services/frontend && pnpm install && pnpm tsc --noEmit && pnpm biome check . 
 - Backend DTO で `#[serde(rename)]` と Frontend Zod フィールド名のズレ放置（実装直後に integration test で検証する）
 - レガシーコードの `#[allow(dead_code)]` 温存（新実装が動作確認できたら即削除。並行存在はコードベースのノイズになる）
 
+## Data Pipeline Rules
+
+- **ZIP内容を確認してからスクリプトを書く**: `unzip -l data/raw/FILE.zip | grep -E "\.(geojson|shp|gml)"` で実際のファイル名・パス・エンコーディングを検証。NLNIのZIPは年度・都道府県で命名規則が異なる
+- **NOT NULL制約とimportスクリプトの整合性**: スキーマで `NOT NULL DEFAULT ''` にしても、INSERT文で明示的にNULLを渡すとDEFAULTは効かない。Pythonのtransform関数は `None` ではなく空文字列/0を返すこと
+- **CHECK制約は緩めに設定**: 公的データは想定外の値を含む。`magnitude >= -2` でも J-SHIS は -999 をセンチネル値として使う。CHECKは安全側（NOT NULLのみ）にして、アプリ層でバリデーション
+- **geometry型はGenericを許容**: PostGIS `geometry(MultiLineString, 4326)` で定義しても、実データが `Polygon` や `LineString` の場合がある。`geometry(Geometry, 4326)` + geography functional indexが安全
+- **ZIP-in-ZIPに注意**: 500mメッシュ等は外側ZIPの中に都道府県別の内側ZIPがある。二段階展開が必要
+- **Shift-JIS / __MACOSX フィルタ**: NLNIのZIPに `__MACOSX/` リソースフォークや Shift-JIS/UTF-8 の重複ファイルが含まれる。geojson読み込み時にフィルタ必須
+- **`seq -w` + `printf "%02d"` のoctal問題**: `08`, `09` がoctal numberとして解釈される。`$((10#$code))` で明示的に10進数に変換
+- **PostgreSQL AVG/STDDEV は NUMERIC を返す**: `integer` カラムの `AVG()` / `STDDEV()` は `NUMERIC` 型。Rust `f64` にマッピングするには `::double precision` キャストが必須
+
+## Operations Quick Reference
+
+```bash
+# DB: 一発リセット（マイグレーション + シード + インポート + ANALYZE）
+./scripts/commands/db-full-reset.sh
+
+# DB: マイグレーションのみ
+./scripts/commands/db-migrate.sh
+
+# DB: 全データインポート（GeoJSON + L01）
+./scripts/commands/db-import-all.sh
+
+# データ: 政府データ全セクションダウンロード
+./scripts/commands/download-data.sh
+
+# データ: ダウンロード状況確認
+./scripts/commands/download-data.sh --status
+
+# データ: RAW → GeoJSON 変換
+uv run scripts/tools/convert_geodata.py
+
+# データ: e-Stat API取得
+uv run scripts/tools/fetch_estat.py
+
+# データ: 静的FlatGeobufビルド
+uv run scripts/tools/build_static_data.py
+
+# 開発: Docker全体起動
+docker compose up -d --build
+
+# 開発: APIテスト
+curl -s http://localhost:8000/api/score?lat=35.681&lng=139.767 | python3 -m json.tool
+
+# Git: index.lock 解消
+rm -f .git/index.lock
+```
+
 ## Detailed Rules
 
 See `.claude/rules/` for comprehensive guidelines:
