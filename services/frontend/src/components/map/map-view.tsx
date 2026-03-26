@@ -63,12 +63,12 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
       moveEndTimerRef.current = setTimeout(() => {
         const map = mapRef.current;
         if (!map || !onMoveEnd) return;
-        const b = map.getBounds();
+        const bounds = map.getBounds();
         onMoveEnd({
-          south: b.getSouth(),
-          west: b.getWest(),
-          north: b.getNorth(),
-          east: b.getEast(),
+          south: bounds.getSouth(),
+          west: bounds.getWest(),
+          north: bounds.getNorth(),
+          east: bounds.getEast(),
         });
       }, DEBOUNCE_MS);
     },
@@ -85,6 +85,15 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
   const handleLoad = useCallback((e: MapEvent) => {
     const map = e.target;
     mapRef.current = map;
+
+    // Emit initial real bbox so queries don't rely on the center+zoom approximation
+    const bounds = map.getBounds();
+    onMoveEnd?.({
+      south: bounds.getSouth(),
+      west: bounds.getWest(),
+      north: bounds.getNorth(),
+      east: bounds.getEast(),
+    });
 
     // ─── CRITICAL GAP FIX: try/catch wrapper for addSource ───
     // Protects against malformed data or duplicate source IDs
