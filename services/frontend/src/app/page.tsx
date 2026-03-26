@@ -1,217 +1,26 @@
 "use client";
 
-import type { FeatureCollection } from "geojson";
-import { parseAsInteger, useQueryState } from "nuqs";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
-import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { AreaHighlight } from "@/components/map/area-highlight";
-import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
-import { LandPriceYearSlider } from "@/components/map/land-price-year-slider";
 import { ContextPanel } from "@/components/context-panel/context-panel";
-import { TopBar } from "@/components/top-bar/top-bar";
-import {
-  AdminBoundaryLayer,
-  DIDLayer,
-  FaultLayer,
-  FloodHistoryLayer,
-  FloodLayer,
-  GeologyLayer,
-  LandformLayer,
-  LandPriceExtrusionLayer,
-  LandpriceLayer,
-  LandslideLayer,
-  LiquefactionLayer,
-  MedicalLayer,
-  ParkLayer,
-  PopulationMeshLayer,
-  RailwayLayer,
-  SchoolDistrictLayer,
-  SchoolLayer,
-  SeismicLayer,
-  SoilLayer,
-  StationLayer,
-  SteepSlopeLayer,
-  TsunamiLayer,
-  UrbanPlanLayer,
-  VolcanoLayer,
-  ZoningLayer,
-} from "@/components/map/layers";
+import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { PopupCard } from "@/components/map/popup-card";
-import { YearSlider } from "@/components/map/year-slider";
-import { ScoreCard } from "@/components/score-card/score-card";
 import { StatusBar } from "@/components/status-bar";
-import { useAreaData } from "@/features/area-data/api/use-area-data";
-import { useHealth } from "@/features/health/api/use-health";
-import { useLandPrices } from "@/features/land-prices/api/use-land-prices";
-import { useMapUrlState } from "@/hooks/use-map-url-state";
-import type { LayerConfig } from "@/lib/layers";
-import { LAYERS } from "@/lib/layers";
-import { spatialEngine } from "@/lib/wasm/spatial-engine";
-import { useMapStore } from "@/stores/map-store";
-import { useUIStore } from "@/stores/ui-store";
+import { TopBar } from "@/components/top-bar/top-bar";
 import { ExplorePanel } from "@/components/context-panel/explore-panel";
 import { ComparePanel } from "@/components/context-panel/compare-panel";
-
-const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
-
-const INTERACTIVE_LAYER_MAP = new Map<string, LayerConfig>();
-for (const layer of LAYERS) {
-  if (layer.interactiveLayerIds) {
-    for (const maplibreId of layer.interactiveLayerIds) {
-      INTERACTIVE_LAYER_MAP.set(maplibreId, layer);
-    }
-  }
-}
-
-/**
- * Registry mapping layer IDs to their React components.
- * Static layers receive { visible }, API layers receive { data, visible }.
- * PopulationMeshLayer additionally receives { selectedYear }.
- *
- * This eliminates the manual enumeration DRY violation (14 → 21 layers)
- * while keeping individual layer components for custom paint expressions.
- */
-const STATIC_LAYER_COMPONENTS: Record<
-  string,
-  React.ComponentType<{ visible: boolean } & Record<string, unknown>>
-> = {
-  did: DIDLayer,
-  landform: LandformLayer,
-  geology: GeologyLayer,
-  admin_boundary: AdminBoundaryLayer,
-  fault: FaultLayer,
-  flood_history: FloodHistoryLayer,
-  liquefaction: LiquefactionLayer,
-  railway: RailwayLayer,
-  seismic: SeismicLayer,
-  soil: SoilLayer,
-  volcano: VolcanoLayer,
-  station: StationLayer,
-  school_district: SchoolDistrictLayer,
-  landslide: LandslideLayer,
-  park: ParkLayer,
-  tsunami: TsunamiLayer,
-  urban_plan: UrbanPlanLayer,
-};
-
-const API_LAYER_COMPONENTS: Record<
-  string,
-  React.ComponentType<{ data: FeatureCollection; visible: boolean }>
-> = {
-  landprice: LandpriceLayer,
-  flood: FloodLayer,
-  steep_slope: SteepSlopeLayer,
-  schools: SchoolLayer,
-  medical: MedicalLayer,
-  zoning: ZoningLayer,
-};
+import { useMapInteraction } from "@/hooks/use-map-interaction";
+import { useMapPage } from "@/hooks/use-map-page";
+import { useUIStore } from "@/stores/ui-store";
+import {
+  PANEL_WIDTH,
+  TOP_BAR_HEIGHT,
+  STATUS_BAR_HEIGHT,
+} from "@/lib/constants";
 
 export default function Home() {
-  useMapUrlState();
-
-  useEffect(() => {
-    spatialEngine.init();
-    return () => spatialEngine.dispose();
-  }, []);
-  const { visibleLayers, selectFeature, getBBox } = useMapStore(
-    useShallow((s) => ({
-      visibleLayers: s.visibleLayers,
-      selectFeature: s.selectFeature,
-      getBBox: s.getBBox,
-    })),
-  );
-  const viewState = useMapStore((s) => s.viewState);
-  const { mode, setComparePoint } = useUIStore();
-  const [bbox, setBbox] = useState(() => getBBox());
-  const [populationYear, setPopulationYear] = useState(2020);
-  const [landPriceYear, setLandPriceYear] = useQueryState(
-    "year",
-    parseAsInteger.withDefault(2024),
-  );
-
-  const layers = useMemo(() => [...visibleLayers], [visibleLayers]);
-  const { data: areaData, isLoading } = useAreaData(bbox, layers, viewState.zoom);
-  const { data: health } = useHealth();
-  const isZoomTooLow = viewState.zoom < 10;
-
-  const truncatedLayers = useMemo(() => {
-    if (!areaData) return [];
-    const result: { layer: string; count: number; limit: number }[] = [];
-    for (const key of Object.keys(areaData) as (keyof typeof areaData)[]) {
-      const layer = areaData[key];
-      if (layer?.truncated === true) {
-        result.push({ layer: key, count: layer.count, limit: layer.limit });
-      }
-    }
-    return result;
-  }, [areaData]);
-
-  const {
-    data: landPriceData,
-    isFetching: isLandPriceFetching,
-    isError: isLandPriceError,
-  } = useLandPrices(bbox, landPriceYear, viewState.zoom);
-
-  // Derive popup config for click-inspect
-  const selectedFeature = useMapStore((s) => s.selectedFeature);
-  const selectedLayerConfig = useMemo(() => {
-    if (!selectedFeature) return null;
-    return (
-      INTERACTIVE_LAYER_MAP.get(selectedFeature.layerId) ??
-      LAYERS.find((l) => selectedFeature.layerId.startsWith(l.id)) ??
-      null
-    );
-  }, [selectedFeature]);
-
-  const handleMoveEnd = useCallback(() => {
-    setBbox(getBBox());
-  }, [getBBox]);
-
-  const handleFeatureClick = useCallback(
-    (e: MapLayerMouseEvent) => {
-      const feature = e.features?.[0];
-      if (mode === "compare") {
-        const address =
-          feature?.properties != null &&
-          typeof feature.properties === "object" &&
-          "address" in feature.properties &&
-          typeof feature.properties.address === "string"
-            ? feature.properties.address
-            : `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`;
-        setComparePoint({
-          lat: e.lngLat.lat,
-          lng: e.lngLat.lng,
-          address,
-        });
-      } else if (feature) {
-        selectFeature({
-          layerId: feature.layer.id,
-          properties: (feature.properties ?? {}) as Record<string, unknown>,
-          coordinates: [e.lngLat.lng, e.lngLat.lat],
-        });
-        const featureAddress = feature?.properties?.address as string | undefined;
-        useMapStore.getState().setAnalysisPoint({
-          lat: e.lngLat.lat,
-          lng: e.lngLat.lng,
-          ...(featureAddress !== undefined ? { address: featureAddress } : {}),
-        });
-      } else {
-        selectFeature(null);
-      }
-    },
-    [mode, selectFeature, setComparePoint],
-  );
-
-  const isDemoMode = health ? !health.reinfolib_key_set : true;
-
-  // Separate static and API layers from config
-  const staticLayers = useMemo(
-    () => LAYERS.filter((l) => l.source === "static"),
-    [],
-  );
-  const apiLayers = useMemo(() => LAYERS.filter((l) => l.source === "api"), []);
+  const mode = useUIStore((s) => s.mode);
+  const { handleFeatureClick } = useMapInteraction();
+  const page = useMapPage();
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -222,82 +31,38 @@ export default function Home() {
         {mode === "compare" && <ComparePanel />}
       </ContextPanel>
 
-      {/* Map area offset by top bar (48px) and context panel (320px) */}
-      <div className="absolute" style={{ top: 48, left: 320, right: 0, bottom: 28 }}>
-        <MapView onMoveEnd={handleMoveEnd} onFeatureClick={handleFeatureClick}>
-          {/* NEW: Always-visible boundaries */}
-          <BoundaryLayer />
-          <AreaHighlight />
-
-          {/* 3D Time-series land price layer (dedicated useLandPrices hook) */}
-          <LandPriceExtrusionLayer
-            data={landPriceData ?? EMPTY_FC}
-            visible={visibleLayers.has("land_price_ts")}
-            isFetching={isLandPriceFetching}
-          />
-
-          {/* API-driven layers: receive data from useAreaData */}
-          {apiLayers.map((layer) => {
-            const Component = API_LAYER_COMPONENTS[layer.id];
-            if (!Component) return null;
-            const layerData =
-              areaData != null
-                ? ((areaData as Record<string, unknown>)[layer.id] as
-                    | FeatureCollection
-                    | undefined)
-                : undefined;
-            return (
-              <Component
-                key={layer.id}
-                data={layerData ?? EMPTY_FC}
-                visible={visibleLayers.has(layer.id)}
-              />
-            );
-          })}
-
-          {/* Static layers: load GeoJSON from /geojson/ on mount */}
-          {staticLayers.map((layer) => {
-            // PopulationMeshLayer needs special handling for year slider
-            if (layer.id === "population_mesh") {
-              return (
-                <PopulationMeshLayer
-                  key={layer.id}
-                  visible={visibleLayers.has(layer.id)}
-                  selectedYear={populationYear}
-                />
-              );
-            }
-            const Component = STATIC_LAYER_COMPONENTS[layer.id];
-            if (!Component) return null;
-            return (
-              <Component key={layer.id} visible={visibleLayers.has(layer.id)} />
-            );
-          })}
-
-          {/* Year slider for population mesh — only visible when layer is active */}
-          <YearSlider
-            value={populationYear}
-            onChange={setPopulationYear}
-            visible={visibleLayers.has("population_mesh")}
-          />
-
-          {/* Year slider for land price time-series — bottom-left, only visible when layer is active */}
-          <LandPriceYearSlider
-            value={landPriceYear}
-            onChange={setLandPriceYear}
-            visible={visibleLayers.has("land_price_ts")}
-            isFetching={isLandPriceFetching}
-            isError={isLandPriceError}
-            isZoomTooLow={isZoomTooLow}
-            {...(landPriceData !== undefined
-              ? { featureCount: landPriceData.features.length }
-              : {})}
+      <div
+        className="absolute"
+        style={{
+          top: TOP_BAR_HEIGHT,
+          left: PANEL_WIDTH,
+          right: 0,
+          bottom: STATUS_BAR_HEIGHT,
+        }}
+      >
+        <MapView
+          onMoveEnd={page.handleMoveEnd}
+          onFeatureClick={handleFeatureClick}
+        >
+          <LayerRenderer
+            visibleLayers={page.visibleLayers}
+            staticLayers={page.staticLayers}
+            apiLayers={page.apiLayers}
+            areaData={page.areaData as Record<string, unknown> | null}
+            landPriceData={page.landPriceData}
+            isLandPriceFetching={page.isLandPriceFetching}
+            isLandPriceError={page.isLandPriceError}
+            isZoomTooLow={page.isZoomTooLow}
+            populationYear={page.populationYear}
+            setPopulationYear={page.setPopulationYear}
+            landPriceYear={page.landPriceYear}
+            setLandPriceYear={page.setLandPriceYear}
+            landPriceFeatureCount={page.landPriceData.features.length}
           />
         </MapView>
       </div>
 
-      {/* Click-inspect popup */}
-      {selectedFeature && selectedLayerConfig?.popupFields && (
+      {page.selectedFeature && page.selectedLayerConfig?.popupFields && (
         <div
           className="fixed z-30 pointer-events-none"
           style={{
@@ -308,24 +73,21 @@ export default function Home() {
         >
           <div className="pointer-events-auto">
             <PopupCard
-              layerNameJa={selectedLayerConfig.nameJa}
-              fields={selectedLayerConfig.popupFields}
-              properties={selectedFeature.properties}
+              layerNameJa={page.selectedLayerConfig.nameJa}
+              fields={page.selectedLayerConfig.popupFields}
+              properties={page.selectedFeature.properties}
             />
           </div>
         </div>
       )}
 
-      {/* KEEP: ScoreCard for now (temporary, until Phase 3 replaces it) */}
-      <ScoreCard />
-
       <StatusBar
-        lat={viewState.latitude}
-        lng={viewState.longitude}
-        zoom={viewState.zoom}
-        isLoading={isLoading}
-        isDemoMode={isDemoMode}
-        truncatedLayers={truncatedLayers}
+        lat={page.viewState.latitude}
+        lng={page.viewState.longitude}
+        zoom={page.viewState.zoom}
+        isLoading={page.isLoading}
+        isDemoMode={page.isDemoMode}
+        truncatedLayers={page.truncatedLayers}
       />
     </div>
   );
