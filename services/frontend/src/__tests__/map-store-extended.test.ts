@@ -50,7 +50,7 @@ describe("useMapStore — extended tests", () => {
     expect(before).not.toBe(after); // Different reference
   });
 
-  it("getBBox returns correct bounds for default viewState", () => {
+  it("getBBox returns approximate bounds for initial state (fallback only)", () => {
     const bbox = useMapStore.getState().getBBox();
     expect(bbox.south).toBeLessThan(bbox.north);
     expect(bbox.west).toBeLessThan(bbox.east);
@@ -61,7 +61,7 @@ describe("useMapStore — extended tests", () => {
     expect(bbox.east).toBeGreaterThan(139.767);
   });
 
-  it("getBBox shrinks as zoom increases", () => {
+  it("getBBox approximation shrinks as zoom increases", () => {
     useMapStore.getState().setViewState({
       latitude: 35.681,
       longitude: 139.767,

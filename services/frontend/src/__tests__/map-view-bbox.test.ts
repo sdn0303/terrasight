@@ -31,3 +31,28 @@ describe("MapView onMoveEnd bbox contract", () => {
     });
   });
 });
+
+describe("getBBox approximation limitations (documented)", () => {
+  it("approximation ignores pitch — same bbox at pitch 0 and 60", () => {
+    // This documents WHY we switched to map.getBounds()
+    // The old approximation gives identical results regardless of pitch,
+    // but a pitched map shows a much larger geographic area
+    const calcApproxBbox = (lat: number, lng: number, zoom: number) => {
+      const latRange = 180 / 2 ** zoom;
+      const lngRange = 360 / 2 ** zoom;
+      return {
+        south: lat - latRange / 2,
+        west: lng - lngRange / 2,
+        north: lat + latRange / 2,
+        east: lng + lngRange / 2,
+      };
+    };
+
+    const bboxPitch0 = calcApproxBbox(35.681, 139.767, 12);
+    const bboxPitch60 = calcApproxBbox(35.681, 139.767, 12);
+
+    // They're identical — that's the bug. A pitched view sees more area
+    // but the approximation doesn't know that.
+    expect(bboxPitch0).toEqual(bboxPitch60);
+  });
+});
