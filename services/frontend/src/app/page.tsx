@@ -52,7 +52,6 @@ import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 import { ExplorePanel } from "@/components/context-panel/explore-panel";
-import { AnalyzePanel } from "@/components/context-panel/analyze-panel";
 import { ComparePanel } from "@/components/context-panel/compare-panel";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -198,7 +197,6 @@ export default function Home() {
           lng: e.lngLat.lng,
           ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
-        useUIStore.getState().setMode("analyze");
       } else {
         selectFeature(null);
       }
@@ -221,7 +219,6 @@ export default function Home() {
 
       <ContextPanel>
         {mode === "explore" && <ExplorePanel />}
-        {mode === "analyze" && <AnalyzePanel />}
         {mode === "compare" && <ComparePanel />}
       </ContextPanel>
 

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import type { AppMode } from "@/stores/ui-store";
 import { useUIStore } from "@/stores/ui-store";
 
-const MODES: AppMode[] = ["explore", "analyze", "compare"];
+const MODES: AppMode[] = ["explore", "compare"];
 
 export function ModeTabs() {
   const t = useTranslations("mode");

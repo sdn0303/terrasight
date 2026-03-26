@@ -3,7 +3,7 @@ import { devtools } from "zustand/middleware";
 import type { Locale } from "@/i18n/config";
 import type { ThemeId } from "@/lib/themes";
 
-export type AppMode = "explore" | "analyze" | "compare";
+export type AppMode = "explore" | "compare";
 
 type ComparePoint = {
   lat: number;
