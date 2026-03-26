@@ -178,16 +178,18 @@ def _medical_type(val: Any) -> str | None:
     return _MEDICAL_TYPE_MAP.get(s, s)
 
 
-def _flood_depth_int(val: Any) -> int | None:
-    """Convert flood depth rank to integer (new schema: smallint 0-5)."""
+def _flood_depth_int(val: Any) -> int:
+    """Convert flood depth rank to integer (new schema: smallint NOT NULL 0-5).
+
+    Returns 0 for missing/invalid values (0 = outside flood zone).
+    """
     if val is None:
-        return None
+        return 0
     try:
         code = int(float(val))
-        # NLNI A31b codes: 1-6, map to 1-5 (cap at 5)
         return min(code, 5) if code > 0 else 0
     except (TypeError, ValueError):
-        return None
+        return 0
 
 
 # ----- Dataset registry -----
