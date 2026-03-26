@@ -79,7 +79,7 @@ dl_per_pref() {
 
   for code in $(seq -w 1 47); do
     local pref
-    pref=$(printf "%02d" "$code")
+    pref=$(printf "%02d" "$((10#$code))")
     local url="${url_template//\{PREF\}/$pref}"
     local out="${out_template//\{PREF\}/$pref}"
 
