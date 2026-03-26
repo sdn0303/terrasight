@@ -51,7 +51,6 @@ import { LAYERS } from "@/lib/layers";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
-import { useAnalysisStore } from "@/stores/analysis-store";
 import { ExplorePanel } from "@/components/context-panel/explore-panel";
 import { AnalyzePanel } from "@/components/context-panel/analyze-panel";
 import { ComparePanel } from "@/components/context-panel/compare-panel";
@@ -194,7 +193,7 @@ export default function Home() {
           coordinates: [e.lngLat.lng, e.lngLat.lat],
         });
         const featureAddress = feature?.properties?.address as string | undefined;
-        useAnalysisStore.getState().setAnalysisPoint({
+        useMapStore.getState().setAnalysisPoint({
           lat: e.lngLat.lat,
           lng: e.lngLat.lng,
           ...(featureAddress !== undefined ? { address: featureAddress } : {}),

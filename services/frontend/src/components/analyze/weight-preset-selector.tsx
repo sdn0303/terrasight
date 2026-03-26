@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useAnalysisStore, type WeightPreset } from "@/stores/analysis-store";
+import { useMapStore, type WeightPreset } from "@/stores/map-store";
 
 const PRESETS: WeightPreset[] = ["balance", "investment", "residential", "disaster"];
 
 export function WeightPresetSelector() {
   const t = useTranslations("analyze.weightPreset");
-  const weightPreset = useAnalysisStore((s) => s.weightPreset);
-  const setWeightPreset = useAnalysisStore((s) => s.setWeightPreset);
+  const weightPreset = useMapStore((s) => s.weightPreset);
+  const setWeightPreset = useMapStore((s) => s.setWeightPreset);
 
   return (
     <div className="px-4 py-2">

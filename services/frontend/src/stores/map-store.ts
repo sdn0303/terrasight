@@ -23,16 +23,30 @@ export interface SelectedArea {
   bbox: { south: number; west: number; north: number; east: number };
 }
 
+export type WeightPreset = "balance" | "investment" | "residential" | "disaster";
+
+export interface AnalysisPoint {
+  lat: number;
+  lng: number;
+  address?: string;
+}
+
 interface MapState {
   viewState: ViewState;
   visibleLayers: Set<string>;
   selectedFeature: SelectedFeature | null;
   selectedArea: SelectedArea | null;
+  analysisPoint: AnalysisPoint | null;
+  weightPreset: WeightPreset;
+  analysisRadius: number;
   setViewState: (viewState: ViewState) => void;
   toggleLayer: (layerId: string) => void;
   selectFeature: (feature: SelectedFeature | null) => void;
   selectArea: (area: SelectedArea | null) => void;
   getBBox: () => { south: number; west: number; north: number; east: number };
+  setAnalysisPoint: (point: AnalysisPoint | null) => void;
+  setWeightPreset: (preset: WeightPreset) => void;
+  setAnalysisRadius: (radius: number) => void;
 }
 
 const defaultVisibleLayers = new Set(
@@ -52,6 +66,9 @@ export const useMapStore = create<MapState>()(
       visibleLayers: defaultVisibleLayers,
       selectedFeature: null,
       selectedArea: null,
+      analysisPoint: null,
+      weightPreset: "balance",
+      analysisRadius: 500,
 
       setViewState: (viewState) => set({ viewState }),
 
@@ -69,6 +86,12 @@ export const useMapStore = create<MapState>()(
       selectFeature: (feature) => set({ selectedFeature: feature }),
 
       selectArea: (area) => set({ selectedArea: area }),
+
+      setAnalysisPoint: (point) => set({ analysisPoint: point }),
+
+      setWeightPreset: (preset) => set({ weightPreset: preset }),
+
+      setAnalysisRadius: (radius) => set({ analysisRadius: radius }),
 
       getBBox: () => {
         const { latitude, longitude, zoom } = get().viewState;

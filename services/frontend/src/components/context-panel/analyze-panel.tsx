@@ -6,12 +6,12 @@ import { AxisBarList } from "@/components/analyze/axis-bar-list";
 import { WeightPresetSelector } from "@/components/analyze/weight-preset-selector";
 import { CrossAnalysis } from "@/components/analyze/cross-analysis";
 import { useScore } from "@/features/score/api/use-score";
-import { useAnalysisStore } from "@/stores/analysis-store";
+import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
 export function AnalyzePanel() {
   const t = useTranslations();
-  const analysisPoint = useAnalysisStore((s) => s.analysisPoint);
+  const analysisPoint = useMapStore((s) => s.analysisPoint);
   const setMode = useUIStore((s) => s.setMode);
 
   const lat = analysisPoint?.lat ?? null;
