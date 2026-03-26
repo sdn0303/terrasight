@@ -1,9 +1,11 @@
 import { GeistMono } from "geist/font/mono";
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Suspense } from "react";
 import { Providers } from "@/components/providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import messages from "@/i18n/locales/ja.json";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,13 +21,15 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`dark ${GeistMono.variable}`}>
       <body>
-        <NuqsAdapter>
-          <Providers>
-            <TooltipProvider>
-              <Suspense>{children}</Suspense>
-            </TooltipProvider>
-          </Providers>
-        </NuqsAdapter>
+        <NextIntlClientProvider locale="ja" messages={messages}>
+          <NuqsAdapter>
+            <Providers>
+              <TooltipProvider>
+                <Suspense>{children}</Suspense>
+              </TooltipProvider>
+            </Providers>
+          </NuqsAdapter>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
