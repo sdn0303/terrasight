@@ -112,7 +112,8 @@ def _read_json_from_zip(zip_path: Path) -> gpd.GeoDataFrame:
         json_names = [
             n
             for n in zf.namelist()
-            if n.endswith(".geojson") or n.endswith(".json")
+            if (n.endswith(".geojson") or n.endswith(".json"))
+            and "__MACOSX" not in n
         ]
         if not json_names:
             raise FileNotFoundError(f"No .geojson found in {zip_path.name}")
@@ -233,12 +234,12 @@ def process_l01() -> None:
 
 
 def process_a29() -> None:
-    """A29 用途地域 — Tokyo (2019 version)."""
-    print("\n[A29] 用途地域 (Tokyo, 2019)")
+    """A29 用途地域 — Tokyo (2011 version)."""
+    print("\n[A29] 用途地域 (Tokyo, 2011)")
 
-    zips = find_raw("A29-19_13_GML.zip")
+    zips = find_raw("A29-11_13_GML.zip")
     if not zips:
-        print("  SKIP: A29-19_13_GML.zip not found")
+        print("  SKIP: A29-11_13_GML.zip not found")
         return
 
     gdf = read_zip(zips[0])
@@ -328,12 +329,12 @@ def process_a47() -> None:
 
 
 def process_p29() -> None:
-    """P29 学校 — Tokyo (2023)."""
-    print("\n[P29] 学校 (Tokyo, 2023)")
+    """P29 学校 — Tokyo (2021)."""
+    print("\n[P29] 学校 (Tokyo, 2021)")
 
-    zips = find_raw("P29-23_GML.zip")
+    zips = find_raw("P29-21_13_GML.zip")
     if not zips:
-        print("  SKIP: P29-23_GML.zip not found")
+        print("  SKIP: P29-21_13_GML.zip not found")
         return
 
     gdf = read_zip(zips[0])
@@ -347,9 +348,9 @@ def process_p04() -> None:
     """P04 医療機関 — Tokyo (2020)."""
     print("\n[P04] 医療機関 (Tokyo, 2020)")
 
-    zips = find_raw("P04-20_GML.zip")
+    zips = find_raw("P04-20_13_GML.zip")
     if not zips:
-        print("  SKIP: P04-20_GML.zip not found")
+        print("  SKIP: P04-20_13_GML.zip not found")
         return
 
     gdf = read_zip(zips[0])
@@ -395,12 +396,12 @@ def process_s12() -> None:
 
 
 def process_n02() -> None:
-    """N02 鉄道 — Tokyo (2024, latest)."""
-    print("\n[N02] 鉄道 (Tokyo, 2024)")
+    """N02 鉄道 — Tokyo (2023)."""
+    print("\n[N02] 鉄道 (Tokyo, 2023)")
 
-    zips = find_raw("N02-24_GML.zip")
+    zips = find_raw("N02-23_GML.zip")
     if not zips:
-        print("  SKIP: N02-24_GML.zip not found")
+        print("  SKIP: N02-23_GML.zip not found")
         return
 
     gdf = read_zip(zips[0])
@@ -415,9 +416,9 @@ def process_n03() -> None:
     """N03 行政区域 — Tokyo."""
     print("\n[N03] 行政区域 (Tokyo)")
 
-    zips = find_raw("N03-20240101_GML.zip")
+    zips = find_raw("N03-20250101_GML.zip")
     if not zips:
-        print("  SKIP: N03-20240101_GML.zip not found")
+        print("  SKIP: N03-20250101_GML.zip not found")
         return
 
     print(f"  Reading national dataset ({zips[0].stat().st_size // (1024*1024)} MB)...")
@@ -441,7 +442,7 @@ def process_n03() -> None:
 
 
 def process_mesh500() -> None:
-    """500mメッシュ将来推計人口 — Tokyo."""
+    """500mメッシュ将来推計人口 — Tokyo (ZIP-in-ZIP: outer contains per-prefecture ZIPs)."""
     print("\n[500m mesh] 将来推計人口 (Tokyo)")
 
     zips = find_raw("500m_mesh_2024_GEOJSON.zip")
@@ -449,8 +450,27 @@ def process_mesh500() -> None:
         print("  SKIP: 500m_mesh_2024_GEOJSON.zip not found")
         return
 
-    print(f"  Reading national dataset ({zips[0].stat().st_size // (1024*1024)} MB)...")
-    gdf = read_zip(zips[0])
+    outer_zip = zips[0]
+    print(f"  Extracting outer ZIP ({outer_zip.stat().st_size // (1024*1024)} MB)...")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        with zipfile.ZipFile(outer_zip) as zf:
+            # Find inner Tokyo ZIP (prefecture code 13)
+            inner_names = [
+                n for n in zf.namelist()
+                if n.endswith(".zip") and "_13_" in n
+            ]
+            if not inner_names:
+                print("  SKIP: No Tokyo (13) inner ZIP found")
+                return
+
+            zf.extract(inner_names[0], tmp_path)
+            inner_zip = tmp_path / inner_names[0]
+
+        print(f"  Reading inner ZIP: {inner_names[0]}")
+        gdf = read_zip(inner_zip)
+
     gdf = ensure_wgs84(gdf)
     gdf = clip_tokyo(gdf)
     gdf = set_precision(gdf)
