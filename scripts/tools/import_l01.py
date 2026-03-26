@@ -313,6 +313,38 @@ def main() -> None:
         count = import_year(year, conn_kwargs, dry_run=args.dry_run)
         total_rows += count
 
+    # Post-import: backfill zone_type via spatial join with zoning table.
+    # The schema_redesign added land_prices.zone_type as a denormalized column
+    # used by the TLS z-score calculation.  Without this, zone_type is NULL and
+    # z-scores are incorrect.  See: Codex audit DB-01.
+    if not args.dry_run and total_rows > 0:
+        import psycopg2
+
+        print("\nBackfilling zone_type via spatial join with zoning table...")
+        try:
+            with psycopg2.connect(**conn_kwargs) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE land_prices lp
+                        SET zone_type = z.zone_type
+                        FROM zoning z
+                        WHERE lp.zone_type IS NULL
+                          AND ST_Within(lp.geom, z.geom)
+                    """)
+                    updated = cur.rowcount
+                conn.commit()
+            print(f"  Updated {updated} rows with zone_type from zoning spatial join.")
+            # Report remaining NULLs (land prices outside any zoning polygon)
+            with psycopg2.connect(**conn_kwargs) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT count(*) FROM land_prices WHERE zone_type IS NULL")
+                    remaining = cur.fetchone()[0]
+            if remaining > 0:
+                print(f"  Note: {remaining} rows still have NULL zone_type (outside zoning polygons).")
+        except psycopg2.Error as exc:
+            print(f"  WARNING: zone_type backfill failed: {exc}", file=sys.stderr)
+            print("  TLS z-scores may be inaccurate. Run manually after fixing zoning data.", file=sys.stderr)
+
     print("=" * 60)
     print(f"{mode_label}Done. Total rows {'would be ' if args.dry_run else ''}imported: {total_rows}")
     print("=" * 60)

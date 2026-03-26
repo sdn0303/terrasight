@@ -128,7 +128,7 @@ impl AreaRepository for PgAreaRepository {
     async fn find_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("flood", area, zoom);
-        let query = sqlx::query_as::<_, (i64, Option<String>, Option<String>, serde_json::Value)>(
+        let query = sqlx::query_as::<_, (i64, Option<i16>, Option<String>, serde_json::Value)>(
             r#"
             SELECT id, depth_rank, river_name,
                    ST_AsGeoJSON(geom)::jsonb AS geometry

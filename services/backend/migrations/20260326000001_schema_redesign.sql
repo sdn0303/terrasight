@@ -176,6 +176,7 @@ CREATE TABLE railways (
     railway_type    text NOT NULL DEFAULT '',
     line_name       text NOT NULL DEFAULT '',
     operator_name   text NOT NULL DEFAULT '',
+    station_name    text NOT NULL DEFAULT '',
     geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
