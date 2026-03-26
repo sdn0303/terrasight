@@ -1,5 +1,0 @@
-geopandas>=1.0.0
-pandas>=2.0.0
-fiona[all]>=1.10.0
-pyproj>=3.6.0
-shapely>=2.0.0

@@ -495,9 +495,9 @@ Format: JSON
 # マイグレーション実行
 sqlx migrate run
 
-# 開発用seedデータ投入
-psql $DATABASE_URL -f scripts/seed_dev_data.sql
+# データベースリセット（マイグレーション + 開発用seedデータ投入）
+./scripts/commands/db-reset.sh
 
 # 本番データインポート（国土数値情報）
-bash scripts/import_geojson.sh
+./scripts/commands/db-import.sh
 ```

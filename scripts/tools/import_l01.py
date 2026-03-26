@@ -18,13 +18,13 @@ Usage:
     # Set DATABASE_URL first (or export it in your shell)
     export DATABASE_URL="postgresql://user:pass@localhost:5432/realestate"
 
-    python3 scripts/import-l01.py                    # import all 5 years
-    python3 scripts/import-l01.py --year 2025        # import single year
-    python3 scripts/import-l01.py --dry-run          # preview counts without inserting
-    python3 scripts/import-l01.py --year 2026 --dry-run
+    uv run scripts/tools/import_l01.py                    # import all 5 years
+    uv run scripts/tools/import_l01.py --year 2025        # import single year
+    uv run scripts/tools/import_l01.py --dry-run          # preview counts without inserting
+    uv run scripts/tools/import_l01.py --year 2026 --dry-run
 
 Dependencies:
-    pip install geopandas psycopg2-binary
+    Managed by uv (see scripts/pyproject.toml)
 
 Exit codes:
     0  success
@@ -46,7 +46,7 @@ import geopandas as gpd
 # Constants
 # ---------------------------------------------------------------------------
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/tools/ -> scripts/ -> project root
 GEOJSON_DIR = ROOT / "data" / "geojson"
 
 YEARS = [2022, 2023, 2024, 2025, 2026]

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/../services/wasm"
+cd "$(dirname "$0")/../../services/wasm"
 
 wasm-pack build --target web --out-dir ../../services/frontend/public/wasm --release
 
