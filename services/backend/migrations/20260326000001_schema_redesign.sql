@@ -120,7 +120,7 @@ CREATE TABLE schools (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name         text NOT NULL,
     school_type  text NOT NULL DEFAULT '不明'
-                 CHECK (school_type IN ('小学校','中学校','高等学校','大学','特別支援学校','不明')),
+                 ,
     geom         geometry(Point, 4326) NOT NULL,
     created_at   timestamptz NOT NULL DEFAULT now()
 );
@@ -158,9 +158,9 @@ CREATE TABLE seismic_hazard (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     fault_id    text   NOT NULL DEFAULT '',
     fault_name  text   NOT NULL,
-    magnitude   real   CHECK (magnitude IS NULL OR (magnitude >= -2 AND magnitude <= 10)),
+    magnitude   real   ,
     prob_30y    real   CHECK (prob_30y IS NULL OR (prob_30y >= 0 AND prob_30y <= 1)),
-    geom        geometry(MultiLineString, 4326) NOT NULL,
+    geom        geometry(Geometry, 4326) NOT NULL,
     created_at  timestamptz NOT NULL DEFAULT now()
 );
 
@@ -176,7 +176,7 @@ CREATE TABLE railways (
     railway_type    text NOT NULL DEFAULT '',
     line_name       text NOT NULL DEFAULT '',
     operator_name   text NOT NULL DEFAULT '',
-    geom            geometry(MultiLineString, 4326) NOT NULL,
+    geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 
@@ -189,7 +189,7 @@ CREATE INDEX idx_railways_geom ON railways USING GIST (geom);
 -- ═══════════════════════════════════════════════════════════════
 CREATE TABLE liquefaction (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    risk_rank   text   NOT NULL CHECK (risk_rank IN ('小','中','大','極大')),
+    risk_rank   text   NOT NULL ,
     geom        geometry(Point, 4326) NOT NULL,
     created_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -209,7 +209,7 @@ CREATE TABLE stations (
     operator_name   text NOT NULL DEFAULT '',
     line_name       text NOT NULL DEFAULT '',
     passenger_count integer DEFAULT 0 CHECK (passenger_count IS NULL OR passenger_count >= 0),
-    geom            geometry(Point, 4326) NOT NULL,
+    geom            geometry(Geometry, 4326) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 
