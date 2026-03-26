@@ -63,7 +63,7 @@ export const ZoningProperties = z.object({
 
 export const FloodProperties = z.object({
   id: z.number(),
-  depth_rank: z.string(), // MLIT text values e.g. "0.5m未満", "0.5-3.0m"
+  depth_rank: z.number(), // 0=outside zone, 1=<0.5m, 2=0.5-3m, 3=3-5m, 4=5-10m, 5=≥10m
   river_name: z.string().nullable(),
 });
 

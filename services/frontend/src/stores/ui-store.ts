@@ -23,7 +23,11 @@ interface UIState {
   toggleLayerSettings: () => void;
   comparePointA: ComparePoint;
   comparePointB: ComparePoint;
-  setComparePoint: (point: { lat: number; lng: number; address: string }) => void;
+  setComparePoint: (point: {
+    lat: number;
+    lng: number;
+    address: string;
+  }) => void;
   resetCompare: () => void;
 }
 
@@ -65,8 +69,7 @@ export const useUIStore = create<UIState>()(
         }
       },
 
-      resetCompare: () =>
-        set({ comparePointA: null, comparePointB: null }),
+      resetCompare: () => set({ comparePointA: null, comparePointB: null }),
     }),
     { name: "ui-store" },
   ),

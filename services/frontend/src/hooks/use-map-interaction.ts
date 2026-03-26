@@ -38,7 +38,9 @@ export function useMapInteraction() {
           properties: (feature.properties ?? {}) as Record<string, unknown>,
           coordinates: [e.lngLat.lng, e.lngLat.lat],
         });
-        const featureAddress = feature?.properties?.address as string | undefined;
+        const featureAddress = feature?.properties?.address as
+          | string
+          | undefined;
         setAnalysisPoint({
           lat: e.lngLat.lat,
           lng: e.lngLat.lng,

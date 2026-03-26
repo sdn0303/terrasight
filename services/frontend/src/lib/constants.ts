@@ -8,3 +8,7 @@ export const MAP_CONFIG = {
 
 export const DEBOUNCE_MS = 300;
 export const BBOX_MAX_DEGREES = 0.5;
+
+export const PANEL_WIDTH = 320;
+export const TOP_BAR_HEIGHT = 48;
+export const STATUS_BAR_HEIGHT = 28;

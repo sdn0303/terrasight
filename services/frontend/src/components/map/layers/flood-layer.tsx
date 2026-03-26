@@ -9,28 +9,19 @@ interface Props {
 }
 
 /**
- * MLIT depth_rank is a text string like "0.5m未満", "0.5-3.0m", "3.0-5.0m", "5.0m以上".
- * We use match expressions to map these to numeric values for extrusion height and color.
+ * depth_rank is a numeric value from the backend:
+ *   0 = outside flood zone
+ *   1 = < 0.5 m
+ *   2 = 0.5 – 3 m
+ *   3 = 3 – 5 m
+ *   4 = 5 – 10 m
+ *   5 = ≥ 10 m
  *
- *   depth_rank text    → numeric rank (0-4)
- *   "0.5m未満"         → 1
- *   "0.5-3.0m"         → 2
- *   "3.0-5.0m"         → 3
- *   "5.0m以上"         → 4
- *   (other)            → 1 (fallback)
+ * The value is used directly in interpolate expressions for color and extrusion height.
  */
-const DEPTH_RANK_NUMERIC = [
-  "match",
-  ["get", "depth_rank"],
-  "0.5m未満",
-  1,
-  "0.5-3.0m",
-  2,
-  "3.0-5.0m",
-  3,
-  "5.0m以上",
-  4,
-  1, // fallback
+const DEPTH_RANK_EXPR = [
+  "get",
+  "depth_rank",
 ] as unknown as maplibregl.ExpressionSpecification;
 
 export function FloodLayer({ data, visible }: Props) {
@@ -44,15 +35,15 @@ export function FloodLayer({ data, visible }: Props) {
           "fill-extrusion-color": [
             "interpolate",
             ["linear"],
-            DEPTH_RANK_NUMERIC,
+            DEPTH_RANK_EXPR,
             0,
             "#1a6fff",
             2,
             "#ffd000",
-            4,
+            5,
             "#e04030",
           ],
-          "fill-extrusion-height": ["*", DEPTH_RANK_NUMERIC, 50],
+          "fill-extrusion-height": ["*", DEPTH_RANK_EXPR, 50],
           "fill-extrusion-base": 0,
           "fill-extrusion-opacity": 0.7,
         }}

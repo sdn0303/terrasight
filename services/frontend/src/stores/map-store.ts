@@ -17,13 +17,17 @@ interface SelectedFeature {
 }
 
 export interface SelectedArea {
-  code: string;       // Administrative code (e.g., "13" for Tokyo, "13105" for Bunkyo)
-  name: string;       // Display name
+  code: string; // Administrative code (e.g., "13" for Tokyo, "13105" for Bunkyo)
+  name: string; // Display name
   level: "prefecture" | "municipality";
   bbox: { south: number; west: number; north: number; east: number };
 }
 
-export type WeightPreset = "balance" | "investment" | "residential" | "disaster";
+export type WeightPreset =
+  | "balance"
+  | "investment"
+  | "residential"
+  | "disaster";
 
 export interface AnalysisPoint {
   lat: number;

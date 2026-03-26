@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { parseAsInteger, useQueryState } from "nuqs";
 import type { FeatureCollection } from "geojson";
+import { parseAsInteger, useQueryState } from "nuqs";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { LayerConfig } from "@/lib/layers";
-import { LAYERS } from "@/lib/layers";
-import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useHealth } from "@/features/health/api/use-health";
 import { useLandPrices } from "@/features/land-prices/api/use-land-prices";
 import { useMapUrlState } from "@/hooks/use-map-url-state";
-import { useMapStore } from "@/stores/map-store";
+import type { LayerConfig } from "@/lib/layers";
+import { LAYERS } from "@/lib/layers";
 import { logger } from "@/lib/logger";
+import { spatialEngine } from "@/lib/wasm/spatial-engine";
+import { useMapStore } from "@/stores/map-store";
 
 const log = logger.child({ module: "use-map-page" });
 
@@ -63,7 +63,11 @@ export function useMapPage() {
   );
 
   const layers = useMemo(() => [...visibleLayers], [visibleLayers]);
-  const { data: areaData, isLoading } = useAreaData(bbox, layers, viewState.zoom);
+  const { data: areaData, isLoading } = useAreaData(
+    bbox,
+    layers,
+    viewState.zoom,
+  );
   const { data: health } = useHealth();
   const {
     data: landPriceData,
@@ -95,7 +99,10 @@ export function useMapPage() {
     );
   }, [selectedFeature]);
 
-  const staticLayers = useMemo(() => LAYERS.filter((l) => l.source === "static"), []);
+  const staticLayers = useMemo(
+    () => LAYERS.filter((l) => l.source === "static"),
+    [],
+  );
   const apiLayers = useMemo(() => LAYERS.filter((l) => l.source === "api"), []);
 
   return {

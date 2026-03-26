@@ -1,21 +1,21 @@
 "use client";
 
+import { ComparePanel } from "@/components/context-panel/compare-panel";
 import { ContextPanel } from "@/components/context-panel/context-panel";
+import { ExplorePanel } from "@/components/context-panel/explore-panel";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { PopupCard } from "@/components/map/popup-card";
 import { StatusBar } from "@/components/status-bar";
 import { TopBar } from "@/components/top-bar/top-bar";
-import { ExplorePanel } from "@/components/context-panel/explore-panel";
-import { ComparePanel } from "@/components/context-panel/compare-panel";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
-import { useUIStore } from "@/stores/ui-store";
 import {
   PANEL_WIDTH,
-  TOP_BAR_HEIGHT,
   STATUS_BAR_HEIGHT,
+  TOP_BAR_HEIGHT,
 } from "@/lib/constants";
+import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
   const mode = useUIStore((s) => s.mode);

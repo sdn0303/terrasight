@@ -1,11 +1,8 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import type { LayerConfig } from "@/lib/layers";
 import { AreaHighlight } from "@/components/map/area-highlight";
-import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
 import { LandPriceYearSlider } from "@/components/map/land-price-year-slider";
-import { YearSlider } from "@/components/map/year-slider";
 import {
   AdminBoundaryLayer,
   DIDLayer,
@@ -33,6 +30,9 @@ import {
   VolcanoLayer,
   ZoningLayer,
 } from "@/components/map/layers";
+import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
+import { YearSlider } from "@/components/map/year-slider";
+import type { LayerConfig } from "@/lib/layers";
 
 const EMPTY_FC: FeatureCollection = {
   type: "FeatureCollection",
