@@ -1,7 +1,7 @@
 services:
   db:
     image: postgis/postgis:16-3.4
-    platform: linux/arm64
+    platform: linux/amd64
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     environment:
       POSTGRES_DB: realestate
