@@ -114,6 +114,7 @@ def _read_json_from_zip(zip_path: Path) -> gpd.GeoDataFrame:
             for n in zf.namelist()
             if (n.endswith(".geojson") or n.endswith(".json"))
             and "__MACOSX" not in n
+            and "Shift-JIS" not in n
         ]
         if not json_names:
             raise FileNotFoundError(f"No .geojson found in {zip_path.name}")
@@ -234,12 +235,15 @@ def process_l01() -> None:
 
 
 def process_a29() -> None:
-    """A29 用途地域 — Tokyo (2011 version)."""
-    print("\n[A29] 用途地域 (Tokyo, 2011)")
+    """A29 用途地域 — Tokyo (2019 version, per-municipality SHP)."""
+    print("\n[A29] 用途地域 (Tokyo, 2019)")
 
-    zips = find_raw("A29-11_13_GML.zip")
+    zips = find_raw("A29-19_13_GML.zip")
     if not zips:
-        print("  SKIP: A29-11_13_GML.zip not found")
+        # Fallback to 2011
+        zips = find_raw("A29-11_13_GML.zip")
+    if not zips:
+        print("  SKIP: A29 Tokyo not found")
         return
 
     gdf = read_zip(zips[0])
@@ -278,7 +282,7 @@ def process_a31b() -> None:
 
 
 def process_a33() -> None:
-    """A33 土砂災害警戒区域 — filter to Tokyo from national dataset."""
+    """A33 土砂災害警戒区域 — Tokyo only from national dataset."""
     print("\n[A33] 土砂災害警戒区域 (Tokyo)")
 
     zips = find_raw("A33-24_00_GEOJSON.zip")
@@ -286,10 +290,28 @@ def process_a33() -> None:
         print("  SKIP: A33-24_00_GEOJSON.zip not found")
         return
 
-    print(f"  Reading national dataset ({zips[0].stat().st_size // (1024*1024)} MB)...")
-    gdf = read_zip(zips[0])
+    # National ZIP contains per-prefecture GeoJSONs: A33-24_13_GEOJSON/A33-24_13Polygon.geojson
+    print(f"  Reading Tokyo from national dataset ({zips[0].stat().st_size // (1024*1024)} MB)...")
+    with zipfile.ZipFile(zips[0]) as zf:
+        tokyo_names = [
+            n
+            for n in zf.namelist()
+            if n.endswith(".geojson") and "_13" in n.split("/")[0]
+        ]
+
+    if not tokyo_names:
+        print("  SKIP: Tokyo geojson not found in A33 national zip")
+        return
+
+    with zipfile.ZipFile(zips[0]) as zf:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            for name in tokyo_names:
+                zf.extract(name, tmp_path)
+            frames = [gpd.read_file(tmp_path / name) for name in tokyo_names]
+
+    gdf = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0]
     gdf = ensure_wgs84(gdf)
-    gdf = clip_tokyo(gdf)
     gdf = force_2d(gdf)
     gdf = set_precision(gdf)
     write_geojson(gdf, "a33-landslide-tokyo")
@@ -329,12 +351,14 @@ def process_a47() -> None:
 
 
 def process_p29() -> None:
-    """P29 学校 — Tokyo (2021)."""
+    """P29 学校 — Tokyo (2021, per-prefecture)."""
     print("\n[P29] 学校 (Tokyo, 2021)")
 
     zips = find_raw("P29-21_13_GML.zip")
     if not zips:
-        print("  SKIP: P29-21_13_GML.zip not found")
+        zips = find_raw("P29-23_GML.zip")  # fallback to national
+    if not zips:
+        print("  SKIP: P29 not found")
         return
 
     gdf = read_zip(zips[0])
@@ -345,12 +369,14 @@ def process_p29() -> None:
 
 
 def process_p04() -> None:
-    """P04 医療機関 — Tokyo (2020)."""
+    """P04 医療機関 — Tokyo (2020, per-prefecture)."""
     print("\n[P04] 医療機関 (Tokyo, 2020)")
 
     zips = find_raw("P04-20_13_GML.zip")
     if not zips:
-        print("  SKIP: P04-20_13_GML.zip not found")
+        zips = find_raw("P04-20_GML.zip")  # fallback to national
+    if not zips:
+        print("  SKIP: P04 not found")
         return
 
     gdf = read_zip(zips[0])
@@ -380,15 +406,39 @@ def process_pl() -> None:
 
 
 def process_s12() -> None:
-    """S12 駅別乗降客数 — Tokyo (2024, latest)."""
-    print("\n[S12] 駅別乗降客数 (Tokyo, 2024)")
+    """S12 駅別乗降客数 — Tokyo (latest, UTF-8 version)."""
+    print("\n[S12] 駅別乗降客数 (Tokyo)")
 
-    zips = find_raw("S12-24_GML.zip")
+    zips: list[Path] = []
+    for ver in ["24", "23", "22"]:
+        zips = find_raw(f"S12-{ver}_GML.zip")
+        if zips:
+            break
     if not zips:
-        print("  SKIP: S12-24_GML.zip not found")
+        print("  SKIP: S12 not found")
         return
 
-    gdf = read_zip(zips[0])
+    with zipfile.ZipFile(zips[0]) as zf:
+        json_names = [
+            n
+            for n in zf.namelist()
+            if n.endswith(".geojson") and "UTF-8" in n
+        ]
+        if not json_names:
+            json_names = [
+                n for n in zf.namelist() if n.endswith(".geojson")
+            ]
+
+    if not json_names:
+        print("  SKIP: No station geojson found")
+        return
+
+    with zipfile.ZipFile(zips[0]) as zf:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            zf.extract(json_names[0], tmp_path)
+            gdf = gpd.read_file(tmp_path / json_names[0])
+
     gdf = ensure_wgs84(gdf)
     gdf = clip_tokyo(gdf)
     gdf = set_precision(gdf)
@@ -396,15 +446,46 @@ def process_s12() -> None:
 
 
 def process_n02() -> None:
-    """N02 鉄道 — Tokyo (2023)."""
-    print("\n[N02] 鉄道 (Tokyo, 2023)")
+    """N02 鉄道 — Tokyo (latest, RailroadSection only)."""
+    print("\n[N02] 鉄道 (Tokyo)")
 
-    zips = find_raw("N02-23_GML.zip")
+    # Try newest first
+    zips: list[Path] = []
+    for ver in ["24", "23", "22"]:
+        zips = find_raw(f"N02-{ver}_GML.zip")
+        if zips:
+            break
     if not zips:
-        print("  SKIP: N02-23_GML.zip not found")
+        print("  SKIP: N02 not found")
         return
 
-    gdf = read_zip(zips[0])
+    # Read only RailroadSection (not Station — S12 handles stations)
+    with zipfile.ZipFile(zips[0]) as zf:
+        json_names = [
+            n
+            for n in zf.namelist()
+            if n.endswith(".geojson")
+            and "RailroadSection" in n
+            and "UTF-8" in n
+        ]
+        if not json_names:
+            # fallback: any geojson with Railroad
+            json_names = [
+                n
+                for n in zf.namelist()
+                if n.endswith(".geojson") and "Railroad" in n
+            ]
+
+    if not json_names:
+        print("  SKIP: No RailroadSection geojson found")
+        return
+
+    with zipfile.ZipFile(zips[0]) as zf:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            zf.extract(json_names[0], tmp_path)
+            gdf = gpd.read_file(tmp_path / json_names[0])
+
     gdf = ensure_wgs84(gdf)
     gdf = clip_tokyo(gdf)
     gdf = force_2d(gdf)
@@ -413,19 +494,41 @@ def process_n02() -> None:
 
 
 def process_n03() -> None:
-    """N03 行政区域 — Tokyo."""
-    print("\n[N03] 行政区域 (Tokyo)")
+    """N03 行政区域 — Tokyo (2025)."""
+    print("\n[N03] 行政区域 (Tokyo, 2025)")
 
     zips = find_raw("N03-20250101_GML.zip")
     if not zips:
-        print("  SKIP: N03-20250101_GML.zip not found")
+        zips = find_raw("N03-20240101_GML.zip")
+    if not zips:
+        print("  SKIP: N03 not found")
         return
 
-    print(f"  Reading national dataset ({zips[0].stat().st_size // (1024*1024)} MB)...")
-    gdf = read_zip(zips[0])
+    # 2025 has files at root: N03-20250101.geojson (municipalities)
+    # and N03-20250101_prefecture.geojson — skip prefecture-level
+    print(f"  Reading {zips[0].name} ({zips[0].stat().st_size // (1024*1024)} MB)...")
+    with zipfile.ZipFile(zips[0]) as zf:
+        json_names = [
+            n
+            for n in zf.namelist()
+            if n.endswith(".geojson")
+            and "__MACOSX" not in n
+            and "prefecture" not in n  # skip prefecture-level, use municipality
+        ]
+
+    if not json_names:
+        print("  SKIP: No municipality geojson found")
+        return
+
+    with zipfile.ZipFile(zips[0]) as zf:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            zf.extract(json_names[0], tmp_path)
+            gdf = gpd.read_file(tmp_path / json_names[0])
+
     gdf = ensure_wgs84(gdf)
 
-    # Filter by admin code prefix (Tokyo = 13)
+    # Filter to Tokyo by admin column
     admin_col = None
     for col in gdf.columns:
         if "N03_001" in col or "都道府県" in col:
