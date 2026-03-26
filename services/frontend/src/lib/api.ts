@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { logger } from "./logger";
 import {
   AreaDataResponse,
+  AreaStatsResponse,
   HealthResponse,
   LandPriceTimeSeriesResponse,
   TlsResponse,
@@ -183,4 +184,8 @@ export function fetchTrend(
     params.years = String(years);
   }
   return get(TrendResponse, "api/trend", params, signal);
+}
+
+export function fetchAreaStats(code: string, signal?: AbortSignal) {
+  return get(AreaStatsResponse, "api/area-stats", { code }, signal);
 }

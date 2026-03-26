@@ -192,6 +192,26 @@ export type LandPriceTimeSeriesResponse = z.infer<
   typeof LandPriceTimeSeriesResponse
 >;
 
+// ─── Area stats response ──────────────────────────────
+export const AreaStatsResponse = z.object({
+  code: z.string(),
+  name: z.string(),
+  level: z.enum(["prefecture", "municipality"]),
+  land_price: z.object({
+    avg_per_sqm: z.number().nullable(),
+    median_per_sqm: z.number().nullable(),
+    count: z.number(),
+  }),
+  risk: z.object({
+    flood_area_ratio: z.number(),
+    composite_risk: z.number(),
+  }),
+  facilities: z.object({
+    schools: z.number(),
+    medical: z.number(),
+  }),
+});
+
 // ─── Export inferred types ────────────────────────────
 export type AreaDataResponse = z.infer<typeof AreaDataResponse>;
 export type TlsResponse = z.infer<typeof TlsResponse>;
@@ -200,3 +220,4 @@ export type TrendResponse = z.infer<typeof TrendResponse>;
 export type HealthResponse = z.infer<typeof HealthResponse>;
 export type LandPriceProperties = z.infer<typeof LandPriceProperties>;
 export type ZoningProperties = z.infer<typeof ZoningProperties>;
+export type AreaStatsResponse = z.infer<typeof AreaStatsResponse>;
