@@ -1,12 +1,15 @@
 services:
   db:
     image: postgis/postgis:16-3.4
+    platform: linux/amd64
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     environment:
       POSTGRES_DB: realestate
       POSTGRES_USER: app
       POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./services/backend/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
       - "5432:5432"
     healthcheck:

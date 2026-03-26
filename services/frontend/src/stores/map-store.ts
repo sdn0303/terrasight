@@ -16,13 +16,22 @@ interface SelectedFeature {
   coordinates: [number, number]; // [lng, lat] per RFC 7946
 }
 
+export interface SelectedArea {
+  code: string;       // Administrative code (e.g., "13" for Tokyo, "13105" for Bunkyo)
+  name: string;       // Display name
+  level: "prefecture" | "municipality";
+  bbox: { south: number; west: number; north: number; east: number };
+}
+
 interface MapState {
   viewState: ViewState;
   visibleLayers: Set<string>;
   selectedFeature: SelectedFeature | null;
+  selectedArea: SelectedArea | null;
   setViewState: (viewState: ViewState) => void;
   toggleLayer: (layerId: string) => void;
   selectFeature: (feature: SelectedFeature | null) => void;
+  selectArea: (area: SelectedArea | null) => void;
   getBBox: () => { south: number; west: number; north: number; east: number };
 }
 
@@ -42,6 +51,7 @@ export const useMapStore = create<MapState>()(
       },
       visibleLayers: defaultVisibleLayers,
       selectedFeature: null,
+      selectedArea: null,
 
       setViewState: (viewState) => set({ viewState }),
 
@@ -57,6 +67,8 @@ export const useMapStore = create<MapState>()(
         }),
 
       selectFeature: (feature) => set({ selectedFeature: feature }),
+
+      selectArea: (area) => set({ selectedArea: area }),
 
       getBBox: () => {
         const { latitude, longitude, zoom } = get().viewState;

@@ -12,7 +12,7 @@ from pathlib import Path
 import fiona
 import geopandas as gpd
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/tools/ -> scripts/ -> project root
 
 PREFECTURE_LAYERS: list[tuple[str, str]] = [
     ("services/frontend/public/geojson/admin-boundary-tokyo.geojson", "admin-boundary.fgb"),

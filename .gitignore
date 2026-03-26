@@ -33,7 +33,12 @@ __pycache__/
 .env*.local
 
 # Data (large files — seed via scripts, not git)
-data/
+data/raw/**
+data/processed/**
+data/fgb/
+data/geojson/
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 
 # IDE
 .vscode/

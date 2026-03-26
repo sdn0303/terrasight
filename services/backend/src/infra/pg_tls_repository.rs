@@ -60,7 +60,8 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError> {
         // MAX depth_rank within 500m buffer. Returns NULL when no flood zone intersects.
-        let query = sqlx::query_as::<_, (Option<i32>,)>(
+        // depth_rank is smallint (0-5) in the new schema.
+        let query = sqlx::query_as::<_, (Option<i16>,)>(
             r#"
             SELECT MAX(depth_rank)
             FROM flood_risk
@@ -72,7 +73,7 @@ impl TlsRepository for PgTlsRepository {
             .await
             .map_err(map_db_err)?;
 
-        Ok(row.0)
+        Ok(row.0.map(|v| v as i32))
     }
 
     #[tracing::instrument(skip(self))]
@@ -174,51 +175,34 @@ impl TlsRepository for PgTlsRepository {
 
     #[tracing::instrument(skip(self))]
     async fn calc_price_z_score(&self, coord: &Coord) -> Result<ZScoreResult, DomainError> {
-        // Step 1: Find the zone_type containing the point.
-        // Step 2: For all land_prices in that zone_type (latest year per address),
-        //         compute mean, stddev, and the z-score of the nearest point's price.
+        // Uses the denormalized zone_type column on land_prices to avoid the slow
+        // ST_Contains join against the zoning table that was causing 503 errors.
         let query = sqlx::query_as::<_, (f64, String, i64)>(
             r#"
-            WITH point_zone AS (
-                SELECT zone_type
-                FROM zoning
-                WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint($1, $2), 4326))
+            WITH nearest AS (
+                SELECT price_per_sqm, zone_type
+                FROM land_prices
+                WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000)
+                ORDER BY ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)
                 LIMIT 1
             ),
-            nearest_price AS (
-                SELECT lp.price_per_sqm
-                FROM land_prices lp
-                WHERE ST_DWithin(lp.geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000)
-                ORDER BY ST_Distance(lp.geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)
-                LIMIT 1
-            ),
-            zone_prices AS (
-                SELECT lp.price_per_sqm
-                FROM land_prices lp
-                INNER JOIN point_zone pz ON true
-                INNER JOIN zoning z ON ST_Contains(z.geom, lp.geom)
-                    AND z.zone_type = pz.zone_type
-                WHERE lp.year = (
-                    SELECT MAX(year) FROM land_prices
-                )
-            ),
-            stats AS (
-                SELECT AVG(price_per_sqm)    AS mean_price,
-                       STDDEV(price_per_sqm) AS stddev_price,
-                       COUNT(*)              AS sample_count
-                FROM zone_prices
+            zone_stats AS (
+                SELECT AVG(lp.price_per_sqm)::double precision AS mean_price,
+                       STDDEV(lp.price_per_sqm)::double precision AS stddev_price,
+                       COUNT(*)::bigint AS sample_count
+                FROM land_prices lp, nearest n
+                WHERE lp.zone_type = n.zone_type
+                  AND lp.year = (SELECT MAX(year) FROM land_prices)
             )
             SELECT
-                CASE
-                    WHEN s.stddev_price IS NULL OR s.stddev_price = 0
-                    THEN 0.0
-                    ELSE (np.price_per_sqm - s.mean_price) / s.stddev_price
-                END AS z_score,
-                COALESCE(pz.zone_type, '') AS zone_type,
-                s.sample_count
-            FROM stats s
-            CROSS JOIN nearest_price np
-            LEFT JOIN point_zone pz ON true
+                COALESCE(
+                    CASE WHEN zs.stddev_price IS NULL OR zs.stddev_price = 0 THEN 0.0
+                         ELSE ((n.price_per_sqm - zs.mean_price) / zs.stddev_price)
+                    END, 0.0)::double precision AS z_score,
+                COALESCE(n.zone_type, '') AS zone_type,
+                COALESCE(zs.sample_count, 0)::bigint AS sample_count
+            FROM nearest n
+            LEFT JOIN zone_stats zs ON true
             "#,
         );
         let row = bind_coord(query, coord.lng(), coord.lat())

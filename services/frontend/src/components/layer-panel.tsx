@@ -154,7 +154,7 @@ function LayerPanelContent() {
 }
 
 export function LayerPanel() {
-  const { layerPanelOpen } = useUIStore();
+  const { layerSettingsOpen } = useUIStore();
   const isDesktop = useMediaQuery("(min-width: 1280px)");
   const isMobileOrTablet = !isDesktop;
 
@@ -197,7 +197,7 @@ export function LayerPanel() {
   // Desktop: fixed 280px left panel with animation
   return (
     <AnimatePresence>
-      {layerPanelOpen && (
+      {layerSettingsOpen && (
         <motion.aside
           initial={{ x: -280 }}
           animate={{ x: 0 }}

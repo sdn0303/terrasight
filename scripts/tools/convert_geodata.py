@@ -6,12 +6,12 @@ Reads from data/raw/ (ZIP archives), filters to Tokyo 23-ku area,
 normalizes properties, and writes to data/geojson/.
 
 Usage:
-    python3 scripts/convert-geodata.py                  # all datasets
-    python3 scripts/convert-geodata.py l01 a29 a31b     # specific datasets
-    python3 scripts/convert-geodata.py --list            # show available datasets
+    uv run scripts/tools/convert_geodata.py                  # all datasets
+    uv run scripts/tools/convert_geodata.py l01 a29 a31b     # specific datasets
+    uv run scripts/tools/convert_geodata.py --list            # show available datasets
 
 Dependencies:
-    pip3 install geopandas pandas fiona pyproj shapely
+    Managed by uv (see scripts/pyproject.toml)
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from shapely.geometry import box
 # Constants
 # ---------------------------------------------------------------------------
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/tools/ -> scripts/ -> project root
 RAW_DIR = ROOT / "data" / "raw"
 OUT_DIR = ROOT / "data" / "geojson"
 

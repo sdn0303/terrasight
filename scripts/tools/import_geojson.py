@@ -16,7 +16,7 @@ corresponding PostGIS tables.  Supports 9 datasets (all non-L01 files):
   s12-stations        -> stations            (new table)
 
 Each import is idempotent: DELETE all rows from the target table, then INSERT.
-New tables are created with CREATE TABLE IF NOT EXISTS before import.
+Tables must already exist (created by migration scripts).
 
 Attribute mapping is defined in DATASETS dict.  Only mapped columns are imported;
 unmapped GeoJSON properties are ignored.
@@ -24,13 +24,13 @@ unmapped GeoJSON properties are ignored.
 Usage:
     export DATABASE_URL="postgresql://user:pass@localhost:5432/realestate"
 
-    python3 scripts/import-geojson.py                          # import all 9 datasets
-    python3 scripts/import-geojson.py --dataset p29-schools    # import single dataset
-    python3 scripts/import-geojson.py --dry-run                # preview counts
-    python3 scripts/import-geojson.py --dataset a31b-flood --batch-size 2000
+    uv run scripts/tools/import_geojson.py                          # import all 9 datasets
+    uv run scripts/tools/import_geojson.py --dataset p29-schools    # import single dataset
+    uv run scripts/tools/import_geojson.py --dry-run                # preview counts
+    uv run scripts/tools/import_geojson.py --dataset a31b-flood --batch-size 2000
 
 Dependencies:
-    pip install geopandas psycopg2-binary
+    Managed by uv (see scripts/pyproject.toml)
 
 Exit codes:
     0  success
@@ -53,7 +53,7 @@ import geopandas as gpd
 # Constants
 # ---------------------------------------------------------------------------
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/tools/ -> scripts/ -> project root
 GEOJSON_DIR = ROOT / "data" / "geojson"
 
 DEFAULT_BATCH_SIZE = 1000
@@ -83,7 +83,6 @@ class DatasetConfig:
     columns: list[ColumnMapping]
     geom_type: str = "Geometry"  # PostGIS geometry type hint for EWKT
     force_multi: bool = False  # Convert Polygon -> MultiPolygon for existing tables
-    create_ddl: str | None = None  # DDL for new tables (CREATE TABLE IF NOT EXISTS)
     insert_columns: list[str] = field(default_factory=list)  # computed at init
 
     def __post_init__(self) -> None:
@@ -118,57 +117,6 @@ def _safe_float(val: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
-
-# ----- DDL for new tables -----
-
-DDL_SEISMIC_HAZARD = """
-CREATE TABLE IF NOT EXISTS seismic_hazard (
-    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fault_id    text,
-    fault_name  text    NOT NULL,
-    magnitude   real,
-    prob_30y    real,
-    geom        geometry(Geometry, 4326) NOT NULL,
-    created_at  timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_seismic_hazard_geom ON seismic_hazard USING GIST (geom);
-"""
-
-DDL_RAILWAYS = """
-CREATE TABLE IF NOT EXISTS railways (
-    id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    railway_type    text,
-    line_name       text,
-    operator_name   text,
-    station_name    text,
-    geom            geometry(Geometry, 4326) NOT NULL,
-    created_at      timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_railways_geom ON railways USING GIST (geom);
-"""
-
-DDL_LIQUEFACTION = """
-CREATE TABLE IF NOT EXISTS liquefaction (
-    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    risk_rank   text    NOT NULL,
-    geom        geometry(Point, 4326) NOT NULL,
-    created_at  timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_liquefaction_geom ON liquefaction USING GIST (geom);
-"""
-
-DDL_STATIONS = """
-CREATE TABLE IF NOT EXISTS stations (
-    id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    station_name    text    NOT NULL,
-    station_code    text,
-    operator_name   text,
-    line_name       text,
-    geom            geometry(Geometry, 4326) NOT NULL,
-    created_at      timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_stations_geom ON stations USING GIST (geom);
-"""
 
 # Railway type codes (N02_001)
 _RAILWAY_TYPE_MAP = {
@@ -226,25 +174,16 @@ def _medical_type(val: Any) -> str | None:
     return _MEDICAL_TYPE_MAP.get(s, s)
 
 
-# Flood depth rank codes (A31b_201)
-_FLOOD_DEPTH_MAP = {
-    1: "0.5m未満",
-    2: "0.5-3.0m",
-    3: "3.0-5.0m",
-    4: "5.0-10.0m",
-    5: "10.0-20.0m",
-    6: "20.0m以上",
-}
-
-
-def _flood_depth(val: Any) -> str | None:
+def _flood_depth_int(val: Any) -> int | None:
+    """Convert flood depth rank to integer (new schema: smallint 0-5)."""
     if val is None:
         return None
     try:
         code = int(float(val))
-        return _FLOOD_DEPTH_MAP.get(code, str(code))
+        # NLNI A31b codes: 1-6, map to 1-5 (cap at 5)
+        return min(code, 5) if code > 0 else 0
     except (TypeError, ValueError):
-        return _safe_text(val)
+        return None
 
 
 # ----- Dataset registry -----
@@ -268,7 +207,7 @@ DATASETS: dict[str, DatasetConfig] = {
         geom_type="Geometry",
         force_multi=True,
         columns=[
-            ColumnMapping("A31b_201", "depth_rank", _flood_depth),
+            ColumnMapping("A31b_201", "depth_rank", _flood_depth_int),
             ColumnMapping("A31b_101", "river_name", _safe_text),
         ],
     ),
@@ -285,7 +224,6 @@ DATASETS: dict[str, DatasetConfig] = {
         file="jshis-seismic-tokyo.geojson",
         table="seismic_hazard",
         geom_type="Geometry",
-        create_ddl=DDL_SEISMIC_HAZARD,
         columns=[
             ColumnMapping("FLT_ID", "fault_id", _safe_text),
             ColumnMapping("LTENAME", "fault_name", _safe_text),
@@ -297,7 +235,6 @@ DATASETS: dict[str, DatasetConfig] = {
         file="n02-railway-tokyo.geojson",
         table="railways",
         geom_type="LineString",
-        create_ddl=DDL_RAILWAYS,
         columns=[
             ColumnMapping("N02_001", "railway_type", _railway_type),
             ColumnMapping("N02_003", "line_name", _safe_text),
@@ -328,7 +265,6 @@ DATASETS: dict[str, DatasetConfig] = {
         file="pl-liquefaction-tokyo.geojson",
         table="liquefaction",
         geom_type="Point",
-        create_ddl=DDL_LIQUEFACTION,
         columns=[
             ColumnMapping("PL区分", "risk_rank", _safe_text),
         ],
@@ -337,7 +273,6 @@ DATASETS: dict[str, DatasetConfig] = {
         file="s12-stations-tokyo.geojson",
         table="stations",
         geom_type="LineString",
-        create_ddl=DDL_STATIONS,
         columns=[
             ColumnMapping("S12_001", "station_name", _safe_text),
             ColumnMapping("S12_001c", "station_code", _safe_text),
@@ -451,27 +386,6 @@ def extract_rows(
 # ---------------------------------------------------------------------------
 
 
-def ensure_table(
-    conn_kwargs: dict[str, Any],
-    config: DatasetConfig,
-) -> None:
-    """Run CREATE TABLE IF NOT EXISTS DDL for new tables."""
-    if config.create_ddl is None:
-        return
-
-    import psycopg2
-
-    try:
-        with psycopg2.connect(**conn_kwargs) as conn:
-            with conn.cursor() as cur:
-                cur.execute(config.create_ddl)
-            conn.commit()
-        print(f"    Ensured table '{config.table}' exists")
-    except psycopg2.Error as exc:
-        print(f"    ERROR creating table {config.table}: {exc}", file=sys.stderr)
-        sys.exit(2)
-
-
 def import_dataset(
     name: str,
     config: DatasetConfig,
@@ -502,9 +416,6 @@ def import_dataset(
             f"then INSERT {len(rows)} rows."
         )
         return len(rows)
-
-    # Ensure table exists (for new tables only)
-    ensure_table(conn_kwargs, config)
 
     import psycopg2
     import psycopg2.extras

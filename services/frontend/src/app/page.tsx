@@ -5,10 +5,11 @@ import { parseAsInteger, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { ComparePanel } from "@/components/compare-panel";
-import { DashboardStats } from "@/components/dashboard-stats";
-import { LayerPanel } from "@/components/layer-panel";
+import { AreaHighlight } from "@/components/map/area-highlight";
+import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
 import { LandPriceYearSlider } from "@/components/map/land-price-year-slider";
+import { ContextPanel } from "@/components/context-panel/context-panel";
+import { TopBar } from "@/components/top-bar/top-bar";
 import {
   AdminBoundaryLayer,
   DIDLayer,
@@ -50,6 +51,10 @@ import { LAYERS } from "@/lib/layers";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
+import { ExplorePanel } from "@/components/context-panel/explore-panel";
+import { AnalyzePanel } from "@/components/context-panel/analyze-panel";
+import { ComparePanel } from "@/components/context-panel/compare-panel";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -120,7 +125,7 @@ export default function Home() {
     })),
   );
   const viewState = useMapStore((s) => s.viewState);
-  const { compareMode, setComparePoint } = useUIStore();
+  const { mode, setComparePoint } = useUIStore();
   const [bbox, setBbox] = useState(() => getBBox());
   const [populationYear, setPopulationYear] = useState(2020);
   const [landPriceYear, setLandPriceYear] = useQueryState(
@@ -169,7 +174,7 @@ export default function Home() {
   const handleFeatureClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0];
-      if (compareMode) {
+      if (mode === "compare") {
         const address =
           feature?.properties != null &&
           typeof feature.properties === "object" &&
@@ -188,11 +193,18 @@ export default function Home() {
           properties: (feature.properties ?? {}) as Record<string, unknown>,
           coordinates: [e.lngLat.lng, e.lngLat.lat],
         });
+        const featureAddress = feature?.properties?.address as string | undefined;
+        useAnalysisStore.getState().setAnalysisPoint({
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+          ...(featureAddress !== undefined ? { address: featureAddress } : {}),
+        });
+        useUIStore.getState().setMode("analyze");
       } else {
         selectFeature(null);
       }
     },
-    [compareMode, selectFeature, setComparePoint],
+    [mode, selectFeature, setComparePoint],
   );
 
   const isDemoMode = health ? !health.reinfolib_key_set : true;
@@ -206,75 +218,87 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      <LayerPanel />
-      <ScoreCard />
+      <TopBar />
 
-      <MapView onMoveEnd={handleMoveEnd} onFeatureClick={handleFeatureClick}>
-        {/* 3D Time-series land price layer (dedicated useLandPrices hook) */}
-        <LandPriceExtrusionLayer
-          data={landPriceData ?? EMPTY_FC}
-          visible={visibleLayers.has("land_price_ts")}
-          isFetching={isLandPriceFetching}
-        />
+      <ContextPanel>
+        {mode === "explore" && <ExplorePanel />}
+        {mode === "analyze" && <AnalyzePanel />}
+        {mode === "compare" && <ComparePanel />}
+      </ContextPanel>
 
-        {/* API-driven layers: receive data from useAreaData */}
-        {apiLayers.map((layer) => {
-          const Component = API_LAYER_COMPONENTS[layer.id];
-          if (!Component) return null;
-          const layerData =
-            areaData != null
-              ? ((areaData as Record<string, unknown>)[layer.id] as
-                  | FeatureCollection
-                  | undefined)
-              : undefined;
-          return (
-            <Component
-              key={layer.id}
-              data={layerData ?? EMPTY_FC}
-              visible={visibleLayers.has(layer.id)}
-            />
-          );
-        })}
+      {/* Map area offset by top bar (48px) and context panel (320px) */}
+      <div className="absolute" style={{ top: 48, left: 320, right: 0, bottom: 28 }}>
+        <MapView onMoveEnd={handleMoveEnd} onFeatureClick={handleFeatureClick}>
+          {/* NEW: Always-visible boundaries */}
+          <BoundaryLayer />
+          <AreaHighlight />
 
-        {/* Static layers: load GeoJSON from /geojson/ on mount */}
-        {staticLayers.map((layer) => {
-          // PopulationMeshLayer needs special handling for year slider
-          if (layer.id === "population_mesh") {
+          {/* 3D Time-series land price layer (dedicated useLandPrices hook) */}
+          <LandPriceExtrusionLayer
+            data={landPriceData ?? EMPTY_FC}
+            visible={visibleLayers.has("land_price_ts")}
+            isFetching={isLandPriceFetching}
+          />
+
+          {/* API-driven layers: receive data from useAreaData */}
+          {apiLayers.map((layer) => {
+            const Component = API_LAYER_COMPONENTS[layer.id];
+            if (!Component) return null;
+            const layerData =
+              areaData != null
+                ? ((areaData as Record<string, unknown>)[layer.id] as
+                    | FeatureCollection
+                    | undefined)
+                : undefined;
             return (
-              <PopulationMeshLayer
+              <Component
                 key={layer.id}
+                data={layerData ?? EMPTY_FC}
                 visible={visibleLayers.has(layer.id)}
-                selectedYear={populationYear}
               />
             );
-          }
-          const Component = STATIC_LAYER_COMPONENTS[layer.id];
-          if (!Component) return null;
-          return (
-            <Component key={layer.id} visible={visibleLayers.has(layer.id)} />
-          );
-        })}
+          })}
 
-        {/* Year slider for population mesh — only visible when layer is active */}
-        <YearSlider
-          value={populationYear}
-          onChange={setPopulationYear}
-          visible={visibleLayers.has("population_mesh")}
-        />
+          {/* Static layers: load GeoJSON from /geojson/ on mount */}
+          {staticLayers.map((layer) => {
+            // PopulationMeshLayer needs special handling for year slider
+            if (layer.id === "population_mesh") {
+              return (
+                <PopulationMeshLayer
+                  key={layer.id}
+                  visible={visibleLayers.has(layer.id)}
+                  selectedYear={populationYear}
+                />
+              );
+            }
+            const Component = STATIC_LAYER_COMPONENTS[layer.id];
+            if (!Component) return null;
+            return (
+              <Component key={layer.id} visible={visibleLayers.has(layer.id)} />
+            );
+          })}
 
-        {/* Year slider for land price time-series — bottom-left, only visible when layer is active */}
-        <LandPriceYearSlider
-          value={landPriceYear}
-          onChange={setLandPriceYear}
-          visible={visibleLayers.has("land_price_ts")}
-          isFetching={isLandPriceFetching}
-          isError={isLandPriceError}
-          isZoomTooLow={isZoomTooLow}
-          {...(landPriceData !== undefined
-            ? { featureCount: landPriceData.features.length }
-            : {})}
-        />
-      </MapView>
+          {/* Year slider for population mesh — only visible when layer is active */}
+          <YearSlider
+            value={populationYear}
+            onChange={setPopulationYear}
+            visible={visibleLayers.has("population_mesh")}
+          />
+
+          {/* Year slider for land price time-series — bottom-left, only visible when layer is active */}
+          <LandPriceYearSlider
+            value={landPriceYear}
+            onChange={setLandPriceYear}
+            visible={visibleLayers.has("land_price_ts")}
+            isFetching={isLandPriceFetching}
+            isError={isLandPriceError}
+            isZoomTooLow={isZoomTooLow}
+            {...(landPriceData !== undefined
+              ? { featureCount: landPriceData.features.length }
+              : {})}
+          />
+        </MapView>
+      </div>
 
       {/* Click-inspect popup */}
       {selectedFeature && selectedLayerConfig?.popupFields && (
@@ -296,7 +320,9 @@ export default function Home() {
         </div>
       )}
 
-      <ComparePanel />
+      {/* KEEP: ScoreCard for now (temporary, until Phase 3 replaces it) */}
+      <ScoreCard />
+
       <StatusBar
         lat={viewState.latitude}
         lng={viewState.longitude}
@@ -305,7 +331,6 @@ export default function Home() {
         isDemoMode={isDemoMode}
         truncatedLayers={truncatedLayers}
       />
-      <DashboardStats bbox={bbox} zoom={viewState.zoom} />
     </div>
   );
 }

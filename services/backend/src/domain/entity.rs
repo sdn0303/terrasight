@@ -127,3 +127,18 @@ pub struct ZScoreResult {
     pub zone_type: String,
     pub sample_count: i64,
 }
+
+/// Aggregated statistics for an administrative area (prefecture or municipality).
+///
+/// `level` is either `"prefecture"` (2-digit code) or `"municipality"` (5-digit code).
+/// `name` is a placeholder until the `admin_boundaries` table is populated by the
+/// Phase 5 data pipeline — callers should treat it as informational only for now.
+#[derive(Debug, Clone)]
+pub struct AdminAreaStats {
+    pub code: String,
+    pub name: String,
+    pub level: String,
+    pub land_price: LandPriceStats,
+    pub risk: RiskStats,
+    pub facilities: FacilityStats,
+}

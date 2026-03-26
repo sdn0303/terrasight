@@ -27,6 +27,8 @@ export interface LayerConfig {
   interactiveLayerIds?: string[];
   /** Minimum zoom level for this layer to be visible */
   minZoom?: number;
+  /** Theme(s) this layer belongs to for automatic theme preset activation */
+  theme?: Array<"safety" | "livability" | "price" | "future">;
 }
 
 export const LAYERS: LayerConfig[] = [
@@ -45,6 +47,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "land_use", label: "用途" },
     ],
     interactiveLayerIds: ["land-price-extrusion-3d", "land-price-ts-circle"],
+    theme: ["price"],
   },
   {
     id: "landprice",
@@ -60,6 +63,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "change_rate", label: "変動率", suffix: "%" },
     ],
     interactiveLayerIds: ["landprice-circle"],
+    theme: ["price"],
   },
   {
     id: "flood_history",
@@ -75,6 +79,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "year", label: "発生年" },
     ],
     interactiveLayerIds: ["flood-history-fill"],
+    theme: ["safety"],
   },
   {
     id: "did",
@@ -89,6 +94,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "population", label: "人口", suffix: "人" },
     ],
     interactiveLayerIds: ["did-fill"],
+    theme: ["future"],
   },
   {
     id: "station",
@@ -104,6 +110,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "passengerCount", label: "乗降客数", suffix: "人/日" },
     ],
     interactiveLayerIds: ["station-circle"],
+    theme: ["livability", "future"],
   },
   {
     id: "flood",
@@ -118,6 +125,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "depth", label: "想定浸水深", suffix: "m" },
     ],
     interactiveLayerIds: ["flood-fill"],
+    theme: ["safety"],
   },
   {
     id: "steep_slope",
@@ -132,6 +140,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "type", label: "種別" },
     ],
     interactiveLayerIds: ["steep-slope-fill"],
+    theme: ["safety"],
   },
   {
     id: "liquefaction",
@@ -144,6 +153,7 @@ export const LAYERS: LayerConfig[] = [
     popupFields: [{ key: "PL区分", label: "液状化危険度" }],
     interactiveLayerIds: ["liquefaction-circle"],
     minZoom: 11,
+    theme: ["safety"],
   },
   {
     id: "seismic",
@@ -161,6 +171,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "LEN", label: "断層長", suffix: "km" },
     ],
     interactiveLayerIds: ["seismic-fill"],
+    theme: ["safety"],
   },
   {
     id: "fault",
@@ -175,6 +186,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "length", label: "延長", suffix: "km" },
     ],
     interactiveLayerIds: ["fault-line"],
+    theme: ["safety"],
   },
   {
     id: "volcano",
@@ -189,6 +201,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "rank", label: "ランク" },
     ],
     interactiveLayerIds: ["volcano-circle"],
+    theme: ["safety"],
   },
   {
     id: "landslide",
@@ -205,6 +218,7 @@ export const LAYERS: LayerConfig[] = [
     ],
     interactiveLayerIds: ["landslide-fill"],
     minZoom: 11,
+    theme: ["safety"],
   },
   {
     id: "tsunami",
@@ -220,6 +234,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "scenario", label: "想定シナリオ" },
     ],
     interactiveLayerIds: ["tsunami-fill"],
+    theme: ["safety"],
   },
   {
     id: "landform",
@@ -267,6 +282,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "type", label: "種別" },
     ],
     interactiveLayerIds: ["schools-circle"],
+    theme: ["livability"],
   },
   {
     id: "medical",
@@ -281,6 +297,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "type", label: "種別" },
     ],
     interactiveLayerIds: ["medical-circle"],
+    theme: ["livability"],
   },
   {
     id: "school_district",
@@ -296,6 +313,7 @@ export const LAYERS: LayerConfig[] = [
     ],
     interactiveLayerIds: ["school-district-fill"],
     minZoom: 12,
+    theme: ["livability"],
   },
   {
     id: "park",
@@ -311,6 +329,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "area", label: "面積", suffix: "㎡" },
     ],
     interactiveLayerIds: ["park-fill"],
+    theme: ["livability"],
   },
   {
     id: "railway",
@@ -325,6 +344,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "N02_004", label: "事業者名" },
     ],
     interactiveLayerIds: ["railway-line"],
+    theme: ["livability"],
   },
   {
     id: "admin_boundary",
@@ -351,6 +371,7 @@ export const LAYERS: LayerConfig[] = [
       { key: "bcr", label: "建蔽率", suffix: "%" },
     ],
     interactiveLayerIds: ["zoning-fill"],
+    theme: ["price", "future"],
   },
   {
     id: "population_mesh",
@@ -368,6 +389,7 @@ export const LAYERS: LayerConfig[] = [
     ],
     interactiveLayerIds: ["population-mesh-fill"],
     minZoom: 13,
+    theme: ["future"],
   },
   {
     id: "urban_plan",
@@ -383,6 +405,7 @@ export const LAYERS: LayerConfig[] = [
     ],
     interactiveLayerIds: ["urban-plan-fill"],
     minZoom: 11,
+    theme: ["future"],
   },
 ];
 

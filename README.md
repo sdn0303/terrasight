@@ -70,8 +70,8 @@ cp .env.example .env   # Edit with your API keys
 # 2. Start database
 docker compose up -d db
 
-# 3. Seed development data
-psql -h localhost -U app -d realestate -f scripts/seed_dev_data.sql
+# 3. Reset database (migrate + seed development data)
+./scripts/commands/db-reset.sh
 
 # 4. Run backend
 cd services/backend

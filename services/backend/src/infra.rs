@@ -1,3 +1,4 @@
+pub mod pg_admin_area_stats_repository;
 pub mod pg_area_repository;
 pub mod pg_health_repository;
 pub mod pg_land_price_repository;
