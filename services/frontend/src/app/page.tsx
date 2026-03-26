@@ -54,6 +54,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useAnalysisStore } from "@/stores/analysis-store";
 import { ExplorePanel } from "@/components/context-panel/explore-panel";
 import { AnalyzePanel } from "@/components/context-panel/analyze-panel";
+import { ComparePanel } from "@/components/context-panel/compare-panel";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -222,7 +223,7 @@ export default function Home() {
       <ContextPanel>
         {mode === "explore" && <ExplorePanel />}
         {mode === "analyze" && <AnalyzePanel />}
-        {mode === "compare" && <div className="p-4 text-xs text-neutral-500">Compare mode — coming soon</div>}
+        {mode === "compare" && <ComparePanel />}
       </ContextPanel>
 
       {/* Map area offset by top bar (48px) and context panel (320px) */}
