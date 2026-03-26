@@ -15,6 +15,7 @@ import type {
   ViewStateChangeEvent,
 } from "react-map-gl/maplibre";
 import { Map as MapGL, NavigationControl } from "react-map-gl/maplibre";
+import type { BBox } from "@/lib/api";
 import { DEBOUNCE_MS, MAP_CONFIG } from "@/lib/constants";
 import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
 import { logger } from "@/lib/logger";
@@ -24,7 +25,7 @@ const log = logger.child({ module: "map-view" });
 
 interface MapViewProps {
   children?: ReactNode;
-  onMoveEnd?: () => void;
+  onMoveEnd?: (bbox: BBox) => void;
   onFeatureClick?: (e: MapLayerMouseEvent) => void;
 }
 
@@ -60,7 +61,15 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
     (_e: ViewStateChangeEvent) => {
       if (moveEndTimerRef.current) clearTimeout(moveEndTimerRef.current);
       moveEndTimerRef.current = setTimeout(() => {
-        onMoveEnd?.();
+        const map = mapRef.current;
+        if (!map || !onMoveEnd) return;
+        const b = map.getBounds();
+        onMoveEnd({
+          south: b.getSouth(),
+          west: b.getWest(),
+          north: b.getNorth(),
+          east: b.getEast(),
+        });
       }, DEBOUNCE_MS);
     },
     [onMoveEnd],
@@ -200,7 +209,9 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
           mapRef.current.triggerRepaint();
           log.info("attempted triggerRepaint after WebGL timeout");
         } catch {
-          log.warn("triggerRepaint failed after WebGL timeout — user must reload");
+          log.warn(
+            "triggerRepaint failed after WebGL timeout — user must reload",
+          );
         }
       }
     }, WEBGL_RECOVERY_TIMEOUT_MS);

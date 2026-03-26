@@ -3,11 +3,11 @@
 import type { FeatureCollection } from "geojson";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useHealth } from "@/features/health/api/use-health";
 import { useLandPrices } from "@/features/land-prices/api/use-land-prices";
 import { useMapUrlState } from "@/hooks/use-map-url-state";
+import type { BBox } from "@/lib/api";
 import type { LayerConfig } from "@/lib/layers";
 import { LAYERS } from "@/lib/layers";
 import { logger } from "@/lib/logger";
@@ -42,19 +42,16 @@ export function useMapPage() {
     return () => spatialEngine.dispose();
   }, []);
 
-  const { visibleLayers, getBBox } = useMapStore(
-    useShallow((s) => ({
-      visibleLayers: s.visibleLayers,
-      getBBox: s.getBBox,
-    })),
-  );
+  const visibleLayers = useMapStore((s) => s.visibleLayers);
   const viewState = useMapStore((s) => s.viewState);
   const selectedFeature = useMapStore((s) => s.selectedFeature);
 
-  const [bbox, setBbox] = useState(() => getBBox());
-  const handleMoveEnd = useCallback(() => {
-    setBbox(getBBox());
-  }, [getBBox]);
+  const [bbox, setBbox] = useState<BBox>(() =>
+    useMapStore.getState().getBBox(),
+  );
+  const handleMoveEnd = useCallback((newBbox: BBox) => {
+    setBbox(newBbox);
+  }, []);
 
   const [populationYear, setPopulationYear] = useState(2020);
   const [landPriceYear, setLandPriceYear] = useQueryState(
