@@ -51,6 +51,7 @@ import { LAYERS } from "@/lib/layers";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
+import { ExplorePanel } from "@/components/context-panel/explore-panel";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -210,7 +211,7 @@ export default function Home() {
       <TopBar />
 
       <ContextPanel>
-        {mode === "explore" && <div className="p-4 text-xs text-neutral-500">Explore mode — coming soon</div>}
+        {mode === "explore" && <ExplorePanel />}
         {mode === "analyze" && <div className="p-4 text-xs text-neutral-500">Analyze mode — coming soon</div>}
         {mode === "compare" && <div className="p-4 text-xs text-neutral-500">Compare mode — coming soon</div>}
       </ContextPanel>
