@@ -51,7 +51,9 @@ import { LAYERS } from "@/lib/layers";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
 import { ExplorePanel } from "@/components/context-panel/explore-panel";
+import { AnalyzePanel } from "@/components/context-panel/analyze-panel";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -190,6 +192,13 @@ export default function Home() {
           properties: (feature.properties ?? {}) as Record<string, unknown>,
           coordinates: [e.lngLat.lng, e.lngLat.lat],
         });
+        const featureAddress = feature?.properties?.address as string | undefined;
+        useAnalysisStore.getState().setAnalysisPoint({
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+          ...(featureAddress !== undefined ? { address: featureAddress } : {}),
+        });
+        useUIStore.getState().setMode("analyze");
       } else {
         selectFeature(null);
       }
@@ -212,7 +221,7 @@ export default function Home() {
 
       <ContextPanel>
         {mode === "explore" && <ExplorePanel />}
-        {mode === "analyze" && <div className="p-4 text-xs text-neutral-500">Analyze mode — coming soon</div>}
+        {mode === "analyze" && <AnalyzePanel />}
         {mode === "compare" && <div className="p-4 text-xs text-neutral-500">Compare mode — coming soon</div>}
       </ContextPanel>
 
