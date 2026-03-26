@@ -209,13 +209,13 @@ impl TlsRepository for PgTlsRepository {
                 FROM zone_prices
             )
             SELECT
-                CASE
+                (CASE
                     WHEN s.stddev_price IS NULL OR s.stddev_price = 0
                     THEN 0.0
                     ELSE (np.price_per_sqm - s.mean_price) / s.stddev_price
-                END AS z_score,
+                END)::double precision AS z_score,
                 COALESCE(pz.zone_type, '') AS zone_type,
-                s.sample_count
+                s.sample_count::bigint
             FROM stats s
             CROSS JOIN nearest_price np
             LEFT JOIN point_zone pz ON true
