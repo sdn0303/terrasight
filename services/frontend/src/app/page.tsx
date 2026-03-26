@@ -120,7 +120,7 @@ export default function Home() {
     })),
   );
   const viewState = useMapStore((s) => s.viewState);
-  const { compareMode, setComparePoint } = useUIStore();
+  const { mode, setComparePoint } = useUIStore();
   const [bbox, setBbox] = useState(() => getBBox());
   const [populationYear, setPopulationYear] = useState(2020);
   const [landPriceYear, setLandPriceYear] = useQueryState(
@@ -169,7 +169,7 @@ export default function Home() {
   const handleFeatureClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0];
-      if (compareMode) {
+      if (mode === "compare") {
         const address =
           feature?.properties != null &&
           typeof feature.properties === "object" &&
@@ -192,7 +192,7 @@ export default function Home() {
         selectFeature(null);
       }
     },
-    [compareMode, selectFeature, setComparePoint],
+    [mode, selectFeature, setComparePoint],
   );
 
   const isDemoMode = health ? !health.reinfolib_key_set : true;

@@ -12,8 +12,12 @@ import { useScore } from "@/features/score/api/use-score";
 import { useUIStore } from "@/stores/ui-store";
 
 export function ComparePanel() {
-  const { compareMode, comparePointA, comparePointB, exitCompareMode } =
+  const { mode, comparePointA, comparePointB, resetCompare, setMode } =
     useUIStore();
+  const exitCompareMode = () => {
+    resetCompare();
+    setMode("explore");
+  };
   const { data: scoreA } = useScore(
     comparePointA?.lat ?? null,
     comparePointA?.lng ?? null,
@@ -24,7 +28,7 @@ export function ComparePanel() {
   );
 
   const showPanel =
-    compareMode && comparePointA !== null && comparePointB !== null;
+    mode === "compare" && comparePointA !== null && comparePointB !== null;
 
   const radarData =
     scoreA && scoreB

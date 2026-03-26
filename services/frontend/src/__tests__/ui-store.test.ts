@@ -4,46 +4,48 @@ import { useUIStore } from "@/stores/ui-store";
 describe("useUIStore", () => {
   beforeEach(() => {
     useUIStore.setState({
-      compareMode: false,
+      mode: "explore",
       comparePointA: null,
       comparePointB: null,
-      layerPanelOpen: true,
+      layerSettingsOpen: true,
     });
   });
 
-  it("starts with compare mode off", () => {
-    expect(useUIStore.getState().compareMode).toBe(false);
+  it("starts with explore mode", () => {
+    expect(useUIStore.getState().mode).toBe("explore");
   });
 
-  it("starts with layer panel open", () => {
-    expect(useUIStore.getState().layerPanelOpen).toBe(true);
+  it("starts with layer settings open", () => {
+    expect(useUIStore.getState().layerSettingsOpen).toBe(true);
   });
 
-  it("enters compare mode and resets points", () => {
+  it("enters compare mode via setMode and resets points", () => {
     useUIStore.getState().setComparePoint({
       lat: 35.681,
       lng: 139.767,
       address: "東京駅",
     });
-    useUIStore.getState().enterCompareMode();
+    useUIStore.getState().resetCompare();
+    useUIStore.getState().setMode("compare");
 
     const state = useUIStore.getState();
-    expect(state.compareMode).toBe(true);
+    expect(state.mode).toBe("compare");
     expect(state.comparePointA).toBeNull();
     expect(state.comparePointB).toBeNull();
   });
 
-  it("exits compare mode and resets points", () => {
-    useUIStore.getState().enterCompareMode();
+  it("exits compare mode by resetCompare + setMode explore", () => {
+    useUIStore.getState().setMode("compare");
     useUIStore.getState().setComparePoint({
       lat: 35.681,
       lng: 139.767,
       address: "東京駅",
     });
-    useUIStore.getState().exitCompareMode();
+    useUIStore.getState().resetCompare();
+    useUIStore.getState().setMode("explore");
 
     const state = useUIStore.getState();
-    expect(state.compareMode).toBe(false);
+    expect(state.mode).toBe("explore");
     expect(state.comparePointA).toBeNull();
     expect(state.comparePointB).toBeNull();
   });
@@ -61,11 +63,11 @@ describe("useUIStore", () => {
     expect(useUIStore.getState().comparePointB).toEqual(pointB);
   });
 
-  it("toggles layer panel", () => {
-    expect(useUIStore.getState().layerPanelOpen).toBe(true);
-    useUIStore.getState().toggleLayerPanel();
-    expect(useUIStore.getState().layerPanelOpen).toBe(false);
-    useUIStore.getState().toggleLayerPanel();
-    expect(useUIStore.getState().layerPanelOpen).toBe(true);
+  it("toggles layer settings", () => {
+    expect(useUIStore.getState().layerSettingsOpen).toBe(true);
+    useUIStore.getState().toggleLayerSettings();
+    expect(useUIStore.getState().layerSettingsOpen).toBe(false);
+    useUIStore.getState().toggleLayerSettings();
+    expect(useUIStore.getState().layerSettingsOpen).toBe(true);
   });
 });
