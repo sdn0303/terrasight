@@ -1,4 +1,5 @@
 export { AdminBoundaryLayer } from "./admin-boundary-layer";
+export { BoundaryLayer } from "./boundary-layer";
 export { DIDLayer } from "./did-layer";
 export { FaultLayer } from "./fault-layer";
 export { FloodHistoryLayer } from "./flood-history-layer";
