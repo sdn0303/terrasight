@@ -23,7 +23,7 @@
 #   - J-SHIS bulk download: https://www.j-shis.bosai.go.jp/download (requires interactive selection)
 #   - A55 urban planning: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A55-2024.html (dynamic UI)
 #   - PLATEAU 3D models: https://www.geospatial.jp/ckan/dataset/plateau-tokyo23ku
-#   - e-Stat census data: https://www.e-stat.go.jp/api/ (requires API key registration)
+#   - e-Stat census data: fetched via scripts/tools/fetch_estat.py (ESTAT_APP_ID in .env)
 # =============================================================================
 set -euo pipefail
 
@@ -120,14 +120,15 @@ show_status() {
   printf "  %-25s %5s files  %s\n" "500m pop mesh" "$(ls "$DATA_DIR"/500m* 2>/dev/null | wc -l | tr -d ' ')" "nationwide"
   printf "  %-25s %5s files  %s\n" "Landform/Geology/Soil" "$(ls "$DATA_DIR"/landform* "$DATA_DIR"/geology* "$DATA_DIR"/soil* 2>/dev/null | wc -l | tr -d ' ')" "nationwide"
   echo ""
-  echo "  Total: $(ls "$DATA_DIR"/ 2>/dev/null | wc -l | tr -d ' ') files, $(du -sh "$DATA_DIR" | cut -f1)"
+  printf "  %-25s %5s files  %s\n" "e-Stat (census/housing)" "$(ls "$ROOT/data/estat"/*.csv 2>/dev/null | wc -l | tr -d ' ')" "API fetch"
+  echo ""
+  echo "  Total raw: $(ls "$DATA_DIR"/ 2>/dev/null | wc -l | tr -d ' ') files, $(du -sh "$DATA_DIR" | cut -f1)"
   echo ""
   echo "  === Manual download required ==="
   echo "  Tokyo liquefaction PL:  https://doboku.metro.tokyo.lg.jp/start/03-jyouhou/ekijyouka/layertable.html"
   echo "  J-SHIS seismic bulk:    https://www.j-shis.bosai.go.jp/download"
   echo "  A55 urban planning:     https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A55-2024.html"
   echo "  PLATEAU 3D models:      https://www.geospatial.jp/ckan/dataset/plateau-tokyo23ku"
-  echo "  e-Stat census API:      https://www.e-stat.go.jp/api/"
 }
 
 if $STATUS_ONLY; then
@@ -354,6 +355,23 @@ if [[ "$SECTION" == "all" || "$SECTION" == "9" ]]; then
      "$DATA_DIR/L03-b-21_GEOJSON.zip" \
      "L03-b 2021" || echo "    already exists or unavailable"
 
+  echo ""
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# Section 10: e-Stat — Census and Housing Survey (API)
+# Source: https://www.e-stat.go.jp/api/
+# Requires: ESTAT_APP_ID (in services/backend/.env)
+# ═══════════════════════════════════════════════════════════════
+if [[ "$SECTION" == "all" || "$SECTION" == "10" ]]; then
+  echo "--- [10] e-Stat: Census & Housing Survey ---"
+  cd "$ROOT"
+  if uv run scripts/tools/fetch_estat.py --dry-run 2>/dev/null; then
+    uv run scripts/tools/fetch_estat.py
+  else
+    echo "  SKIP: uv not available or ESTAT_APP_ID not set"
+    echo "  Manual: uv run scripts/tools/fetch_estat.py"
+  fi
   echo ""
 fi
 

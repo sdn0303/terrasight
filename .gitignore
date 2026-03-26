@@ -37,6 +37,7 @@ data/raw/**
 data/processed/**
 data/fgb/
 data/geojson/
+data/estat/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
