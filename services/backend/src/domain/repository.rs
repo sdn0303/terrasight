@@ -61,6 +61,16 @@ pub trait LandPriceRepository: Send + Sync {
     ) -> Result<LayerResult, DomainError>;
 }
 
+// ─── Admin Area Stats ────────────────────────────────
+
+#[async_trait]
+pub trait AdminAreaStatsRepository: Send + Sync {
+    /// Fetch aggregated statistics for the given administrative area code.
+    ///
+    /// `code` is a prefecture code (e.g. `"13"`) or municipality code (e.g. `"13105"`).
+    async fn get_area_stats(&self, code: &str) -> Result<AdminAreaStats, DomainError>;
+}
+
 // ─── Health ──────────────────────────────────────────
 
 #[async_trait]
