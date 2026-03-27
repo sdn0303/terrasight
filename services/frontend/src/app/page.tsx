@@ -62,8 +62,8 @@ export default function Home() {
         </MapView>
         {page.isZoomTooLow && (
           <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ zIndex: 10 }}
+            className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
+            aria-hidden="true"
           >
             <div
               className="rounded-lg px-6 py-3 text-center"
