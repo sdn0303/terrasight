@@ -1,5 +1,6 @@
 "use client";
 
+import { Popup } from "react-map-gl/maplibre";
 import { ComparePanel } from "@/components/context-panel/compare-panel";
 import { ContextPanel } from "@/components/context-panel/context-panel";
 import { ExplorePanel } from "@/components/context-panel/explore-panel";
@@ -15,6 +16,7 @@ import {
   STATUS_BAR_HEIGHT,
   TOP_BAR_HEIGHT,
 } from "@/lib/constants";
+import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
@@ -59,6 +61,22 @@ export default function Home() {
             setLandPriceYear={page.setLandPriceYear}
             landPriceFeatureCount={page.landPriceData.features.length}
           />
+          {page.selectedFeature && page.selectedLayerConfig?.popupFields && (
+            <Popup
+              longitude={page.selectedFeature.coordinates[0]}
+              latitude={page.selectedFeature.coordinates[1]}
+              anchor="bottom"
+              closeOnClick={false}
+              onClose={() => useMapStore.getState().selectFeature(null)}
+              className="spatial-popup"
+            >
+              <PopupCard
+                layerNameJa={page.selectedLayerConfig.nameJa}
+                fields={page.selectedLayerConfig.popupFields}
+                properties={page.selectedFeature.properties}
+              />
+            </Popup>
+          )}
         </MapView>
         {page.isZoomTooLow && (
           <div
@@ -81,24 +99,22 @@ export default function Home() {
         )}
       </div>
 
-      {page.selectedFeature && page.selectedLayerConfig?.popupFields && (
-        <div
-          className="fixed z-30 pointer-events-none"
-          style={{
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <div className="pointer-events-auto">
-            <PopupCard
-              layerNameJa={page.selectedLayerConfig.nameJa}
-              fields={page.selectedLayerConfig.popupFields}
-              properties={page.selectedFeature.properties}
-            />
-          </div>
-        </div>
-      )}
+      <style>{`
+        .spatial-popup .maplibregl-popup-content {
+          background: transparent;
+          padding: 0;
+          box-shadow: none;
+        }
+        .spatial-popup .maplibregl-popup-tip {
+          border-top-color: var(--bg-secondary);
+        }
+        .spatial-popup .maplibregl-popup-close-button {
+          color: var(--text-muted);
+          font-size: 16px;
+          right: 4px;
+          top: 2px;
+        }
+      `}</style>
 
       <StatusBar
         lat={page.viewState.latitude}
