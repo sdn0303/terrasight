@@ -1,6 +1,9 @@
 import type { FeatureCollection } from "geojson";
 import { layerUrl } from "@/lib/data-url";
 import { canonicalLayerId } from "@/lib/layer-ids";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ module: "spatial-engine" });
 
 // ---------------------------------------------------------------------------
 // Layer manifest — all 11 layers loaded into the R-tree
@@ -141,6 +144,8 @@ export class SpatialEngineAdapter {
     if (typeof window === "undefined") return;
     if (this.worker !== null || this._loadedLayers.size > 0) return;
 
+    performance.mark("wasm-init-start");
+
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
       type: "module",
     });
@@ -186,6 +191,8 @@ export class SpatialEngineAdapter {
     try {
       await Promise.race([initPromise, timeoutPromise]);
     } catch (err) {
+      performance.mark("wasm-init-failed");
+      performance.measure("wasm-init-failed", "wasm-init-start", "wasm-init-failed");
       console.warn(
         "[SpatialEngineAdapter] Falling back to FlatGeobuf mode:",
         err instanceof Error ? err.message : err,
@@ -207,9 +214,25 @@ export class SpatialEngineAdapter {
     }
 
     const id = this.nextId++;
+    const markStart = `wasm-query-${id}-start`;
+    const markEnd = `wasm-query-${id}-done`;
+    const measureName = `wasm-query-${id}`;
+    performance.mark(markStart);
 
     return new Promise<FeatureCollection>((resolve, reject) => {
-      this.pending.set(id, { kind: "query", resolve, reject });
+      this.pending.set(id, {
+        kind: "query",
+        resolve: (value) => {
+          performance.mark(markEnd);
+          performance.measure(measureName, markStart, markEnd);
+          resolve(value);
+        },
+        reject: (reason) => {
+          performance.mark(markEnd);
+          performance.measure(measureName, markStart, markEnd);
+          reject(reason);
+        },
+      });
       this.worker?.postMessage({ type: "query", id, bbox, layers });
     });
   }
@@ -256,6 +279,17 @@ export class SpatialEngineAdapter {
     switch (msg.type) {
       case "init-done": {
         this.registerLoadedLayers(msg.counts);
+        performance.mark("wasm-init-done");
+        performance.measure("wasm-init", "wasm-init-start", "wasm-init-done");
+        const initMeasure = performance.getEntriesByName("wasm-init").pop();
+        const allLayerIds = WASM_LAYERS.map(l => l.id);
+        const failedLayers = allLayerIds.filter(id => !this._loadedLayers.has(id));
+        log.info({
+          wasm_init_ms: initMeasure ? Math.round(initMeasure.duration) : -1,
+          loaded_count: this._loadedLayers.size,
+          loaded_layers: [...this._loadedLayers],
+          failed_layers: failedLayers,
+        }, "WASM spatial engine initialized");
         this.notifyListeners(true);
         break;
       }

@@ -97,6 +97,7 @@ async function handleInit(layers: LayerSpec[]): Promise<void> {
 
   const results = await Promise.allSettled(
     layers.map(async ({ id, url }) => {
+      performance.mark(`layer-load-${id}-start`);
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(
@@ -107,6 +108,12 @@ async function handleInit(layers: LayerSpec[]): Promise<void> {
       const bytes = new Uint8Array(buffer);
       // engine is guaranteed non-null: assigned above before this map runs
       const count = (engine as ISpatialEngine).load_layer(id, bytes);
+      performance.mark(`layer-load-${id}-done`);
+      performance.measure(
+        `layer-load-${id}`,
+        `layer-load-${id}-start`,
+        `layer-load-${id}-done`,
+      );
       return { id, count };
     }),
   );
