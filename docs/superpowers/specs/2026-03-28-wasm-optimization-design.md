@@ -545,20 +545,17 @@ When `useAreaData` returns fresh data for `landprice`/`schools`/`medical`/`zonin
 
 ## File Changes Summary
 
-### Task 0 (Prerequisite)
+### Task 0 + Phase 1 (Prerequisite + Correctness)
 | File | Change |
 |------|--------|
 | `services/frontend/src/lib/layer-ids.ts` | Create: canonical ID mapping + `canonicalLayerId()` |
-| `services/frontend/src/lib/wasm/spatial-engine.ts` | Use `canonicalLayerId()` in init, query, loadedLayers |
-| `services/frontend/src/hooks/use-static-layer.ts` | Use `canonicalLayerId()` for FGB paths |
-
-### Phase 1 (Correctness)
-| File | Change |
-|------|--------|
-| `services/frontend/src/lib/wasm/spatial-engine.ts` | Replace `_ready` with `loadedLayers`, add `queryReady`/`statsReady`, add Performance API marks, add `query-error`/`stats-error` handling |
+| `services/frontend/src/lib/wasm/spatial-engine.ts` | Use `canonicalLayerId()`, replace `_ready` with `loadedLayers`, add `queryReady` (internal), `computeStats` sealed, Performance API marks, `query-error`/`stats-error` handling |
 | `services/frontend/src/lib/wasm/worker.ts` | Add Performance API marks, send `query-error`/`stats-error` with request `id` |
-| `services/frontend/src/hooks/use-spatial-engine.ts` | Return `{ queryReady, statsReady, loadedLayers }` |
-| `services/frontend/src/__tests__/spatial-engine.test.ts` | Create: test ready state separation, error isolation |
+| `services/frontend/src/hooks/use-spatial-engine.ts` | Return `{ ready, queryReady, loadedLayers }` — `statsReady` internal only, not exposed |
+| `services/frontend/src/__tests__/layer-ids.test.ts` | Create: ID normalization tests |
+| `services/frontend/src/__tests__/spatial-engine-ready.test.ts` | Create: ready state separation tests |
+| `services/frontend/src/__tests__/spatial-engine-errors.test.ts` | Create: error isolation behavior tests |
+| Note: `use-static-layer.ts` consumer integration deferred to Phase 2 | `queryReady` wiring into static layer hooks is Phase 2 scope |
 
 ### Phase 2 (Boundary)
 | File | Change |

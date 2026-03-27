@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix WASM correctness issues: normalize layer IDs at WASM/FGB boundaries, replace binary `ready` with granular `loadedLayers`, add request-scoped error handling, and add Performance API observability.
+**Goal:** WASM adapter correctness groundwork: normalize layer IDs at WASM/FGB boundaries, replace binary `ready` with granular `loadedLayers`, add request-scoped error handling, and add Performance API observability. Consumer-side integration (`use-static-layer.ts` → `queryReady`) is Phase 2 scope.
 
 **Architecture:** Create a canonical layer ID mapping (`layer-ids.ts`), refactor `SpatialEngineAdapter` to track per-layer readiness, update worker message protocol with typed error responses including request IDs, and instrument init/load/query with `performance.mark/measure`.
 
@@ -475,8 +475,8 @@ describe("SpatialEngineAdapter error isolation", () => {
     expect(adapter.pendingCount).toBe(0);
   });
 
-  it("computeStats throws unconditionally in Phase 1", () => {
-    expect(() => adapter.computeStats({
+  it("computeStats throws unconditionally in Phase 1", async () => {
+    await expect(adapter.computeStats({
       south: 35.5, west: 139.5, north: 35.9, east: 140.0,
     })).rejects.toThrow("WASM stats disabled in Phase 1");
   });
