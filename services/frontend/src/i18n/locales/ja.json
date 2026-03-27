@@ -1,28 +1,72 @@
 {
   "mode": { "explore": "探索", "analyze": "分析", "compare": "比較" },
-  "theme": { "safety": "安全性", "livability": "利便性", "price": "価格", "future": "将来性" },
+  "theme": {
+    "safety": "安全性",
+    "safety.desc": "洪水・地震・急傾斜地などの災害リスクを可視化",
+    "livability": "利便性",
+    "livability.desc": "学校・医療・鉄道などの生活インフラを表示",
+    "price": "価格",
+    "price.desc": "地価公示・用途地域の投資価値データ",
+    "future": "将来性",
+    "future.desc": "人口推移・都市計画の将来性指標"
+  },
   "tls": {
     "score": "総合スコア",
-    "grade": { "S": "優秀", "A": "非常に良い", "B": "良い", "C": "普通", "D": "平均以下", "E": "低い" }
+    "grade": {
+      "S": "優秀",
+      "A": "非常に良い",
+      "B": "良い",
+      "C": "普通",
+      "D": "平均以下",
+      "E": "低い"
+    }
   },
-  "axis": { "disaster": "災害リスク", "terrain": "地盤・地形", "livability": "生活利便性", "future": "将来性", "price": "価格分析" },
+  "axis": {
+    "disaster": "災害リスク",
+    "terrain": "地盤・地形",
+    "livability": "生活利便性",
+    "future": "将来性",
+    "price": "価格分析"
+  },
   "explore": {
     "prompt": "地図上の都道府県・市区町村をクリックしてください",
-    "areaCard": { "population": "人口", "avgPrice": "地価平均", "risk": "災害リスク", "avgTls": "TLS平均" },
+    "areaCard": {
+      "population": "人口",
+      "avgPrice": "地価平均",
+      "risk": "災害リスク",
+      "avgTls": "TLS平均"
+    },
     "ranking": "市区町村ランキング",
     "analyzeArea": "このエリアで分析"
   },
   "analyze": {
-    "weightPreset": { "balance": "バランス", "investment": "投資重視", "residential": "居住重視", "disaster": "防災重視" },
+    "weightPreset": {
+      "balance": "バランス",
+      "investment": "投資重視",
+      "residential": "居住重視",
+      "disaster": "防災重視"
+    },
     "aiReport": "AIレポート生成",
     "toCompare": "比較モードへ",
     "minPenalty": "{factor}({score})がスコアを制約"
   },
   "compare": {
-    "pointA": "地点A", "pointB": "地点B",
-    "summary": "判定サマリー", "endCompare": "比較終了", "aiCompare": "AI比較レポート"
+    "pointA": "地点A",
+    "pointB": "地点B",
+    "summary": "判定サマリー",
+    "endCompare": "比較終了",
+    "aiCompare": "AI比較レポート"
   },
   "search": { "placeholder": "住所・駅名・市区町村を検索" },
-  "settings": { "language": "言語", "mapStyle": "地図スタイル", "radius": "分析半径", "cache": "キャッシュ更新" },
-  "common": { "loading": "読み込み中...", "error": "エラーが発生しました", "close": "閉じる" }
+  "settings": {
+    "language": "言語",
+    "mapStyle": "地図スタイル",
+    "radius": "分析半径",
+    "cache": "キャッシュ更新"
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "close": "閉じる"
+  }
 }

@@ -1,28 +1,72 @@
 {
   "mode": { "explore": "Explore", "analyze": "Analyze", "compare": "Compare" },
-  "theme": { "safety": "Safety", "livability": "Livability", "price": "Price", "future": "Future" },
+  "theme": {
+    "safety": "Safety",
+    "safety.desc": "Flood, seismic, and landslide hazard layers",
+    "livability": "Livability",
+    "livability.desc": "Schools, medical, railway infrastructure",
+    "price": "Price",
+    "price.desc": "Land prices and zoning value data",
+    "future": "Future",
+    "future.desc": "Population trends and urban planning"
+  },
   "tls": {
     "score": "Total Score",
-    "grade": { "S": "Excellent", "A": "Very Good", "B": "Good", "C": "Fair", "D": "Below Average", "E": "Poor" }
+    "grade": {
+      "S": "Excellent",
+      "A": "Very Good",
+      "B": "Good",
+      "C": "Fair",
+      "D": "Below Average",
+      "E": "Poor"
+    }
   },
-  "axis": { "disaster": "Disaster Risk", "terrain": "Terrain", "livability": "Livability", "future": "Future Potential", "price": "Price Analysis" },
+  "axis": {
+    "disaster": "Disaster Risk",
+    "terrain": "Terrain",
+    "livability": "Livability",
+    "future": "Future Potential",
+    "price": "Price Analysis"
+  },
   "explore": {
     "prompt": "Click a prefecture or municipality on the map",
-    "areaCard": { "population": "Population", "avgPrice": "Avg Price", "risk": "Disaster Risk", "avgTls": "Avg TLS" },
+    "areaCard": {
+      "population": "Population",
+      "avgPrice": "Avg Price",
+      "risk": "Disaster Risk",
+      "avgTls": "Avg TLS"
+    },
     "ranking": "Municipality Ranking",
     "analyzeArea": "Analyze this area"
   },
   "analyze": {
-    "weightPreset": { "balance": "Balance", "investment": "Investment", "residential": "Residential", "disaster": "Disaster Prevention" },
+    "weightPreset": {
+      "balance": "Balance",
+      "investment": "Investment",
+      "residential": "Residential",
+      "disaster": "Disaster Prevention"
+    },
     "aiReport": "Generate AI Report",
     "toCompare": "Compare Mode",
     "minPenalty": "{factor}({score}) constrains score"
   },
   "compare": {
-    "pointA": "Point A", "pointB": "Point B",
-    "summary": "Summary", "endCompare": "End Comparison", "aiCompare": "AI Comparison Report"
+    "pointA": "Point A",
+    "pointB": "Point B",
+    "summary": "Summary",
+    "endCompare": "End Comparison",
+    "aiCompare": "AI Comparison Report"
   },
   "search": { "placeholder": "Search address, station, or municipality" },
-  "settings": { "language": "Language", "mapStyle": "Map Style", "radius": "Analysis Radius", "cache": "Cache Update" },
-  "common": { "loading": "Loading...", "error": "An error occurred", "close": "Close" }
+  "settings": {
+    "language": "Language",
+    "mapStyle": "Map Style",
+    "radius": "Analysis Radius",
+    "cache": "Cache Update"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "close": "Close"
+  }
 }

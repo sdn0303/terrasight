@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import type { ThemeId } from "@/lib/themes";
-import { getLayerIdsForThemes, THEMES } from "@/lib/themes";
+import { getLayerIdsByTheme, getLayerIdsForThemes, THEMES } from "@/lib/themes";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
@@ -29,23 +29,46 @@ export function ThemePresets() {
   }, [activeThemes]);
 
   return (
-    <div className="grid grid-cols-2 gap-2 px-4 py-3">
+    <div className="flex flex-col gap-2 px-4 py-3">
       {THEMES.map((theme) => {
         const isActive = activeThemes.has(theme.id);
+        const layerCount = getLayerIdsByTheme(theme.id).length;
         return (
           <button
             key={theme.id}
             type="button"
             onClick={() => toggleTheme(theme.id)}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs transition-colors border ${
+            className={`flex items-start gap-3 rounded-lg px-4 py-3 text-left transition-colors border ${
               isActive
-                ? "bg-ds-hover-accent border-ds-accent-cyan/50 text-ds-accent-cyan"
-                : "bg-ds-bg-tertiary/50 border-transparent text-ds-text-muted hover:text-ds-text-primary"
+                ? "bg-ds-hover-accent border-ds-accent-cyan/50"
+                : "bg-ds-bg-tertiary/50 border-transparent hover:bg-ds-bg-tertiary"
             }`}
             aria-pressed={isActive}
           >
-            <span>{ICONS[theme.id]}</span>
-            <span>{t(theme.labelKey)}</span>
+            <span className="text-xl mt-0.5">{ICONS[theme.id]}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span
+                  className={`text-xs font-medium ${
+                    isActive ? "text-ds-accent-cyan" : "text-ds-text-primary"
+                  }`}
+                >
+                  {t(theme.labelKey)}
+                </span>
+                <span
+                  className="text-[9px] font-mono"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {layerCount} layers
+                </span>
+              </div>
+              <p
+                className="text-[10px] mt-0.5 leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {t(`theme.${theme.id}.desc`)}
+              </p>
+            </div>
           </button>
         );
       })}
