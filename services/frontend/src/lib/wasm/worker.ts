@@ -57,7 +57,13 @@ interface ErrorMessage {
   message: string;
 }
 
-type OutgoingMessage = InitDoneMessage | QueryResultMessage | StatsResultMsg | ErrorMessage;
+type OutgoingMessage =
+  | InitDoneMessage
+  | QueryResultMessage
+  | { type: "query-error"; id: number; error: string }
+  | StatsResultMsg
+  | { type: "stats-error"; id: number; error: string }
+  | ErrorMessage;
 
 // ---------------------------------------------------------------------------
 // Worker state
@@ -128,7 +134,7 @@ function handleQuery(
   layers: string[],
 ): void {
   if (engine === null) {
-    send({ type: "error", message: "SpatialEngine not initialised" });
+    send({ type: "query-error", id, error: "SpatialEngine not initialised" });
     return;
   }
 
@@ -143,7 +149,7 @@ function handleQuery(
     send({ type: "query-result", id, geojson });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    send({ type: "error", message: `query_layers failed: ${message}` });
+    send({ type: "query-error", id, error: `query_layers failed: ${message}` });
   }
 }
 
@@ -168,7 +174,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
 
     case "compute-stats": {
       if (!engine) {
-        send({ type: "error", message: "not initialized" });
+        send({ type: "stats-error", id: msg.id, error: "not initialized" });
         break;
       }
       try {
@@ -181,7 +187,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
         send({ type: "stats-result", id: msg.id, stats });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        send({ type: "error", message: `compute_stats failed: ${message}` });
+        send({ type: "stats-error", id: msg.id, error: `compute_stats failed: ${message}` });
       }
       break;
     }

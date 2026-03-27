@@ -41,12 +41,30 @@ interface StatsResultMessage {
   stats: string; // JSON string from WASM
 }
 
+interface QueryErrorMessage {
+  type: "query-error";
+  id: number;
+  error: string;
+}
+
+interface StatsErrorMessage {
+  type: "stats-error";
+  id: number;
+  error: string;
+}
+
 interface ErrorMessage {
   type: "error";
   message: string;
 }
 
-type WorkerMessage = InitDoneMessage | QueryResultMessage | StatsResultMessage | ErrorMessage;
+type WorkerMessage =
+  | InitDoneMessage
+  | QueryResultMessage
+  | QueryErrorMessage
+  | StatsResultMessage
+  | StatsErrorMessage
+  | ErrorMessage;
 
 // ---------------------------------------------------------------------------
 // BBox type
@@ -300,8 +318,25 @@ export class SpatialEngineAdapter {
         break;
       }
 
+      case "query-error": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        pending.reject(new Error(msg.error));
+        break;
+      }
+
+      case "stats-error": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        pending.reject(new Error(msg.error));
+        break;
+      }
+
       case "error": {
-        // Reject any pending query that may have caused this; otherwise log
+        // Init-level errors only (no request id available).
+        // Request-scoped errors use query-error / stats-error.
         const message = msg.message;
         if (this.pending.size > 0) {
           for (const [id, pending] of this.pending) {
