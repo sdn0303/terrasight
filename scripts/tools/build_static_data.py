@@ -15,20 +15,20 @@ import geopandas as gpd
 ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/tools/ -> scripts/ -> project root
 
 PREFECTURE_LAYERS: list[tuple[str, str]] = [
-    ("services/frontend/public/geojson/admin-boundary-tokyo.geojson", "admin-boundary.fgb"),
-    ("services/frontend/public/geojson/did-tokyo.geojson", "did.fgb"),
-    ("services/frontend/public/geojson/flood-history-tokyo.geojson", "flood-history.fgb"),
-    ("services/frontend/public/geojson/geology-tokyo.geojson", "geology.fgb"),
-    ("services/frontend/public/geojson/landform-tokyo.geojson", "landform.fgb"),
-    ("services/frontend/public/geojson/soil-tokyo.geojson", "soil.fgb"),
-    ("services/frontend/public/geojson/pl-liquefaction-tokyo.geojson", "liquefaction.fgb"),
-    ("services/frontend/public/geojson/n02-railway-tokyo.geojson", "railway.fgb"),
+    ("data/geojson/n03-admin-boundary-tokyo.geojson", "admin-boundary.fgb"),
+    ("data/geojson/did-tokyo.geojson", "did.fgb"),
+    ("data/geojson/flood-history-tokyo.geojson", "flood-history.fgb"),
+    ("data/geojson/geology-tokyo.geojson", "geology.fgb"),
+    ("data/geojson/landform-tokyo.geojson", "landform.fgb"),
+    ("data/geojson/soil-tokyo.geojson", "soil.fgb"),
+    ("data/geojson/pl-liquefaction-tokyo.geojson", "liquefaction.fgb"),
+    ("data/geojson/n02-railway-tokyo.geojson", "railway.fgb"),
 ]
 
 NATIONAL_LAYERS: list[tuple[str, str]] = [
-    ("services/frontend/public/geojson/fault-kanto.geojson", "fault.fgb"),
-    ("services/frontend/public/geojson/volcano-kanto.geojson", "volcano.fgb"),
-    ("services/frontend/public/geojson/jshis-seismic-tokyo.geojson", "seismic.fgb"),
+    ("data/geojson/fault-kanto.geojson", "fault.fgb"),
+    ("data/geojson/volcano-kanto.geojson", "volcano.fgb"),
+    ("data/geojson/jshis-seismic-tokyo.geojson", "seismic.fgb"),
 ]
 
 

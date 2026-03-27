@@ -16,17 +16,14 @@ import {
   LandslideLayer,
   LiquefactionLayer,
   MedicalLayer,
-  ParkLayer,
   PopulationMeshLayer,
   RailwayLayer,
-  SchoolDistrictLayer,
   SchoolLayer,
   SeismicLayer,
   SoilLayer,
   StationLayer,
   SteepSlopeLayer,
   TsunamiLayer,
-  UrbanPlanLayer,
   VolcanoLayer,
   ZoningLayer,
 } from "@/components/map/layers";
@@ -55,11 +52,8 @@ const STATIC_LAYER_COMPONENTS: Record<
   soil: SoilLayer,
   volcano: VolcanoLayer,
   station: StationLayer,
-  school_district: SchoolDistrictLayer,
   landslide: LandslideLayer,
-  park: ParkLayer,
   tsunami: TsunamiLayer,
-  urban_plan: UrbanPlanLayer,
 };
 
 const API_LAYER_COMPONENTS: Record<

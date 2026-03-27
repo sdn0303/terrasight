@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   ALL_INTERACTIVE_LAYER_IDS,
   CATEGORIES,
-  LAYERS,
   getLayersBySource,
+  LAYERS,
 } from "@/lib/layers";
 
 describe("LAYERS configuration", () => {
-  it("has 25 layers total", () => {
-    expect(LAYERS).toHaveLength(25);
+  it("has 22 layers total", () => {
+    expect(LAYERS).toHaveLength(22);
   });
 
   it("every layer has required fields", () => {
@@ -139,24 +139,16 @@ describe("getLayersBySource", () => {
 });
 
 describe("PR1 new layers", () => {
-  const newLayerIds = [
-    "station",
-    "school_district",
-    "landslide",
-    "park",
-    "tsunami",
-    "urban_plan",
-    "population_mesh",
-  ];
+  const newLayerIds = ["station", "landslide", "tsunami", "population_mesh"];
 
-  it("all 7 new layers exist in LAYERS", () => {
+  it("all 4 new layers exist in LAYERS", () => {
     const existingIds = new Set(LAYERS.map((l) => l.id));
     for (const id of newLayerIds) {
       expect(existingIds.has(id), `missing layer: ${id}`).toBe(true);
     }
   });
 
-  it("all 7 new layers are static source", () => {
+  it("all 4 new layers are static source", () => {
     for (const id of newLayerIds) {
       const layer = LAYERS.find((l) => l.id === id);
       expect(layer?.source, `${id}: not static`).toBe("static");
