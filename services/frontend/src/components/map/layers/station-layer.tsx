@@ -1,15 +1,17 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
 }
 
 export function StationLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "station", visible);
+  if (!visible || !data) return null;
   return (
-    <Source id="station" type="geojson" data="/geojson/station-tokyo.geojson">
+    <Source id="station" type="geojson" data={data}>
       <Layer
         id="station-circle"
         type="circle"

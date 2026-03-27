@@ -217,22 +217,6 @@ export const LAYERS: LayerConfig[] = [
     theme: ["safety"],
   },
   {
-    id: "tsunami",
-    name: "Tsunami Risk",
-    nameJa: "津波浸水",
-    category: "risk",
-    defaultEnabled: false,
-    color: "var(--layer-tsunami)",
-    source: "static",
-    popupFields: [
-      { key: "areaName", label: "地域名" },
-      { key: "depth", label: "想定浸水深", suffix: "m" },
-      { key: "scenario", label: "想定シナリオ" },
-    ],
-    interactiveLayerIds: ["tsunami-fill"],
-    theme: ["safety"],
-  },
-  {
     id: "landform",
     name: "Landform",
     nameJa: "地形分類",

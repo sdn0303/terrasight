@@ -23,7 +23,6 @@ import {
   SoilLayer,
   StationLayer,
   SteepSlopeLayer,
-  TsunamiLayer,
   VolcanoLayer,
   ZoningLayer,
 } from "@/components/map/layers";
@@ -53,7 +52,6 @@ const STATIC_LAYER_COMPONENTS: Record<
   volcano: VolcanoLayer,
   station: StationLayer,
   landslide: LandslideLayer,
-  tsunami: TsunamiLayer,
 };
 
 const API_LAYER_COMPONENTS: Record<

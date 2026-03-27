@@ -23,6 +23,9 @@ PREFECTURE_LAYERS: list[tuple[str, str]] = [
     ("data/geojson/soil-tokyo.geojson", "soil.fgb"),
     ("data/geojson/pl-liquefaction-tokyo.geojson", "liquefaction.fgb"),
     ("data/geojson/n02-railway-tokyo.geojson", "railway.fgb"),
+    ("data/geojson/s12-stations-tokyo.geojson", "station.fgb"),
+    ("data/geojson/a33-landslide-tokyo.geojson", "landslide.fgb"),
+    ("data/geojson/mesh500-population-tokyo.geojson", "population-mesh.fgb"),
 ]
 
 NATIONAL_LAYERS: list[tuple[str, str]] = [
@@ -54,9 +57,14 @@ def convert_file(
         return None
 
     try:
-        gdf = gpd.read_file(src)
+        gdf = gpd.read_file(src, engine="fiona")
+        null_geom = gdf.geometry.isna() | gdf.geometry.is_empty
+        null_count = null_geom.sum()
+        if null_count > 0:
+            print(f"  WARNING: dropping {null_count} features with null/empty geometry in {src.name}")
+            gdf = gdf[~null_geom].copy()
         dst.parent.mkdir(parents=True, exist_ok=True)
-        gdf.to_file(dst, driver="FlatGeobuf")
+        gdf.to_file(dst, driver="FlatGeobuf", engine="fiona")
         features = len(gdf)
         size_bytes = dst.stat().st_size
         print(f"  Converting {dst.name}... {features} features → {size_bytes} bytes")

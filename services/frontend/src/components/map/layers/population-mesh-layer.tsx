@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -22,6 +23,7 @@ interface Props {
  */
 export function PopulationMeshLayer({ visible, selectedYear }: Props) {
   const yearKey = `pop${selectedYear}`;
+  const { data } = useStaticLayer("13", "population-mesh", visible);
 
   const fillColor = useMemo(
     () =>
@@ -43,13 +45,13 @@ export function PopulationMeshLayer({ visible, selectedYear }: Props) {
     [yearKey],
   );
 
-  if (!visible) return null;
+  if (!visible || !data) return null;
 
   return (
     <Source
       id="population-mesh"
       type="geojson"
-      data="/geojson/population-mesh-tokyo.geojson"
+      data={data}
     >
       <Layer
         id="population-mesh-fill"

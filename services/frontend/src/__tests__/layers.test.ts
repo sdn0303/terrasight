@@ -7,8 +7,8 @@ import {
 } from "@/lib/layers";
 
 describe("LAYERS configuration", () => {
-  it("has 22 layers total", () => {
-    expect(LAYERS).toHaveLength(22);
+  it("has 21 layers total", () => {
+    expect(LAYERS).toHaveLength(21);
   });
 
   it("every layer has required fields", () => {
@@ -139,9 +139,9 @@ describe("getLayersBySource", () => {
 });
 
 describe("PR1 new layers", () => {
-  const newLayerIds = ["station", "landslide", "tsunami", "population_mesh"];
+  const newLayerIds = ["station", "landslide", "population_mesh"];
 
-  it("all 4 new layers exist in LAYERS", () => {
+  it("all 3 new layers exist in LAYERS", () => {
     const existingIds = new Set(LAYERS.map((l) => l.id));
     for (const id of newLayerIds) {
       expect(existingIds.has(id), `missing layer: ${id}`).toBe(true);

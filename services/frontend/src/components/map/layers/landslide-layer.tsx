@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/maplibre";
+import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
@@ -14,12 +15,13 @@ interface Props {
  * - 土砂災害特別警戒区域 (red zone) → danger red
  */
 export function LandslideLayer({ visible }: Props) {
-  if (!visible) return null;
+  const { data } = useStaticLayer("13", "landslide", visible);
+  if (!visible || !data) return null;
   return (
     <Source
       id="landslide"
       type="geojson"
-      data="/geojson/landslide-tokyo.geojson"
+      data={data}
     >
       <Layer
         id="landslide-fill"

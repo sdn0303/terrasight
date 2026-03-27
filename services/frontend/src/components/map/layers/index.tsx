@@ -18,6 +18,5 @@ export { SeismicLayer } from "./seismic-layer";
 export { SoilLayer } from "./soil-layer";
 export { StationLayer } from "./station-layer";
 export { SteepSlopeLayer } from "./steep-slope-layer";
-export { TsunamiLayer } from "./tsunami-layer";
 export { VolcanoLayer } from "./volcano-layer";
 export { ZoningLayer } from "./zoning-layer";
