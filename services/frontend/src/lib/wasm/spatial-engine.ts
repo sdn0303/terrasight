@@ -1,5 +1,6 @@
 import type { FeatureCollection } from "geojson";
 import { layerUrl } from "@/lib/data-url";
+import { canonicalLayerId } from "@/lib/layer-ids";
 
 // ---------------------------------------------------------------------------
 // Layer manifest — all 11 layers loaded into the R-tree
@@ -82,13 +83,34 @@ type PendingQuery = PendingFeatureQuery | PendingStatsQuery;
 
 export class SpatialEngineAdapter {
   private worker: Worker | null = null;
-  private _ready = false;
+  private _loadedLayers = new Set<string>();
   private readonly pending = new Map<number, PendingQuery>();
   private nextId = 0;
   private readonly listeners: ((ready: boolean) => void)[] = [];
 
+  /** Set of canonical layer IDs that have been loaded into the R-tree. */
+  get loadedLayers(): ReadonlySet<string> {
+    return this._loadedLayers;
+  }
+
+  /** True if the worker is initialized and at least one layer is loaded. */
   get ready(): boolean {
-    return this._ready;
+    return this.worker !== null && this._loadedLayers.size > 0;
+  }
+
+  /** Check if ALL specified layers are loaded (accepts any ID form). */
+  queryReady(layerIds: string[]): boolean {
+    return layerIds.every((id) => this._loadedLayers.has(canonicalLayerId(id)));
+  }
+
+  /**
+   * Register layers reported by init-done or layer-loaded messages.
+   * Keys are normalized to canonical hyphen-case form.
+   */
+  registerLoadedLayers(counts: Record<string, number>): void {
+    for (const id of Object.keys(counts)) {
+      this._loadedLayers.add(canonicalLayerId(id));
+    }
   }
 
   /**
@@ -99,7 +121,7 @@ export class SpatialEngineAdapter {
    */
   async init(): Promise<void> {
     if (typeof window === "undefined") return;
-    if (this.worker !== null || this._ready) return;
+    if (this.worker !== null || this._loadedLayers.size > 0) return;
 
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
       type: "module",
@@ -152,7 +174,7 @@ export class SpatialEngineAdapter {
       );
       this.worker.terminate();
       this.worker = null;
-      // _ready remains false — callers fall back to full FGB load
+      // _loadedLayers stays empty — callers fall back to full FGB load
     }
   }
 
@@ -162,7 +184,7 @@ export class SpatialEngineAdapter {
    * layers that intersect the bbox.
    */
   async query(bbox: BBox, layers: string[]): Promise<FeatureCollection> {
-    if (this.worker === null || !this._ready) {
+    if (this.worker === null || this._loadedLayers.size === 0) {
       return { type: "FeatureCollection", features: [] };
     }
 
@@ -178,17 +200,10 @@ export class SpatialEngineAdapter {
    * Compute aggregate stats for a given bounding box using the in-memory
    * WASM index. Returns a plain object matching the StatsResponse shape.
    */
-  async computeStats(bbox: BBox): Promise<unknown> {
-    if (this.worker === null || !this._ready) {
-      throw new Error("SpatialEngineAdapter not ready");
-    }
-
-    const id = this.nextId++;
-
-    return new Promise<unknown>((resolve, reject) => {
-      this.pending.set(id, { kind: "stats", resolve, reject });
-      this.worker?.postMessage({ type: "compute-stats", id, bbox });
-    });
+  async computeStats(_bbox: BBox): Promise<unknown> {
+    // Phase 1: WASM stats is disabled. Backend /api/stats is canonical.
+    // Re-enable in Phase 3 after data ingestion + parity test.
+    throw new Error("WASM stats disabled in Phase 1");
   }
 
   /**
@@ -211,7 +226,7 @@ export class SpatialEngineAdapter {
       reject(new Error("SpatialEngineAdapter disposed"));
     }
     this.pending.clear();
-    this._ready = false;
+    this._loadedLayers.clear();
     this.notifyListeners(false);
   }
 
@@ -222,7 +237,7 @@ export class SpatialEngineAdapter {
   private handleMessage(msg: WorkerMessage): void {
     switch (msg.type) {
       case "init-done": {
-        this._ready = true;
+        this.registerLoadedLayers(msg.counts);
         this.notifyListeners(true);
         break;
       }
