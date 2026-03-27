@@ -285,16 +285,16 @@ With:
     if (this.worker === null || this._loadedLayers.size === 0) {
 ```
 
-6. In the `computeStats` method, keep it throwing — do NOT change the guard to `statsReady`:
+6. In the `computeStats` method, keep it explicitly disabled for Phase 1:
 
 The existing guard `if (this.worker === null || !this._ready)` should become:
 ```typescript
-    if (this.worker === null || this._loadedLayers.size === 0) {
-      throw new Error("SpatialEngineAdapter not ready");
-    }
+    // Phase 1: WASM stats is disabled. Backend /api/stats is canonical.
+    // Re-enable in Phase 3 after data ingestion + parity test.
+    throw new Error("WASM stats disabled in Phase 1");
 ```
 
-This keeps `computeStats` effectively sealed — it's only callable if the engine has layers, but `useStats` already bypasses it (backend canonical). No `statsReady` gate.
+This ensures `computeStats` is unconditionally sealed regardless of loaded layers. The `useStats` hook already uses backend-only path, so no caller is affected.
 
 7. In `dispose`, update cleanup:
 
@@ -392,48 +392,104 @@ Create `services/frontend/src/__tests__/spatial-engine-errors.test.ts`:
 import { describe, expect, it, beforeEach } from "vitest";
 import { SpatialEngineAdapter } from "@/lib/wasm/spatial-engine";
 
+/**
+ * To test error isolation, we need to call handleMessage directly.
+ * handleMessage is private, so we access it via a test subclass.
+ */
+class TestableAdapter extends SpatialEngineAdapter {
+  /** Expose handleMessage for testing. */
+  simulateMessage(msg: unknown): void {
+    // Access the private method via bracket notation
+    // biome-ignore lint: test-only access to private method
+    (this as any).handleMessage(msg);
+  }
+
+  /** Expose pending map size for assertions. */
+  get pendingCount(): number {
+    // biome-ignore lint: test-only access to private field
+    return (this as any).pending.size;
+  }
+}
+
 describe("SpatialEngineAdapter error isolation", () => {
-  let adapter: SpatialEngineAdapter;
+  let adapter: TestableAdapter;
 
   beforeEach(() => {
-    adapter = new SpatialEngineAdapter();
-    // Simulate init-done so adapter is in ready state
+    adapter = new TestableAdapter();
     adapter.registerLoadedLayers({ geology: 133, landform: 370 });
   });
 
-  it("query-error rejects only the matching pending request", () => {
-    // We can't easily test the full worker flow in unit tests,
-    // but we CAN test the handleMessage behavior by accessing it
-    // via the message protocol types.
+  it("query-error rejects ONLY the matching pending request, others survive", async () => {
+    // Manually create two pending query promises
+    const promise1 = new Promise<unknown>((resolve, reject) => {
+      // biome-ignore lint: test-only access to private field
+      (adapter as any).pending.set(1, { kind: "query", resolve, reject });
+    });
+    const promise2 = new Promise<unknown>((resolve, reject) => {
+      // biome-ignore lint: test-only access to private field
+      (adapter as any).pending.set(2, { kind: "query", resolve, reject });
+    });
 
-    // Verify the message type definitions include query-error and stats-error
-    // by checking the adapter accepts them without type errors.
-    // The actual isolation is verified by the handleMessage switch cases.
+    expect(adapter.pendingCount).toBe(2);
 
-    // Type-level test: these message shapes must be valid
-    const queryError = { type: "query-error" as const, id: 1, error: "test error" };
-    const statsError = { type: "stats-error" as const, id: 2, error: "test error" };
+    // Send query-error for id=1 only
+    adapter.simulateMessage({ type: "query-error", id: 1, error: "layer not found" });
 
-    expect(queryError.type).toBe("query-error");
-    expect(queryError.id).toBe(1);
-    expect(statsError.type).toBe("stats-error");
-    expect(statsError.id).toBe(2);
+    // id=1 should reject
+    await expect(promise1).rejects.toThrow("layer not found");
+
+    // id=2 should still be pending (NOT rejected)
+    expect(adapter.pendingCount).toBe(1);
   });
 
-  it("generic error type has no request id (init-level only)", () => {
-    const initError = { type: "error" as const, message: "init failed" };
-    expect(initError).not.toHaveProperty("id");
+  it("stats-error rejects ONLY the matching pending request", async () => {
+    const promise1 = new Promise<unknown>((resolve, reject) => {
+      // biome-ignore lint: test-only access to private field
+      (adapter as any).pending.set(10, { kind: "stats", resolve, reject });
+    });
+    const promise2 = new Promise<unknown>((resolve, reject) => {
+      // biome-ignore lint: test-only access to private field
+      (adapter as any).pending.set(11, { kind: "query", resolve, reject });
+    });
+
+    adapter.simulateMessage({ type: "stats-error", id: 10, error: "compute failed" });
+
+    await expect(promise1).rejects.toThrow("compute failed");
+    expect(adapter.pendingCount).toBe(1); // id=11 survives
+  });
+
+  it("catch-all error rejects ALL pending (init-level only)", async () => {
+    const promise1 = new Promise<unknown>((resolve, reject) => {
+      // biome-ignore lint: test-only access to private field
+      (adapter as any).pending.set(1, { kind: "query", resolve, reject });
+    });
+    const promise2 = new Promise<unknown>((resolve, reject) => {
+      // biome-ignore lint: test-only access to private field
+      (adapter as any).pending.set(2, { kind: "query", resolve, reject });
+    });
+
+    adapter.simulateMessage({ type: "error", message: "init failed" });
+
+    await expect(promise1).rejects.toThrow("init failed");
+    await expect(promise2).rejects.toThrow("init failed");
+    expect(adapter.pendingCount).toBe(0);
+  });
+
+  it("computeStats throws unconditionally in Phase 1", () => {
+    expect(() => adapter.computeStats({
+      south: 35.5, west: 139.5, north: 35.9, east: 140.0,
+    })).rejects.toThrow("WASM stats disabled in Phase 1");
   });
 });
 ```
 
-- [ ] **Step 2: Run test to verify it passes (contract test)**
+- [ ] **Step 2: Run test to verify it fails (behavior test — needs handleMessage changes from Step 3)**
 
 ```bash
 cd services/frontend && pnpm vitest run src/__tests__/spatial-engine-errors.test.ts
 ```
 
-Expected: PASS (these are type/contract tests that will verify the protocol shapes)
+Expected: FAIL — `query-error` and `stats-error` message types not handled yet in adapter.
 
 - [ ] **Step 3: Update worker.ts message types and error handling**
 
@@ -644,10 +700,13 @@ In the `handleMessage` `init-done` case, after `this.registerLoadedLayers(msg.co
         performance.mark("wasm-init-done");
         performance.measure("wasm-init", "wasm-init-start", "wasm-init-done");
         const initMeasure = performance.getEntriesByName("wasm-init").pop();
+        const allLayerIds = WASM_LAYERS.map(l => l.id);
+        const failedLayers = allLayerIds.filter(id => !this._loadedLayers.has(id));
         log.info({
           wasm_init_ms: initMeasure ? Math.round(initMeasure.duration) : -1,
           loaded_count: this._loadedLayers.size,
           loaded_layers: [...this._loadedLayers],
+          failed_layers: failedLayers,
         }, "WASM spatial engine initialized");
 ```
 
