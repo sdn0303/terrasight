@@ -37,7 +37,6 @@ export function AdminBoundaryLayer({ visible }: Props) {
         layout={{
           "text-field": [
             "coalesce",
-            ["get", "wardName"],
             ["get", "cityName"],
           ] as unknown as string,
           "text-size": 11,

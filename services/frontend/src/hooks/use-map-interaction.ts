@@ -7,6 +7,7 @@ import { useUIStore } from "@/stores/ui-store";
 
 export function useMapInteraction() {
   const selectFeature = useMapStore((s) => s.selectFeature);
+  const selectArea = useMapStore((s) => s.selectArea);
   const setAnalysisPoint = useMapStore((s) => s.setAnalysisPoint);
   const mode = useUIStore((s) => s.mode);
   const setComparePoint = useUIStore((s) => s.setComparePoint);
@@ -33,6 +34,25 @@ export function useMapInteraction() {
 
       // Explore mode: progressive disclosure, no mode switch
       if (feature) {
+        // Check if clicked an admin boundary feature
+        const layerId = feature.layer.id;
+        if (
+          layerId === "admin-boundary-fill" ||
+          layerId === "admin-boundary-line"
+        ) {
+          const props = feature.properties ?? {};
+          selectArea({
+            code: (props.adminCode as string) ?? "",
+            name:
+              (props.cityName as string) ??
+              (props.prefName as string) ??
+              "",
+            level: (props.cityName as string) ? "municipality" : "prefecture",
+            bbox: { south: 0, west: 0, north: 0, east: 0 }, // TODO: compute from geometry
+          });
+          return;
+        }
+
         selectFeature({
           layerId: feature.layer.id,
           properties: (feature.properties ?? {}) as Record<string, unknown>,
@@ -50,7 +70,7 @@ export function useMapInteraction() {
         selectFeature(null);
       }
     },
-    [mode, selectFeature, setAnalysisPoint, setComparePoint],
+    [mode, selectArea, selectFeature, setAnalysisPoint, setComparePoint],
   );
 
   return { handleFeatureClick };

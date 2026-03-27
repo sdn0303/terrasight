@@ -48,7 +48,6 @@ export function BoundaryLayer() {
         layout={{
           "text-field": [
             "coalesce",
-            ["get", "wardName"],
             ["get", "cityName"],
             "",
           ] as unknown as string,

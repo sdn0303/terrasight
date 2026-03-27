@@ -35,6 +35,18 @@ NATIONAL_LAYERS: list[tuple[str, str]] = [
 ]
 
 
+# Column rename maps for specific layers
+COLUMN_RENAMES: dict[str, dict[str, str]] = {
+    "admin-boundary.fgb": {
+        "N03_001": "prefName",
+        "N03_002": "subPrefName",
+        "N03_003": "countyName",
+        "N03_004": "cityName",
+        "N03_007": "adminCode",
+    },
+}
+
+
 def check_flatgeobuf_support() -> bool:
     """Verify that fiona can write FlatGeobuf files."""
     if "FlatGeobuf" in fiona.supported_drivers:
@@ -64,6 +76,10 @@ def convert_file(
             print(f"  WARNING: dropping {null_count} features with null/empty geometry in {src.name}")
             gdf = gdf[~null_geom].copy()
         dst.parent.mkdir(parents=True, exist_ok=True)
+        # Apply column renames if defined for this layer
+        renames = COLUMN_RENAMES.get(dst.name, {})
+        if renames:
+            gdf = gdf.rename(columns=renames)  # type: ignore[call-overload]
         gdf.to_file(dst, driver="FlatGeobuf", engine="fiona")
         features = len(gdf)
         size_bytes = dst.stat().st_size
