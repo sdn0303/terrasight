@@ -60,6 +60,25 @@ export default function Home() {
             landPriceFeatureCount={page.landPriceData.features.length}
           />
         </MapView>
+        {page.isZoomTooLow && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ zIndex: 10 }}
+          >
+            <div
+              className="rounded-lg px-6 py-3 text-center"
+              style={{
+                background: "rgba(12, 12, 20, 0.75)",
+                border: "1px solid var(--border-primary)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              ズームインしてデータを表示
+            </div>
+          </div>
+        )}
       </div>
 
       {page.selectedFeature && page.selectedLayerConfig?.popupFields && (
@@ -88,6 +107,9 @@ export default function Home() {
         isLoading={page.isLoading}
         isDemoMode={page.isDemoMode}
         truncatedLayers={page.truncatedLayers}
+        wasmError={page.wasmError}
+        areaDataError={page.areaDataError}
+        isZoomTooLow={page.isZoomTooLow}
       />
     </div>
   );

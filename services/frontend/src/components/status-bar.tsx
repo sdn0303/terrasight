@@ -11,6 +11,9 @@ interface StatusBarProps {
   isLoading: boolean;
   isDemoMode: boolean;
   truncatedLayers?: TruncationInfo[];
+  wasmError?: boolean;
+  areaDataError?: boolean;
+  isZoomTooLow?: boolean;
 }
 
 export function StatusBar({
@@ -20,6 +23,9 @@ export function StatusBar({
   isLoading,
   isDemoMode,
   truncatedLayers,
+  wasmError,
+  areaDataError,
+  isZoomTooLow,
 }: StatusBarProps) {
   return (
     <div
@@ -47,13 +53,28 @@ export function StatusBar({
       {isLoading && (
         <span style={{ color: "var(--accent-cyan)" }}>◌ LOADING...</span>
       )}
+      {wasmError && (
+        <span role="alert" style={{ color: "var(--accent-danger)" }}>
+          ✕ WASM エンジン初期化失敗
+        </span>
+      )}
+      {areaDataError && (
+        <span role="alert" style={{ color: "var(--accent-danger)" }}>
+          ✕ データ取得エラー
+        </span>
+      )}
+      {isZoomTooLow && (
+        <span style={{ color: "var(--accent-warning)" }}>
+          ⚠ ズームインでデータ表示
+        </span>
+      )}
       {truncatedLayers && truncatedLayers.length > 0 && (
-        <span
-          style={{ color: "var(--accent-warning)" }}
-          aria-label="Data truncation warning"
-        >
+        <span style={{ color: "var(--accent-warning)" }}>
           {truncatedLayers
-            .map((t) => `⚠ ${t.layer}: ${t.count}/${t.limit} ▸ ズームインで全件表示`)
+            .map(
+              (t) =>
+                `⚠ ${t.layer}: ${t.count}/${t.limit} ▸ ズームインで全件表示`,
+            )
             .join(" · ")}
         </span>
       )}

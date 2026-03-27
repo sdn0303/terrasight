@@ -60,11 +60,11 @@ export function useMapPage() {
   );
 
   const layers = useMemo(() => [...visibleLayers], [visibleLayers]);
-  const { data: areaData, isLoading } = useAreaData(
-    bbox,
-    layers,
-    viewState.zoom,
-  );
+  const {
+    data: areaData,
+    isLoading,
+    isError: areaDataError,
+  } = useAreaData(bbox, layers, viewState.zoom);
   const { data: health } = useHealth();
   const {
     data: landPriceData,
@@ -116,6 +116,7 @@ export function useMapPage() {
     isDemoMode,
     truncatedLayers,
     wasmError,
+    areaDataError,
     populationYear,
     setPopulationYear,
     landPriceYear,
