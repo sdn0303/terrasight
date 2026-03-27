@@ -1,9 +1,21 @@
 "use client";
 
-import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } from "recharts";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+} from "recharts";
 import type { TlsResponse } from "@/lib/schemas";
 
-const AXIS_KEYS = ["disaster", "terrain", "livability", "future", "price"] as const;
+const AXIS_KEYS = [
+  "disaster",
+  "terrain",
+  "livability",
+  "future",
+  "price",
+] as const;
 const AXIS_LABELS = ["Disaster", "Terrain", "Livability", "Future", "Price"];
 
 interface RadarComparisonProps {
@@ -23,9 +35,24 @@ export function RadarComparison({ axesA, axesB }: RadarComparisonProps) {
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data}>
           <PolarGrid stroke="#404040" />
-          <PolarAngleAxis dataKey="axis" tick={{ fill: "#a3a3a3", fontSize: 10 }} />
-          <Radar name="A" dataKey="A" stroke="#22d3ee" fill="#22d3ee" fillOpacity={0.15} />
-          <Radar name="B" dataKey="B" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} />
+          <PolarAngleAxis
+            dataKey="axis"
+            tick={{ fill: "#a3a3a3", fontSize: 10 }}
+          />
+          <Radar
+            name="A"
+            dataKey="A"
+            stroke="#22d3ee"
+            fill="#22d3ee"
+            fillOpacity={0.15}
+          />
+          <Radar
+            name="B"
+            dataKey="B"
+            stroke="#f59e0b"
+            fill="#f59e0b"
+            fillOpacity={0.15}
+          />
         </RadarChart>
       </ResponsiveContainer>
     </div>

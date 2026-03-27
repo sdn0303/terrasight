@@ -1,13 +1,11 @@
 "use client";
 
-import { ModeTabs } from "./mode-tabs";
 import { LocaleToggle } from "./locale-toggle";
+import { ModeTabs } from "./mode-tabs";
 
 export function TopBar() {
   return (
-    <header
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 gap-4 h-12 bg-neutral-900 border-b border-neutral-800"
-    >
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 gap-4 h-12 bg-ds-bg-secondary border-b border-ds-border-primary">
       <ModeTabs />
       <div className="flex-1" />
       <div className="flex items-center gap-2">

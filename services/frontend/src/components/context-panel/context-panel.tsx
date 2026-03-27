@@ -7,7 +7,7 @@ interface ContextPanelProps {
 export function ContextPanel({ children }: ContextPanelProps) {
   return (
     <aside
-      className="fixed left-0 overflow-y-auto bg-neutral-900 border-r border-neutral-800"
+      className="fixed left-0 overflow-y-auto bg-ds-bg-secondary border-r border-ds-border-primary"
       style={{
         top: 48,
         bottom: 28,

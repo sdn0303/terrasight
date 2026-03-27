@@ -19,23 +19,23 @@ export function ComparePanel() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="px-4 pt-4 pb-2">
-        <div className="text-[9px] font-mono tracking-widest text-cyan-400">COMPARE</div>
+        <div className="text-[9px] font-mono tracking-widest text-ds-accent-cyan">COMPARE</div>
       </div>
 
       {/* Point labels */}
       <div className="flex px-4 gap-2 mb-3">
-        <div className="flex-1 rounded-lg p-2 bg-neutral-800/50">
-          <div className="text-[9px] font-mono tracking-wider text-cyan-400">{t("pointA")}</div>
-          <div className="text-[10px] mt-0.5 text-neutral-300">
+        <div className="flex-1 rounded-lg p-2 bg-ds-bg-tertiary/50">
+          <div className="text-[9px] font-mono tracking-wider text-ds-accent-cyan">{t("pointA")}</div>
+          <div className="text-[10px] mt-0.5 text-ds-text-primary">
             {comparePointA?.address ?? "Click map..."}
           </div>
           {scoreA && (
-            <div className="text-lg font-bold mt-1 text-cyan-400">{Math.round(scoreA.tls.score)}</div>
+            <div className="text-lg font-bold mt-1 text-ds-accent-cyan">{Math.round(scoreA.tls.score)}</div>
           )}
         </div>
-        <div className="flex-1 rounded-lg p-2 bg-neutral-800/50">
+        <div className="flex-1 rounded-lg p-2 bg-ds-bg-tertiary/50">
           <div className="text-[9px] font-mono tracking-wider text-amber-400">{t("pointB")}</div>
-          <div className="text-[10px] mt-0.5 text-neutral-300">
+          <div className="text-[10px] mt-0.5 text-ds-text-primary">
             {comparePointB?.address ?? "Click map..."}
           </div>
           {scoreB && (
@@ -51,7 +51,7 @@ export function ComparePanel() {
           <DiffTable axesA={scoreA.axes} axesB={scoreB.axes} tlsA={scoreA.tls.score} tlsB={scoreB.tls.score} />
         </>
       ) : (
-        <div className="px-4 py-8 text-center text-xs text-neutral-500">
+        <div className="px-4 py-8 text-center text-xs text-ds-text-muted">
           {!comparePointA ? "Click first point on map" : "Click second point on map"}
         </div>
       )}
@@ -60,7 +60,7 @@ export function ComparePanel() {
         <button
           type="button"
           onClick={() => { resetCompare(); setMode("explore"); }}
-          className="w-full rounded-lg py-2 text-xs bg-neutral-800 text-neutral-400 border border-neutral-700 hover:text-neutral-200 transition-colors"
+          className="w-full rounded-lg py-2 text-xs bg-ds-bg-tertiary text-ds-text-secondary border border-ds-border-primary hover:text-ds-text-heading transition-colors"
         >
           {t("endCompare")}
         </button>

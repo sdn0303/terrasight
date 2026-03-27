@@ -17,7 +17,7 @@ export function ExplorePanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2">
-        <div className="text-[9px] font-mono tracking-widest text-cyan-400">
+        <div className="text-[9px] font-mono tracking-widest text-ds-accent-cyan">
           {t("mode.explore").toUpperCase()}
         </div>
       </div>
@@ -29,18 +29,18 @@ export function ExplorePanel() {
         <AreaCard />
       ) : (
         <div className="px-4 py-8 text-center">
-          <div className="text-xs text-neutral-500">
+          <div className="text-xs text-ds-text-muted">
             {t("explore.prompt")}
           </div>
         </div>
       )}
 
       {/* Collapsed layer settings for power users */}
-      <div className="mt-auto border-t border-neutral-800">
+      <div className="mt-auto border-t border-ds-border-primary">
         <button
           type="button"
           onClick={() => setLayerSettingsOpen(!layerSettingsOpen)}
-          className="flex items-center gap-2 w-full px-4 py-2 text-[9px] font-mono tracking-wider text-neutral-500 hover:text-neutral-300"
+          className="flex items-center gap-2 w-full px-4 py-2 text-[9px] font-mono tracking-wider text-ds-text-muted hover:text-ds-text-primary"
         >
           <ChevronRight
             size={10}

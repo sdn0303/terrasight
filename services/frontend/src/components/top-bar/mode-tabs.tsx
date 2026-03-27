@@ -22,8 +22,8 @@ export function ModeTabs() {
           onClick={() => setMode(m)}
           className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide transition-colors ${
             mode === m
-              ? "bg-white/10 text-cyan-400"
-              : "text-neutral-500 hover:text-neutral-300"
+              ? "bg-ds-accent-cyan/10 text-ds-accent-cyan"
+              : "text-ds-text-muted hover:text-ds-text-primary"
           }`}
         >
           {t(m)}

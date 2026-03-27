@@ -3,7 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useMapStore, type WeightPreset } from "@/stores/map-store";
 
-const PRESETS: WeightPreset[] = ["balance", "investment", "residential", "disaster"];
+const PRESETS: WeightPreset[] = [
+  "balance",
+  "investment",
+  "residential",
+  "disaster",
+];
 
 export function WeightPresetSelector() {
   const t = useTranslations("analyze.weightPreset");
@@ -12,7 +17,9 @@ export function WeightPresetSelector() {
 
   return (
     <div className="px-4 py-2">
-      <div className="text-[9px] font-mono tracking-wider text-neutral-500 mb-1.5">WEIGHT PRESET</div>
+      <div className="text-[9px] font-mono tracking-wider text-ds-text-muted mb-1.5">
+        WEIGHT PRESET
+      </div>
       <div className="flex gap-1 flex-wrap">
         {PRESETS.map((preset) => (
           <button
@@ -21,8 +28,8 @@ export function WeightPresetSelector() {
             onClick={() => setWeightPreset(preset)}
             className={`px-2 py-1 rounded text-[10px] font-mono transition-colors ${
               weightPreset === preset
-                ? "bg-white/10 text-cyan-400"
-                : "bg-neutral-800 text-neutral-500 hover:text-neutral-300"
+                ? "bg-ds-accent-cyan/10 text-ds-accent-cyan"
+                : "bg-ds-bg-tertiary text-ds-text-muted hover:text-ds-text-primary"
             }`}
             aria-pressed={weightPreset === preset}
           >

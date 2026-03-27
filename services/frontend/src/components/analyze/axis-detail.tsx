@@ -11,11 +11,13 @@ interface AxisDetailProps {
 
 export function AxisDetail({ axis }: AxisDetailProps) {
   return (
-    <div className="ml-16 mr-2 mb-2 rounded-lg p-2 space-y-1 bg-neutral-800/50">
+    <div className="ml-16 mr-2 mb-2 rounded-lg p-2 space-y-1 bg-ds-bg-tertiary/50">
       {axis.sub.map((sub) => (
         <div key={sub.id} className="flex items-center gap-2">
-          <span className="w-20 text-[9px] text-neutral-500 truncate">{sub.id}</span>
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-neutral-900">
+          <span className="w-20 text-[9px] text-ds-text-muted truncate">
+            {sub.id}
+          </span>
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-ds-bg-secondary">
             <div
               className="h-full rounded-full"
               style={{
@@ -25,13 +27,16 @@ export function AxisDetail({ axis }: AxisDetailProps) {
               }}
             />
           </div>
-          <span className={`w-6 text-right text-[9px] font-mono ${sub.available ? "text-neutral-200" : "text-neutral-600"}`}>
+          <span
+            className={`w-6 text-right text-[9px] font-mono ${sub.available ? "text-ds-text-heading" : "text-ds-text-muted"}`}
+          >
             {Math.round(sub.score)}
           </span>
         </div>
       ))}
-      <div className="text-[9px] text-neutral-600 mt-1 pt-1 border-t border-neutral-700">
-        confidence: {Math.round(axis.confidence * 100)}% | weight: {Math.round(axis.weight * 100)}%
+      <div className="text-[9px] text-ds-text-muted mt-1 pt-1 border-t border-ds-border-primary">
+        confidence: {Math.round(axis.confidence * 100)}% | weight:{" "}
+        {Math.round(axis.weight * 100)}%
       </div>
     </div>
   );

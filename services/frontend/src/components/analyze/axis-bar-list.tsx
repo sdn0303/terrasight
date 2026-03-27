@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { AxisDetail } from "./axis-detail";
+import { useState } from "react";
 import type { TlsResponse } from "@/lib/schemas";
+import { AxisDetail } from "./axis-detail";
 
-const AXIS_KEYS = ["disaster", "terrain", "livability", "future", "price"] as const;
+const AXIS_KEYS = [
+  "disaster",
+  "terrain",
+  "livability",
+  "future",
+  "price",
+] as const;
 type AxisKey = (typeof AXIS_KEYS)[number];
 
 const AXIS_COLORS: Record<AxisKey, string> = {
-  disaster: "#ef4444", terrain: "#f59e0b", livability: "#14b8a6",
-  future: "#3b82f6", price: "#10b981",
+  disaster: "#ef4444",
+  terrain: "#f59e0b",
+  livability: "#14b8a6",
+  future: "#3b82f6",
+  price: "#10b981",
 };
 
 interface AxisBarListProps {
@@ -34,11 +43,16 @@ export function AxisBarList({ axes }: AxisBarListProps) {
               onClick={() => setExpanded(isExpanded ? null : key)}
               className="flex items-center gap-2 w-full py-1.5 text-left"
             >
-              <span className="w-14 text-[10px] truncate" style={{ color }}>{t(key)}</span>
-              <div className="flex-1 h-2 rounded-full overflow-hidden bg-neutral-800">
-                <div className="h-full rounded-full transition-all" style={{ width: `${axis.score}%`, background: color }} />
+              <span className="w-14 text-[10px] truncate" style={{ color }}>
+                {t(key)}
+              </span>
+              <div className="flex-1 h-2 rounded-full overflow-hidden bg-ds-bg-tertiary">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${axis.score}%`, background: color }}
+                />
               </div>
-              <span className="w-8 text-right text-[11px] font-mono text-neutral-200">
+              <span className="w-8 text-right text-[11px] font-mono text-ds-text-heading">
                 {Math.round(axis.score)}
               </span>
             </button>

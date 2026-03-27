@@ -23,6 +23,19 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-ds-bg-primary: var(--bg-primary);
+  --color-ds-bg-secondary: var(--bg-secondary);
+  --color-ds-bg-tertiary: var(--bg-tertiary);
+  --color-ds-text-primary: var(--text-primary);
+  --color-ds-text-secondary: var(--text-secondary);
+  --color-ds-text-muted: var(--text-muted);
+  --color-ds-text-heading: var(--text-heading);
+  --color-ds-border-primary: var(--border-primary);
+  --color-ds-accent-cyan: var(--accent-cyan);
+  --color-ds-accent-danger: var(--accent-danger);
+  --color-ds-accent-warning: var(--accent-warning);
+  --color-ds-accent-success: var(--accent-success);
+  --color-ds-hover-accent: var(--hover-accent);
 }
 
 :root {

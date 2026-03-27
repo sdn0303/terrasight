@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMapStore } from "@/stores/map-store";
 import { useAreaStats } from "@/features/area-stats/api/use-area-stats";
+import { useMapStore } from "@/stores/map-store";
 
 export function AreaCard() {
   const t = useTranslations("explore.areaCard");
@@ -29,16 +29,12 @@ export function AreaCard() {
     return String(schools + medical);
   }
 
-  const skeletonCls = "h-4 w-12 rounded bg-neutral-700 animate-pulse";
+  const skeletonCls = "h-4 w-12 rounded bg-ds-bg-tertiary animate-pulse";
 
   const stats = [
     {
       label: t("population"),
-      value: isPending ? (
-        <span className={skeletonCls} />
-      ) : (
-        "\u2014"
-      ),
+      value: isPending ? <span className={skeletonCls} /> : "\u2014",
     },
     {
       label: t("avgPrice"),
@@ -68,17 +64,17 @@ export function AreaCard() {
 
   return (
     <div className="px-4 py-3">
-      <div className="rounded-lg p-3 bg-neutral-800/50">
-        <div className="text-sm font-medium text-neutral-200 mb-2">
+      <div className="rounded-lg p-3 bg-ds-bg-tertiary/50">
+        <div className="text-sm font-medium text-ds-text-heading mb-2">
           {selectedArea.name}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {stats.map((stat) => (
             <div key={stat.label}>
-              <div className="text-[9px] font-mono tracking-wider text-neutral-500">
+              <div className="text-[9px] font-mono tracking-wider text-ds-text-muted">
                 {stat.label}
               </div>
-              <div className="text-sm font-bold text-cyan-400">
+              <div className="text-sm font-bold text-ds-accent-cyan">
                 {stat.value}
               </div>
             </div>

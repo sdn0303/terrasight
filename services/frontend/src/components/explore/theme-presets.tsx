@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { THEMES, getLayerIdsForThemes } from "@/lib/themes";
+import { useEffect } from "react";
 import type { ThemeId } from "@/lib/themes";
-import { useUIStore } from "@/stores/ui-store";
+import { getLayerIdsForThemes, THEMES } from "@/lib/themes";
 import { useMapStore } from "@/stores/map-store";
+import { useUIStore } from "@/stores/ui-store";
 
 const ICONS: Record<ThemeId, string> = {
   safety: "\u{1F6E1}",
@@ -39,8 +39,8 @@ export function ThemePresets() {
             onClick={() => toggleTheme(theme.id)}
             className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs transition-colors border ${
               isActive
-                ? "bg-white/5 border-cyan-500/50 text-cyan-400"
-                : "bg-neutral-800/50 border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "bg-ds-hover-accent border-ds-accent-cyan/50 text-ds-accent-cyan"
+                : "bg-ds-bg-tertiary/50 border-transparent text-ds-text-muted hover:text-ds-text-primary"
             }`}
             aria-pressed={isActive}
           >

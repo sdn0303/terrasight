@@ -21,7 +21,7 @@ export function AnalyzePanel() {
   if (!analysisPoint) {
     return (
       <div className="flex items-center justify-center h-full px-4">
-        <div className="text-xs text-center text-neutral-500">{t("explore.prompt")}</div>
+        <div className="text-xs text-center text-ds-text-muted">{t("explore.prompt")}</div>
       </div>
     );
   }
@@ -29,9 +29,9 @@ export function AnalyzePanel() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-3">
-        <div className="h-4 w-32 bg-neutral-800 rounded animate-pulse" />
-        <div className="h-20 w-full bg-neutral-800 rounded animate-pulse" />
-        <div className="h-32 w-full bg-neutral-800 rounded animate-pulse" />
+        <div className="h-4 w-32 bg-ds-bg-tertiary rounded animate-pulse" />
+        <div className="h-20 w-full bg-ds-bg-tertiary rounded animate-pulse" />
+        <div className="h-32 w-full bg-ds-bg-tertiary rounded animate-pulse" />
       </div>
     );
   }
@@ -41,8 +41,8 @@ export function AnalyzePanel() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="px-4 pt-4 pb-1">
-        <div className="text-[9px] font-mono tracking-widest text-cyan-400">ANALYZE</div>
-        <div className="text-xs mt-1 text-neutral-300">
+        <div className="text-[9px] font-mono tracking-widest text-ds-accent-cyan">ANALYZE</div>
+        <div className="text-xs mt-1 text-ds-text-primary">
           {analysisPoint.address ?? `${lat?.toFixed(4)}, ${lng?.toFixed(4)}`}
         </div>
       </div>
@@ -50,24 +50,24 @@ export function AnalyzePanel() {
       <TlsScoreHeader score={score.tls.score} grade={score.tls.grade} label={score.tls.label} />
       <WeightPresetSelector />
 
-      <div className="border-t border-neutral-800 my-2" />
+      <div className="border-t border-ds-border-primary my-2" />
       <AxisBarList axes={score.axes} />
 
-      <div className="border-t border-neutral-800 my-2" />
+      <div className="border-t border-ds-border-primary my-2" />
       <CrossAnalysis crossAnalysis={score.cross_analysis} />
 
       <div className="px-4 py-3 mt-auto">
         <button
           type="button"
           onClick={() => setMode("compare")}
-          className="w-full rounded-lg py-2 text-xs bg-neutral-800 text-neutral-400 border border-neutral-700 hover:text-neutral-200 transition-colors"
+          className="w-full rounded-lg py-2 text-xs bg-ds-bg-tertiary text-ds-text-secondary border border-ds-border-primary hover:text-ds-text-heading transition-colors"
         >
           {t("analyze.toCompare")}
         </button>
       </div>
 
       <div className="px-4 pb-3">
-        <div className="text-[9px] text-neutral-600">{score.metadata.disclaimer}</div>
+        <div className="text-[9px] text-ds-text-muted">{score.metadata.disclaimer}</div>
       </div>
     </div>
   );
