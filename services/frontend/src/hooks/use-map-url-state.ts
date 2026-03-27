@@ -7,8 +7,11 @@ import {
   useQueryStates,
 } from "nuqs";
 import { useEffect, useRef } from "react";
-import { useMapStore } from "@/stores/map-store";
 import { MAP_CONFIG } from "@/lib/constants";
+import type { ThemeId } from "@/lib/themes";
+import { THEMES } from "@/lib/themes";
+import { useMapStore } from "@/stores/map-store";
+import { useUIStore } from "@/stores/ui-store";
 
 const mapParams = {
   lat: parseAsFloat.withDefault(MAP_CONFIG.center[1]),
@@ -17,6 +20,7 @@ const mapParams = {
   pitch: parseAsFloat.withDefault(MAP_CONFIG.pitch),
   bearing: parseAsFloat.withDefault(MAP_CONFIG.bearing),
   layers: parseAsString.withDefault("land_price_ts,zoning"),
+  theme: parseAsString.withDefault("safety"),
   year: parseAsInteger.withDefault(2024),
 };
 
@@ -27,6 +31,7 @@ export function useMapUrlState() {
   });
   const initialized = useRef(false);
   const { viewState, setViewState, visibleLayers, toggleLayer } = useMapStore();
+  const activeThemes = useUIStore((s) => s.activeThemes);
 
   // On mount: restore map state from URL
   useEffect(() => {
@@ -50,7 +55,21 @@ export function useMapUrlState() {
     for (const id of urlLayers) {
       if (!currentLayers.has(id)) toggleLayer(id);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Restore theme from URL
+    const validThemeIds = new Set<string>(THEMES.map((t) => t.id));
+    const themeIds = params.theme
+      .split(",")
+      .filter((id): id is ThemeId => validThemeIds.has(id as ThemeId));
+
+    const currentThemes = useUIStore.getState().activeThemes;
+    if (currentThemes.size > 0) {
+      useUIStore.getState().clearThemes();
+    }
+    for (const themeId of themeIds) {
+      useUIStore.getState().toggleTheme(themeId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync store → URL on view state change
@@ -63,6 +82,7 @@ export function useMapUrlState() {
       pitch: Math.round(viewState.pitch),
       bearing: Math.round(viewState.bearing),
       layers: [...visibleLayers].sort().join(","),
+      theme: [...activeThemes].sort().join(","),
     });
-  }, [viewState, visibleLayers, setParams]);
+  }, [viewState, visibleLayers, activeThemes, setParams]);
 }
