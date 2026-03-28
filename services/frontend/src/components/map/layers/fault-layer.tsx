@@ -1,14 +1,17 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
-export function FaultLayer({ visible }: Props) {
-  const { data } = useStaticLayer("national", "fault", visible);
+export function FaultLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer("national", "fault", visible && !propData);
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (
     <Source id="fault" type="geojson" data={data}>

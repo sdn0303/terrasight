@@ -1,10 +1,12 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
 /**
@@ -17,28 +19,17 @@ interface Props {
  *
  * Source: MLIT 液状化危険度評価結果 (point data)
  */
-export function LiquefactionLayer({ visible }: Props) {
-  const { data } = useStaticLayer("13", "liquefaction", visible);
+export function LiquefactionLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer("13", "liquefaction", visible && !propData);
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (
-    <Source
-      id="liquefaction"
-      type="geojson"
-      data={data}
-    >
+    <Source id="liquefaction" type="geojson" data={data}>
       <Layer
         id="liquefaction-circle"
         type="circle"
         paint={{
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10,
-            3,
-            15,
-            7,
-          ],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 15, 7],
           "circle-color": [
             "match",
             ["get", "PL区分"],

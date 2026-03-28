@@ -1,10 +1,12 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
 /**
@@ -27,15 +29,12 @@ interface Props {
  *   4 → Private:     magenta
  *   other →          zinc
  */
-export function RailwayLayer({ visible }: Props) {
-  const { data } = useStaticLayer("13", "railway", visible);
+export function RailwayLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer("13", "railway", visible && !propData);
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (
-    <Source
-      id="railway"
-      type="geojson"
-      data={data}
-    >
+    <Source id="railway" type="geojson" data={data}>
       <Layer
         id="railway-line"
         type="line"

@@ -125,6 +125,26 @@ impl LayerIndex {
         out
     }
 
+    /// Assemble a GeoJSON `FeatureCollection` as a `serde_json::Value`.
+    ///
+    /// Unlike [`get_features_geojson`] which returns a String, this returns
+    /// a structured Value — avoiding double-serialization in `query_layers`.
+    pub fn get_features_as_value(&self, indices: &[u32]) -> serde_json::Value {
+        let features: Vec<serde_json::Value> = indices
+            .iter()
+            .filter_map(|&idx| {
+                self.features_json
+                    .get(idx as usize)
+                    .and_then(|s| serde_json::from_str(s).ok())
+            })
+            .collect();
+
+        serde_json::json!({
+            "type": "FeatureCollection",
+            "features": features,
+        })
+    }
+
     /// Total number of features stored in this index.
     pub fn feature_count(&self) -> u32 {
         self.features_json.len() as u32

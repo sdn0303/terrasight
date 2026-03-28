@@ -1,10 +1,12 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
 /**
@@ -14,15 +16,12 @@ interface Props {
  * - 土砂災害警戒区域 (yellow zone) → warning orange
  * - 土砂災害特別警戒区域 (red zone) → danger red
  */
-export function LandslideLayer({ visible }: Props) {
-  const { data } = useStaticLayer("13", "landslide", visible);
+export function LandslideLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer("13", "landslide", visible && !propData);
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (
-    <Source
-      id="landslide"
-      type="geojson"
-      data={data}
-    >
+    <Source id="landslide" type="geojson" data={data}>
       <Layer
         id="landslide-fill"
         type="fill"

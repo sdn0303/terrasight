@@ -1,10 +1,12 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
 /**
@@ -29,8 +31,9 @@ const SOIL_COLORS: [string, string][] = [
   ["水面", "#06b6d4"], // cyan — water
 ];
 
-export function SoilLayer({ visible }: Props) {
-  const { data } = useStaticLayer("13", "soil", visible);
+export function SoilLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer("13", "soil", visible && !propData);
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
 
   const colorExpr: unknown[] = ["match", ["get", "soilCategory"]];

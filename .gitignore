@@ -66,3 +66,4 @@ tarpaulin-report.html
 # Git worktree
 .claire/
 .remember/
+.claude/worktree/**

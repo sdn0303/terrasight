@@ -107,12 +107,12 @@ impl SpatialEngine {
     /// `"geology,landform"`.
     ///
     /// Returns a JSON object keyed by layer id, where each value is a GeoJSON
-    /// `FeatureCollection` string.
+    /// `FeatureCollection` object.
     ///
     /// ```json
     /// {
-    ///   "geology":  "{\"type\":\"FeatureCollection\",\"features\":[...]}",
-    ///   "landform": "{\"type\":\"FeatureCollection\",\"features\":[]}"
+    ///   "geology":  {"type":"FeatureCollection","features":[...]},
+    ///   "landform": {"type":"FeatureCollection","features":[]}
     /// }
     /// ```
     ///
@@ -237,12 +237,12 @@ impl SpatialEngine {
         north: f64,
         east: f64,
     ) -> Result<String, String> {
-        let mut result: HashMap<&str, String> = HashMap::new();
+        let mut result: HashMap<&str, serde_json::Value> = HashMap::new();
 
         for layer_id in layer_ids.split(',').map(str::trim).filter(|s| !s.is_empty()) {
             if let Some(index) = self.layers.get(layer_id) {
                 let indices = index.query_bbox(south, west, north, east);
-                result.insert(layer_id, index.get_features_geojson(&indices));
+                result.insert(layer_id, index.get_features_as_value(&indices));
             }
         }
 
@@ -545,9 +545,9 @@ mod tests {
             .expect("query_layers_inner should succeed");
 
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
-        let fc_str = result["geology"].as_str().unwrap();
-        let fc: serde_json::Value = serde_json::from_str(fc_str).unwrap();
+        let fc = &result["geology"];
         assert_eq!(fc["type"], "FeatureCollection");
+        assert!(fc["features"].is_array());
     }
 
     // -------------------------------------------------------------------------

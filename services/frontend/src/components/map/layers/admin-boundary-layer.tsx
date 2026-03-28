@@ -1,21 +1,24 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
-export function AdminBoundaryLayer({ visible }: Props) {
-  const { data } = useStaticLayer("13", "admin-boundary", visible);
+export function AdminBoundaryLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer(
+    "13",
+    "admin-boundary",
+    visible && !propData,
+  );
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (
-    <Source
-      id="admin_boundary"
-      type="geojson"
-      data={data}
-    >
+    <Source id="admin_boundary" type="geojson" data={data}>
       <Layer
         id="admin-boundary-fill"
         type="fill"
@@ -35,10 +38,7 @@ export function AdminBoundaryLayer({ visible }: Props) {
         id="admin-boundary-label"
         type="symbol"
         layout={{
-          "text-field": [
-            "coalesce",
-            ["get", "cityName"],
-          ] as unknown as string,
+          "text-field": ["coalesce", ["get", "cityName"]] as unknown as string,
           "text-size": 11,
         }}
         paint={{

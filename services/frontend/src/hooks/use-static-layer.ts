@@ -9,6 +9,7 @@ import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useSpatialEngineReady } from "@/hooks/use-spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 
+/** @deprecated Use `useVisibleStaticLayers` for batched queries. This hook remains as fallback. */
 export function useStaticLayer(
   prefCode: string,
   layerId: string,

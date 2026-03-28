@@ -1,10 +1,12 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
   visible: boolean;
+  data?: FeatureCollection;
 }
 
 const GEOLOGY_COLORS: [string, string][] = [
@@ -19,8 +21,9 @@ const GEOLOGY_COLORS: [string, string][] = [
   ["水域", "#06b6d4"],
 ];
 
-export function GeologyLayer({ visible }: Props) {
-  const { data } = useStaticLayer("13", "geology", visible);
+export function GeologyLayer({ visible, data: propData }: Props) {
+  const selfFetch = useStaticLayer("13", "geology", visible && !propData);
+  const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
 
   const colorExpr: unknown[] = ["match", ["get", "geologyCategory2"]];

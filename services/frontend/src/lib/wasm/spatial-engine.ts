@@ -90,13 +90,22 @@ interface PendingFeatureQuery {
   reject: (reason: unknown) => void;
 }
 
+interface PendingPerLayerQuery {
+  kind: "query-per-layer";
+  resolve: (value: Map<string, FeatureCollection>) => void;
+  reject: (reason: unknown) => void;
+}
+
 interface PendingStatsQuery {
   kind: "stats";
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
 }
 
-type PendingQuery = PendingFeatureQuery | PendingStatsQuery;
+type PendingQuery =
+  | PendingFeatureQuery
+  | PendingPerLayerQuery
+  | PendingStatsQuery;
 
 // ---------------------------------------------------------------------------
 // Adapter
@@ -183,7 +192,10 @@ export class SpatialEngineAdapter {
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("SpatialEngine init timed out after 30s")), 30_000),
+      setTimeout(
+        () => reject(new Error("SpatialEngine init timed out after 30s")),
+        30_000,
+      ),
     );
 
     this.worker.postMessage({ type: "init", layers: WASM_LAYERS });
@@ -192,7 +204,11 @@ export class SpatialEngineAdapter {
       await Promise.race([initPromise, timeoutPromise]);
     } catch (err) {
       performance.mark("wasm-init-failed");
-      performance.measure("wasm-init-failed", "wasm-init-start", "wasm-init-failed");
+      performance.measure(
+        "wasm-init-failed",
+        "wasm-init-start",
+        "wasm-init-failed",
+      );
       console.warn(
         "[SpatialEngineAdapter] Falling back to FlatGeobuf mode:",
         err instanceof Error ? err.message : err,
@@ -222,6 +238,43 @@ export class SpatialEngineAdapter {
     return new Promise<FeatureCollection>((resolve, reject) => {
       this.pending.set(id, {
         kind: "query",
+        resolve: (value) => {
+          performance.mark(markEnd);
+          performance.measure(measureName, markStart, markEnd);
+          resolve(value);
+        },
+        reject: (reason) => {
+          performance.mark(markEnd);
+          performance.measure(measureName, markStart, markEnd);
+          reject(reason);
+        },
+      });
+      this.worker?.postMessage({ type: "query", id, bbox, layers });
+    });
+  }
+
+  /**
+   * Query multiple layers for a given bounding box, returning per-layer results.
+   * Unlike `query()` which merges all features, this returns a Map keyed by
+   * canonical layer ID, each value a separate FeatureCollection.
+   */
+  async queryPerLayer(
+    bbox: BBox,
+    layers: string[],
+  ): Promise<Map<string, FeatureCollection>> {
+    if (this.worker === null || this._loadedLayers.size === 0) {
+      return new Map();
+    }
+
+    const id = this.nextId++;
+    const markStart = `wasm-query-${id}-start`;
+    const markEnd = `wasm-query-${id}-done`;
+    const measureName = `wasm-query-${id}`;
+    performance.mark(markStart);
+
+    return new Promise<Map<string, FeatureCollection>>((resolve, reject) => {
+      this.pending.set(id, {
+        kind: "query-per-layer",
         resolve: (value) => {
           performance.mark(markEnd);
           performance.measure(measureName, markStart, markEnd);
@@ -282,14 +335,19 @@ export class SpatialEngineAdapter {
         performance.mark("wasm-init-done");
         performance.measure("wasm-init", "wasm-init-start", "wasm-init-done");
         const initMeasure = performance.getEntriesByName("wasm-init").pop();
-        const allLayerIds = WASM_LAYERS.map(l => l.id);
-        const failedLayers = allLayerIds.filter(id => !this._loadedLayers.has(id));
-        log.info({
-          wasm_init_ms: initMeasure ? Math.round(initMeasure.duration) : -1,
-          loaded_count: this._loadedLayers.size,
-          loaded_layers: [...this._loadedLayers],
-          failed_layers: failedLayers,
-        }, "WASM spatial engine initialized");
+        const allLayerIds = WASM_LAYERS.map((l) => l.id);
+        const failedLayers = allLayerIds.filter(
+          (id) => !this._loadedLayers.has(id),
+        );
+        log.info(
+          {
+            wasm_init_ms: initMeasure ? Math.round(initMeasure.duration) : -1,
+            loaded_count: this._loadedLayers.size,
+            loaded_layers: [...this._loadedLayers],
+            failed_layers: failedLayers,
+          },
+          "WASM spatial engine initialized",
+        );
         this.notifyListeners(true);
         break;
       }
@@ -298,37 +356,36 @@ export class SpatialEngineAdapter {
         const pending = this.pending.get(msg.id);
         if (!pending) break;
         this.pending.delete(msg.id);
-        if (pending.kind !== "query") {
-          pending.reject(new Error("Unexpected query-result for non-query pending entry"));
+        if (pending.kind !== "query" && pending.kind !== "query-per-layer") {
+          pending.reject(
+            new Error("Unexpected query-result for non-query pending entry"),
+          );
           break;
         }
         try {
-          const parsed = JSON.parse(msg.geojson) as unknown;
           // query_layers returns an object keyed by layer id whose values are
-          // GeoJSON FeatureCollection strings. Merge all features.
-          const features: FeatureCollection["features"] = [];
-          if (
-            parsed !== null &&
-            typeof parsed === "object" &&
-            !Array.isArray(parsed)
-          ) {
-            for (const raw of Object.values(parsed as Record<string, unknown>)) {
-              if (typeof raw !== "string") continue;
-              const fc = JSON.parse(raw) as unknown;
-              if (
-                fc !== null &&
-                typeof fc === "object" &&
-                !Array.isArray(fc) &&
-                "features" in fc &&
-                Array.isArray((fc as { features: unknown }).features)
-              ) {
-                features.push(
-                  ...(fc as FeatureCollection).features,
-                );
+          // GeoJSON FeatureCollection objects (single JSON.parse, no inner parse).
+          const parsed = JSON.parse(msg.geojson) as Record<string, unknown>;
+
+          if (pending.kind === "query-per-layer") {
+            // Per-layer mode: return Map<string, FeatureCollection>
+            const map = new Map<string, FeatureCollection>();
+            for (const [layerId, fc] of Object.entries(parsed)) {
+              if (isFeatureCollection(fc)) {
+                map.set(layerId, fc as FeatureCollection);
               }
             }
+            pending.resolve(map);
+          } else {
+            // Merged mode: combine all layer features into single FeatureCollection
+            const features: FeatureCollection["features"] = [];
+            for (const fc of Object.values(parsed)) {
+              if (isFeatureCollection(fc)) {
+                features.push(...(fc as FeatureCollection).features);
+              }
+            }
+            pending.resolve({ type: "FeatureCollection", features });
           }
-          pending.resolve({ type: "FeatureCollection", features });
         } catch (err) {
           pending.reject(err);
         }
@@ -340,7 +397,9 @@ export class SpatialEngineAdapter {
         if (!pending) break;
         this.pending.delete(msg.id);
         if (pending.kind !== "stats") {
-          pending.reject(new Error("Unexpected stats-result for non-stats pending entry"));
+          pending.reject(
+            new Error("Unexpected stats-result for non-stats pending entry"),
+          );
           break;
         }
         try {
@@ -398,6 +457,21 @@ export class SpatialEngineAdapter {
       listener(ready);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Type guard for GeoJSON FeatureCollection objects. */
+function isFeatureCollection(value: unknown): value is FeatureCollection {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "features" in value &&
+    Array.isArray((value as { features: unknown }).features)
+  );
 }
 
 // ---------------------------------------------------------------------------

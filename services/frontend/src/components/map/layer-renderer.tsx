@@ -1,6 +1,7 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
+import { useMemo } from "react";
 import { AreaHighlight } from "@/components/map/area-highlight";
 import { LandPriceYearSlider } from "@/components/map/land-price-year-slider";
 import {
@@ -28,6 +29,8 @@ import {
 } from "@/components/map/layers";
 import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
 import { YearSlider } from "@/components/map/year-slider";
+import { useVisibleStaticLayers } from "@/hooks/use-visible-static-layers";
+import { canonicalLayerId } from "@/lib/layer-ids";
 import type { LayerConfig } from "@/lib/layers";
 
 const EMPTY_FC: FeatureCollection = {
@@ -37,7 +40,9 @@ const EMPTY_FC: FeatureCollection = {
 
 const STATIC_LAYER_COMPONENTS: Record<
   string,
-  React.ComponentType<{ visible: boolean } & Record<string, unknown>>
+  React.ComponentType<
+    { visible: boolean; data?: FeatureCollection } & Record<string, unknown>
+  >
 > = {
   did: DIDLayer,
   landform: LandformLayer,
@@ -97,6 +102,18 @@ export function LayerRenderer({
   setLandPriceYear,
   landPriceFeatureCount,
 }: LayerRendererProps) {
+  // Compute visible static layer IDs for batched hook
+  const visibleStaticIds = useMemo(
+    () =>
+      staticLayers
+        .filter((l) => visibleLayers.has(l.id) && l.id !== "population_mesh")
+        .map((l) => l.id),
+    [staticLayers, visibleLayers],
+  );
+
+  // Single batched query for all visible static layers
+  const staticLayerData = useVisibleStaticLayers(visibleStaticIds);
+
   return (
     <>
       <BoundaryLayer />
@@ -138,8 +155,13 @@ export function LayerRenderer({
         }
         const Component = STATIC_LAYER_COMPONENTS[layer.id];
         if (!Component) return null;
+        const layerData = staticLayerData.get(canonicalLayerId(layer.id));
         return (
-          <Component key={layer.id} visible={visibleLayers.has(layer.id)} />
+          <Component
+            key={layer.id}
+            visible={visibleLayers.has(layer.id)}
+            {...(layerData !== undefined && { data: layerData })}
+          />
         );
       })}
 
