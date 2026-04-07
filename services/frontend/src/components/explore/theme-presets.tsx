@@ -21,14 +21,12 @@ export function ThemePresets() {
   const activeThemes = useUIStore((s) => s.activeThemes);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
 
+  const applyThemeLayers = useMapStore((s) => s.applyThemeLayers);
+
   useEffect(() => {
-    if (activeThemes.size === 0) {
-      useMapStore.setState({ visibleLayers: new Set<string>() });
-      return;
-    }
     const themeLayerIds = getLayerIdsForThemes(activeThemes);
-    useMapStore.setState({ visibleLayers: themeLayerIds });
-  }, [activeThemes]);
+    applyThemeLayers(themeLayerIds);
+  }, [activeThemes, applyThemeLayers]);
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3">
@@ -69,7 +67,7 @@ export function ThemePresets() {
                     isActive ? "text-ds-accent-primary" : "text-ds-text-primary"
                   }`}
                 >
-                  {t(theme.labelKey)}
+                  {t(`theme.${theme.id}.name`)}
                 </span>
                 <span
                   className="text-[9px] font-mono"

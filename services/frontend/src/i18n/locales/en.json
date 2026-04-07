@@ -1,14 +1,10 @@
 {
   "mode": { "explore": "Explore", "analyze": "Analyze", "compare": "Compare" },
   "theme": {
-    "safety": "Safety",
-    "safety.desc": "Flood, seismic, and landslide hazard layers",
-    "livability": "Livability",
-    "livability.desc": "Schools, medical, railway infrastructure",
-    "price": "Price",
-    "price.desc": "Land prices and zoning value data",
-    "future": "Future",
-    "future.desc": "Population trends and urban planning"
+    "safety": { "name": "Safety", "desc": "Flood, seismic, and landslide hazard layers" },
+    "livability": { "name": "Livability", "desc": "Schools, medical, railway infrastructure" },
+    "price": { "name": "Price", "desc": "Land prices and zoning value data" },
+    "future": { "name": "Future", "desc": "Population trends and urban planning" }
   },
   "tls": {
     "score": "Total Score",

@@ -1,14 +1,10 @@
 {
   "mode": { "explore": "探索", "analyze": "分析", "compare": "比較" },
   "theme": {
-    "safety": "安全性",
-    "safety.desc": "洪水・地震・急傾斜地などの災害リスクを可視化",
-    "livability": "利便性",
-    "livability.desc": "学校・医療・鉄道などの生活インフラを表示",
-    "price": "価格",
-    "price.desc": "地価公示・用途地域の投資価値データ",
-    "future": "将来性",
-    "future.desc": "人口推移・都市計画の将来性指標"
+    "safety": { "name": "安全性", "desc": "洪水・地震・急傾斜地などの災害リスクを可視化" },
+    "livability": { "name": "利便性", "desc": "学校・医療・鉄道などの生活インフラを表示" },
+    "price": { "name": "価格", "desc": "地価公示・用途地域の投資価値データ" },
+    "future": { "name": "将来性", "desc": "人口推移・都市計画の将来性指標" }
   },
   "tls": {
     "score": "総合スコア",

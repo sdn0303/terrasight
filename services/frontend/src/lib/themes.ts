@@ -13,10 +13,10 @@ export interface ThemeConfig {
 }
 
 export const THEMES: ThemeConfig[] = [
-  { id: "safety", labelKey: "theme.safety", colorAxis: "disaster", colorRamp: ["#ef4444", "#eab308", "#10b981"] },
-  { id: "livability", labelKey: "theme.livability", colorAxis: "livability", colorRamp: ["#f97316", "#eab308", "#10b981"] },
-  { id: "price", labelKey: "theme.price", colorAxis: "price", colorRamp: ["#3b82f6", "#eab308", "#ef4444"] },
-  { id: "future", labelKey: "theme.future", colorAxis: "future", colorRamp: ["#ef4444", "#eab308", "#3b82f6"] },
+  { id: "safety", labelKey: "theme.safety.name", colorAxis: "disaster", colorRamp: ["#ef4444", "#eab308", "#10b981"] },
+  { id: "livability", labelKey: "theme.livability.name", colorAxis: "livability", colorRamp: ["#f97316", "#eab308", "#10b981"] },
+  { id: "price", labelKey: "theme.price.name", colorAxis: "price", colorRamp: ["#3b82f6", "#eab308", "#ef4444"] },
+  { id: "future", labelKey: "theme.future.name", colorAxis: "future", colorRamp: ["#ef4444", "#eab308", "#3b82f6"] },
 ];
 
 /** Get layer IDs that belong to a given theme */
