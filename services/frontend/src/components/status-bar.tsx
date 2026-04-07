@@ -51,7 +51,7 @@ export function StatusBar({
         <span style={{ color: "var(--accent-warning)" }}>● DEMO</span>
       )}
       {isLoading && (
-        <span style={{ color: "var(--accent-cyan)" }}>◌ LOADING...</span>
+        <span style={{ color: "var(--accent-primary)" }}>◌ LOADING...</span>
       )}
       {wasmError && (
         <span role="alert" style={{ color: "var(--accent-danger)" }}>

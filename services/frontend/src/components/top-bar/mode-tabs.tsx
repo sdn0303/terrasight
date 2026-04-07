@@ -12,7 +12,12 @@ export function ModeTabs() {
   const setMode = useUIStore((s) => s.setMode);
 
   return (
-    <div className="flex gap-1" role="tablist" aria-label="Application mode">
+    <div
+      className="flex gap-0.5 rounded-full p-1"
+      style={{ background: "var(--surface-elevated)" }}
+      role="tablist"
+      aria-label="Application mode"
+    >
       {MODES.map((m) => (
         <button
           key={m}
@@ -20,9 +25,9 @@ export function ModeTabs() {
           role="tab"
           aria-selected={mode === m}
           onClick={() => setMode(m)}
-          className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide transition-colors ${
+          className={`px-3.5 py-1 rounded-full text-xs font-medium tracking-wide transition-all cursor-pointer ${
             mode === m
-              ? "bg-ds-accent-cyan/10 text-ds-accent-cyan"
+              ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-sm"
               : "text-ds-text-muted hover:text-ds-text-primary"
           }`}
         >
