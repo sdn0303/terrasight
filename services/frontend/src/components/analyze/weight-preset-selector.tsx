@@ -17,7 +17,7 @@ export function WeightPresetSelector() {
 
   return (
     <div className="px-4 py-2">
-      <div className="text-[9px] font-mono tracking-wider text-ds-text-muted mb-1.5">
+      <div className="text-[9px] font-semibold tracking-wider uppercase text-ds-text-muted mb-1.5">
         WEIGHT PRESET
       </div>
       <div className="flex gap-1 flex-wrap">
@@ -28,7 +28,7 @@ export function WeightPresetSelector() {
             onClick={() => setWeightPreset(preset)}
             className={`px-2 py-1 rounded text-[10px] font-mono transition-colors ${
               weightPreset === preset
-                ? "bg-ds-accent-cyan/10 text-ds-accent-cyan"
+                ? "bg-ds-accent-primary/10 text-ds-accent-primary"
                 : "bg-ds-bg-tertiary text-ds-text-muted hover:text-ds-text-primary"
             }`}
             aria-pressed={weightPreset === preset}

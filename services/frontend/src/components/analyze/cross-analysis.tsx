@@ -27,7 +27,7 @@ interface CrossAnalysisProps {
 export function CrossAnalysis({ crossAnalysis }: CrossAnalysisProps) {
   return (
     <div className="px-4 py-2">
-      <div className="text-[9px] font-mono tracking-wider text-ds-text-muted mb-2">
+      <div className="text-[9px] font-semibold tracking-wider uppercase text-ds-text-muted mb-2">
         CROSS ANALYSIS
       </div>
       <div className="space-y-1.5">
@@ -40,7 +40,7 @@ export function CrossAnalysis({ crossAnalysis }: CrossAnalysisProps) {
               </span>
               <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-ds-bg-tertiary">
                 <div
-                  className="h-full rounded-full bg-ds-accent-cyan"
+                  className="h-full rounded-full bg-ds-accent-primary"
                   style={{ width: `${value}%` }}
                 />
               </div>

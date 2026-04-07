@@ -102,7 +102,7 @@ function LayerPanelContent() {
                   className="text-[9px] px-1.5 py-0.5 rounded-full"
                   style={{
                     background: "var(--hover-accent)",
-                    color: "var(--accent-cyan)",
+                    color: "var(--accent-primary)",
                     fontFamily: "var(--font-mono)",
                   }}
                 >
@@ -169,7 +169,7 @@ export function LayerPanel() {
             style={{
               background: "var(--bg-secondary)",
               border: "1px solid var(--border-primary)",
-              color: "var(--accent-cyan)",
+              color: "var(--accent-primary)",
             }}
             aria-label="レイヤーコントロールを開く"
           >

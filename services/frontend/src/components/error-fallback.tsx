@@ -37,17 +37,13 @@ export function ErrorFallback({ error, reset }: ErrorFallbackProps) {
         className="px-4 py-2 rounded text-xs"
         style={{
           background: "var(--bg-tertiary)",
-          color: "var(--accent-cyan)",
+          color: "var(--accent-primary)",
           border: "1px solid var(--border-primary)",
         }}
       >
         RETRY
       </button>
-      <a
-        href="/"
-        className="text-xs"
-        style={{ color: "var(--text-muted)" }}
-      >
+      <a href="/" className="text-xs" style={{ color: "var(--text-muted)" }}>
         ← Return to map
       </a>
     </div>

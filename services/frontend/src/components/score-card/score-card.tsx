@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ScoreGauge } from "./score-gauge";
 import { ComponentBar } from "./component-bar";
+import { ScoreGauge } from "./score-gauge";
 
 type TlsGrade = "S" | "A" | "B" | "C" | "D" | "E";
 
@@ -17,25 +17,22 @@ function gradeColor(grade: TlsGrade): string {
   };
   return map[grade];
 }
-import { Sparkline } from "./sparkline";
-import { useScore } from "@/features/score/api/use-score";
-import { useTrend } from "@/features/trend/api/use-trend";
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { useMapStore } from "@/stores/map-store";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useScore } from "@/features/score/api/use-score";
+import { useTrend } from "@/features/trend/api/use-trend";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { useMapStore } from "@/stores/map-store";
+import { Sparkline } from "./sparkline";
 
 /** Inner content shared between fixed panel and Sheet. */
-function ScoreCardContent({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+function ScoreCardContent({ onClose }: { onClose: () => void }) {
   const { selectedFeature } = useMapStore();
   const lat = selectedFeature?.coordinates[1] ?? null;
   const lng = selectedFeature?.coordinates[0] ?? null;
@@ -53,7 +50,7 @@ function ScoreCardContent({
       >
         <span
           className="text-[9px] tracking-[0.15em]"
-          style={{ color: "var(--accent-cyan)" }}
+          style={{ color: "var(--accent-primary)" }}
         >
           PROPERTY INTEL
         </span>
@@ -77,10 +74,7 @@ function ScoreCardContent({
           >
             LOCATION
           </div>
-          <div
-            className="text-xs"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <div className="text-xs" style={{ color: "var(--text-primary)" }}>
             {String(
               selectedFeature.properties.address ??
                 `${lat?.toFixed(4)}°N, ${lng?.toFixed(4)}°E`,
@@ -168,10 +162,8 @@ function ScoreCardContent({
               PRICING
             </div>
             <div className="flex justify-between text-xs">
-              <span style={{ color: "var(--text-secondary)" }}>
-                per sqm
-              </span>
-              <span style={{ color: "var(--accent-cyan)" }}>
+              <span style={{ color: "var(--text-secondary)" }}>per sqm</span>
+              <span style={{ color: "var(--accent-primary)" }}>
                 ¥
                 {Number(
                   selectedFeature.properties.price_per_sqm,
@@ -186,10 +178,7 @@ function ScoreCardContent({
 
         {/* Disclaimer */}
         {score && (
-          <div
-            className="text-[9px]"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <div className="text-[9px]" style={{ color: "var(--text-muted)" }}>
             {score.metadata.disclaimer}
           </div>
         )}
@@ -209,7 +198,12 @@ export function ScoreCard() {
   // Mobile: bottom Sheet
   if (isMobile) {
     return (
-      <Sheet open={selectedFeature !== null} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <Sheet
+        open={selectedFeature !== null}
+        onOpenChange={(open) => {
+          if (!open) handleClose();
+        }}
+      >
         <SheetContent
           side="bottom"
           showCloseButton={false}

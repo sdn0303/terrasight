@@ -124,7 +124,7 @@ export function LandPriceYearSlider({
                 border: "none",
                 borderRight: "1px solid var(--border-primary)",
                 background: isActive
-                  ? "var(--accent-cyan)"
+                  ? "var(--accent-primary)"
                   : "var(--bg-tertiary)",
                 color: isActive ? "var(--bg-primary)" : "var(--text-muted)",
                 fontFamily: "var(--font-mono)",
@@ -178,7 +178,7 @@ export function LandPriceYearSlider({
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: "var(--accent-cyan)",
+              background: "var(--accent-primary)",
               animation: "lp-pulse 1.2s ease-in-out infinite",
               flexShrink: 0,
             }}

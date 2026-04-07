@@ -5,7 +5,12 @@ interface ComponentBarProps {
   confidence?: number;
 }
 
-export function ComponentBar({ label, value, max, confidence }: ComponentBarProps) {
+export function ComponentBar({
+  label,
+  value,
+  max,
+  confidence,
+}: ComponentBarProps) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div
@@ -28,7 +33,7 @@ export function ComponentBar({ label, value, max, confidence }: ComponentBarProp
           className="h-full rounded"
           style={{
             width: `${pct}%`,
-            background: "var(--accent-cyan)",
+            background: "var(--accent-primary)",
             opacity: confidence !== undefined ? confidence : 1,
           }}
         />

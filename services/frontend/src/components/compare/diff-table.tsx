@@ -34,7 +34,7 @@ export function DiffTable({ axesA, axesB, tlsA, tlsB }: DiffTableProps) {
         <thead>
           <tr className="text-ds-text-muted">
             <th className="text-left py-1 font-normal" />
-            <th className="text-right py-1 font-normal text-ds-accent-cyan">
+            <th className="text-right py-1 font-normal text-ds-accent-primary">
               A
             </th>
             <th className="text-right py-1 font-normal text-amber-400">B</th>
@@ -50,7 +50,7 @@ export function DiffTable({ axesA, axesB, tlsA, tlsB }: DiffTableProps) {
                 <td className="text-right font-mono">{a}</td>
                 <td className="text-right font-mono">{b}</td>
                 <td
-                  className={`text-right font-mono ${delta > 0 ? "text-ds-accent-cyan" : delta < 0 ? "text-amber-400" : "text-ds-text-muted"}`}
+                  className={`text-right font-mono ${delta > 0 ? "text-ds-accent-primary" : delta < 0 ? "text-amber-400" : "text-ds-text-muted"}`}
                 >
                   {delta > 0
                     ? `A+${delta}`
@@ -70,7 +70,7 @@ export function DiffTable({ axesA, axesB, tlsA, tlsB }: DiffTableProps) {
               {Math.round(tlsB)}
             </td>
             <td
-              className={`text-right font-mono font-medium ${tlsA > tlsB ? "text-ds-accent-cyan" : tlsB > tlsA ? "text-amber-400" : "text-ds-text-muted"}`}
+              className={`text-right font-mono font-medium ${tlsA > tlsB ? "text-ds-accent-primary" : tlsB > tlsA ? "text-amber-400" : "text-ds-text-muted"}`}
             >
               {tlsA > tlsB
                 ? `A+${Math.round(tlsA - tlsB)}`

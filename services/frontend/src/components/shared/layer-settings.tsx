@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
+import { useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -65,21 +65,19 @@ export function LayerSettings() {
                 }}
               />
               <span
-                className="text-[9px] tracking-[0.15em] flex-1"
+                className="text-[10px] font-medium uppercase tracking-wider flex-1"
                 style={{
                   color: "var(--text-muted)",
-                  fontFamily: "var(--font-mono)",
                 }}
               >
                 {category.labelJa}
               </span>
               {activeCount > 0 && (
                 <span
-                  className="text-[9px] px-1.5 py-0.5 rounded-full"
+                  className="text-[9px] px-1.5 py-0.5 rounded-full font-mono"
                   style={{
                     background: "var(--hover-accent)",
-                    color: "var(--accent-cyan)",
-                    fontFamily: "var(--font-mono)",
+                    color: "var(--accent-primary)",
                   }}
                 >
                   {activeCount}

@@ -21,7 +21,7 @@ export default function NotFound() {
         className="px-4 py-2 rounded text-xs"
         style={{
           background: "var(--bg-tertiary)",
-          color: "var(--accent-cyan)",
+          color: "var(--accent-primary)",
           border: "1px solid var(--border-primary)",
         }}
       >

@@ -98,7 +98,7 @@ export function ComparePanel() {
             <div className="flex justify-between items-center mb-4">
               <span
                 className="text-[9px] tracking-[0.15em]"
-                style={{ color: "var(--accent-cyan)" }}
+                style={{ color: "var(--accent-primary)" }}
               >
                 COMPARE ANALYSIS
               </span>
@@ -118,7 +118,7 @@ export function ComparePanel() {
               <div className="text-center">
                 <div
                   className="text-[9px] tracking-[0.15em]"
-                  style={{ color: "var(--accent-cyan)" }}
+                  style={{ color: "var(--accent-primary)" }}
                 >
                   POINT A
                 </div>
@@ -131,7 +131,7 @@ export function ComparePanel() {
                 {scoreA && (
                   <div
                     className="text-lg font-bold"
-                    style={{ color: "var(--accent-cyan)" }}
+                    style={{ color: "var(--accent-primary)" }}
                   >
                     {Math.round(scoreA.tls.score)}
                   </div>
@@ -174,8 +174,8 @@ export function ComparePanel() {
                     <Radar
                       name="A"
                       dataKey="A"
-                      stroke="var(--accent-cyan)"
-                      fill="var(--accent-cyan)"
+                      stroke="var(--accent-primary)"
+                      fill="var(--accent-primary)"
                       fillOpacity={0.2}
                     />
                     <Radar

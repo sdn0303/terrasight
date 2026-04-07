@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
-import { ThemePresets } from "@/components/explore/theme-presets";
-import { BreadcrumbNav } from "@/components/explore/breadcrumb-nav";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { AreaCard } from "@/components/explore/area-card";
+import { BreadcrumbNav } from "@/components/explore/breadcrumb-nav";
+import { ThemePresets } from "@/components/explore/theme-presets";
 import { LayerSettings } from "@/components/shared/layer-settings";
 import { useMapStore } from "@/stores/map-store";
 
@@ -17,7 +17,7 @@ export function ExplorePanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2">
-        <div className="text-[9px] font-mono tracking-widest text-ds-accent-cyan">
+        <div className="text-[10px] font-semibold tracking-wider uppercase text-ds-accent-primary">
           {t("mode.explore").toUpperCase()}
         </div>
       </div>
@@ -40,12 +40,14 @@ export function ExplorePanel() {
         <button
           type="button"
           onClick={() => setLayerSettingsOpen(!layerSettingsOpen)}
-          className="flex items-center gap-2 w-full px-4 py-2 text-[9px] font-mono tracking-wider text-ds-text-muted hover:text-ds-text-primary"
+          className="flex items-center gap-2 w-full px-4 py-2 text-[10px] font-medium tracking-wider uppercase text-ds-text-muted hover:text-ds-text-primary"
         >
           <ChevronRight
             size={10}
             className="transition-transform"
-            style={{ transform: layerSettingsOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+            style={{
+              transform: layerSettingsOpen ? "rotate(90deg)" : "rotate(0deg)",
+            }}
           />
           LAYER SETTINGS
         </button>

@@ -303,7 +303,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
               onClick={handleForceReload}
               className="px-4 py-1.5 rounded text-xs"
               style={{
-                background: "var(--accent-cyan)",
+                background: "var(--accent-primary)",
                 color: "var(--bg-primary)",
                 fontFamily: "var(--font-mono)",
               }}

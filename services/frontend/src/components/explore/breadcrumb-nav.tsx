@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { useMapStore } from "@/stores/map-store";
 
 export function BreadcrumbNav() {
@@ -8,7 +9,7 @@ export function BreadcrumbNav() {
 
   return (
     <nav
-      className="flex items-center gap-1.5 px-4 py-2 text-[10px] font-mono tracking-wide text-ds-text-muted"
+      className="flex items-center gap-1.5 px-4 py-2 text-[10px] font-medium tracking-wide text-ds-text-muted"
       aria-label="Area breadcrumb"
     >
       <button
@@ -16,7 +17,7 @@ export function BreadcrumbNav() {
         onClick={() => selectArea(null)}
         className={
           selectedArea
-            ? "text-ds-accent-cyan hover:underline"
+            ? "text-ds-accent-primary hover:underline"
             : "text-ds-text-primary"
         }
       >
@@ -24,7 +25,7 @@ export function BreadcrumbNav() {
       </button>
       {selectedArea && (
         <>
-          <span>&gt;</span>
+          <ChevronRight size={12} className="text-ds-text-muted" />
           <span className="text-ds-text-primary">{selectedArea.name}</span>
         </>
       )}

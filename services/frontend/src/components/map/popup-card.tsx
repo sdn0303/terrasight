@@ -15,9 +15,10 @@ interface PopupCardProps {
 export function PopupCard({ layerNameJa, fields, properties }: PopupCardProps) {
   return (
     <div
-      className="rounded px-3 py-2 max-w-[240px] shadow-lg"
+      className="rounded-lg px-3 py-2 max-w-[240px] shadow-lg"
       style={{
-        background: "var(--bg-secondary)",
+        background: "rgba(17, 24, 39, 0.90)",
+        backdropFilter: "blur(8px)",
         border: "1px solid var(--border-primary)",
         fontFamily: "var(--font-mono)",
         fontSize: "11px",
@@ -27,7 +28,7 @@ export function PopupCard({ layerNameJa, fields, properties }: PopupCardProps) {
       <div
         className="text-[10px] tracking-[0.1em] mb-1.5 pb-1"
         style={{
-          color: "var(--accent-cyan)",
+          color: "var(--accent-primary)",
           borderBottom: "1px solid var(--border-primary)",
         }}
       >

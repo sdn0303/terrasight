@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { TlsScoreHeader } from "@/components/analyze/tls-score-header";
 import { AxisBarList } from "@/components/analyze/axis-bar-list";
-import { WeightPresetSelector } from "@/components/analyze/weight-preset-selector";
 import { CrossAnalysis } from "@/components/analyze/cross-analysis";
+import { TlsScoreHeader } from "@/components/analyze/tls-score-header";
+import { WeightPresetSelector } from "@/components/analyze/weight-preset-selector";
 import { useScore } from "@/features/score/api/use-score";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -21,7 +21,9 @@ export function AnalyzePanel() {
   if (!analysisPoint) {
     return (
       <div className="flex items-center justify-center h-full px-4">
-        <div className="text-xs text-center text-ds-text-muted">{t("explore.prompt")}</div>
+        <div className="text-xs text-center text-ds-text-muted">
+          {t("explore.prompt")}
+        </div>
       </div>
     );
   }
@@ -41,13 +43,19 @@ export function AnalyzePanel() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="px-4 pt-4 pb-1">
-        <div className="text-[9px] font-mono tracking-widest text-ds-accent-cyan">ANALYZE</div>
+        <div className="text-[9px] font-semibold tracking-widest uppercase text-ds-accent-primary">
+          ANALYZE
+        </div>
         <div className="text-xs mt-1 text-ds-text-primary">
           {analysisPoint.address ?? `${lat?.toFixed(4)}, ${lng?.toFixed(4)}`}
         </div>
       </div>
 
-      <TlsScoreHeader score={score.tls.score} grade={score.tls.grade} label={score.tls.label} />
+      <TlsScoreHeader
+        score={score.tls.score}
+        grade={score.tls.grade}
+        label={score.tls.label}
+      />
       <WeightPresetSelector />
 
       <div className="border-t border-ds-border-primary my-2" />
@@ -67,7 +75,9 @@ export function AnalyzePanel() {
       </div>
 
       <div className="px-4 pb-3">
-        <div className="text-[9px] text-ds-text-muted">{score.metadata.disclaimer}</div>
+        <div className="text-[9px] text-ds-text-muted">
+          {score.metadata.disclaimer}
+        </div>
       </div>
     </div>
   );

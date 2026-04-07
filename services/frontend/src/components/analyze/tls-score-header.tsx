@@ -24,7 +24,7 @@ export function TlsScoreHeader({ score, grade, label }: TlsScoreHeaderProps) {
 
   return (
     <div className="px-4 py-4 text-center">
-      <div className="text-[9px] font-mono tracking-widest text-ds-text-muted mb-2">
+      <div className="text-[9px] font-semibold tracking-widest uppercase text-ds-text-muted mb-2">
         {t("score").toUpperCase()}
       </div>
       <div

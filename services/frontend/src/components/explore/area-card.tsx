@@ -64,17 +64,17 @@ export function AreaCard() {
 
   return (
     <div className="px-4 py-3">
-      <div className="rounded-lg p-3 bg-ds-bg-tertiary/50">
+      <div className="rounded-lg p-3 bg-ds-bg-tertiary/50 border border-[rgba(99,102,241,0.08)]">
         <div className="text-sm font-medium text-ds-text-heading mb-2">
           {selectedArea.name}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {stats.map((stat) => (
             <div key={stat.label}>
-              <div className="text-[9px] font-mono tracking-wider text-ds-text-muted">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-ds-text-muted">
                 {stat.label}
               </div>
-              <div className="text-sm font-bold text-ds-accent-cyan">
+              <div className="text-sm font-bold text-ds-accent-primary">
                 {stat.value}
               </div>
             </div>

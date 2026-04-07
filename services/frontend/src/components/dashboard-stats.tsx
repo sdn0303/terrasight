@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useStats } from "@/features/stats/api/use-stats";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import type { BBox } from "@/lib/api";
 
 function StatCard({
@@ -30,7 +30,7 @@ function StatCard({
       </div>
       <div
         className="text-lg font-bold"
-        style={{ color: color ?? "var(--accent-cyan)" }}
+        style={{ color: color ?? "var(--accent-primary)" }}
       >
         {value}
       </div>
@@ -43,7 +43,13 @@ function StatCard({
   );
 }
 
-export function DashboardStats({ bbox, zoom }: { bbox: BBox | null; zoom: number }) {
+export function DashboardStats({
+  bbox,
+  zoom,
+}: {
+  bbox: BBox | null;
+  zoom: number;
+}) {
   const { data: stats, isLoading } = useStats(bbox, zoom);
   const isTablet = useMediaQuery("(min-width: 768px)");
   const isDesktop = useMediaQuery("(min-width: 1280px)");
@@ -63,11 +69,13 @@ export function DashboardStats({ bbox, zoom }: { bbox: BBox | null; zoom: number
           style={{
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-primary)",
-            color: "var(--accent-cyan)",
+            color: "var(--accent-primary)",
           }}
           aria-expanded={mobileVisible}
           aria-controls="dashboard-stats-panel"
-          aria-label={mobileVisible ? "Hide area statistics" : "Show area statistics"}
+          aria-label={
+            mobileVisible ? "Hide area statistics" : "Show area statistics"
+          }
         >
           {mobileVisible ? "HIDE STATS" : "SHOW STATS"}
         </button>
@@ -118,7 +126,9 @@ export function DashboardStats({ bbox, zoom }: { bbox: BBox | null; zoom: number
                 />
                 <StatCard
                   label="FACILITIES"
-                  value={String(stats.facilities.schools + stats.facilities.medical)}
+                  value={String(
+                    stats.facilities.schools + stats.facilities.medical,
+                  )}
                   sub={`${stats.facilities.schools} schools, ${stats.facilities.medical} medical`}
                 />
               </>
@@ -184,10 +194,7 @@ export function DashboardStats({ bbox, zoom }: { bbox: BBox | null; zoom: number
         value={`¥${stats.land_price.avg_per_sqm.toLocaleString()}`}
         sub={`med: ¥${stats.land_price.median_per_sqm.toLocaleString()}`}
       />
-      <StatCard
-        label="LISTINGS"
-        value={String(stats.land_price.count)}
-      />
+      <StatCard label="LISTINGS" value={String(stats.land_price.count)} />
       <StatCard
         label="RISK"
         value={`${riskPct}%`}
