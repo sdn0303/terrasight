@@ -1,10 +1,15 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { useMapStore } from "@/stores/map-store";
+import { LAYERS } from "@/lib/layers";
+
+const realDefaultLayers = new Set(
+  LAYERS.filter((l) => l.defaultEnabled).map((l) => l.id),
+);
 
 describe("useMapStore", () => {
   beforeEach(() => {
     useMapStore.setState({
-      visibleLayers: new Set(["landprice", "zoning"]),
+      visibleLayers: new Set(realDefaultLayers),
       selectedFeature: null,
     });
   });
@@ -30,11 +35,74 @@ describe("useMapStore", () => {
     expect(useMapStore.getState().selectedFeature).toBeNull();
   });
 
-  it("default visible layers are landprice and zoning", () => {
-    useMapStore.setState({ visibleLayers: new Set(["landprice", "zoning"]) });
+  it("default visible layers match LAYERS defaultEnabled", () => {
     const layers = useMapStore.getState().visibleLayers;
-    expect(layers.has("landprice")).toBe(true);
-    expect(layers.has("zoning")).toBe(true);
+    for (const id of realDefaultLayers) {
+      expect(layers.has(id)).toBe(true);
+    }
     expect(layers.has("flood")).toBe(false);
+    expect(layers.has("landprice")).toBe(false);
+  });
+
+  describe("applyThemeLayers", () => {
+    it("unions theme layers with defaults", () => {
+      const themeLayers = new Set(["flood", "steep_slope"]);
+      useMapStore.getState().applyThemeLayers(themeLayers);
+
+      const layers = useMapStore.getState().visibleLayers;
+      // theme layers are added
+      expect(layers.has("flood")).toBe(true);
+      expect(layers.has("steep_slope")).toBe(true);
+      // defaults are preserved
+      for (const id of realDefaultLayers) {
+        expect(layers.has(id)).toBe(true);
+      }
+    });
+
+    it("with empty set restores defaults only", () => {
+      // start with something extra toggled
+      useMapStore.getState().toggleLayer("flood");
+      useMapStore.getState().applyThemeLayers(new Set());
+
+      const layers = useMapStore.getState().visibleLayers;
+      expect(layers.has("flood")).toBe(false);
+      for (const id of realDefaultLayers) {
+        expect(layers.has(id)).toBe(true);
+      }
+    });
+
+    it("preserves manually toggled layers", () => {
+      // manually add a layer before applying theme
+      useMapStore.getState().toggleLayer("station");
+      const themeLayers = new Set(["flood"]);
+      useMapStore.getState().applyThemeLayers(themeLayers);
+
+      const layers = useMapStore.getState().visibleLayers;
+      // theme layer added
+      expect(layers.has("flood")).toBe(true);
+      // manually toggled layer preserved
+      expect(layers.has("station")).toBe(true);
+      // defaults preserved
+      for (const id of realDefaultLayers) {
+        expect(layers.has(id)).toBe(true);
+      }
+    });
+  });
+
+  describe("resetToDefaults", () => {
+    it("restores only default layers", () => {
+      // add some extra layers
+      useMapStore.getState().toggleLayer("flood");
+      useMapStore.getState().toggleLayer("station");
+      useMapStore.getState().resetToDefaults();
+
+      const layers = useMapStore.getState().visibleLayers;
+      expect(layers.has("flood")).toBe(false);
+      expect(layers.has("station")).toBe(false);
+      for (const id of realDefaultLayers) {
+        expect(layers.has(id)).toBe(true);
+      }
+      expect(layers.size).toBe(realDefaultLayers.size);
+    });
   });
 });

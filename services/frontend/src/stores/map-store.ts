@@ -45,6 +45,8 @@ interface MapState {
   analysisRadius: number;
   setViewState: (viewState: ViewState) => void;
   toggleLayer: (layerId: string) => void;
+  applyThemeLayers: (themeLayers: Set<string>) => void;
+  resetToDefaults: () => void;
   selectFeature: (feature: SelectedFeature | null) => void;
   selectArea: (area: SelectedArea | null) => void;
   getBBox: () => { south: number; west: number; north: number; east: number };
@@ -86,6 +88,26 @@ export const useMapStore = create<MapState>()(
           }
           return { visibleLayers: next };
         }),
+
+      applyThemeLayers: (themeLayers) =>
+        set((state) => {
+          // When theme is empty, restore defaults only (no manual preservation)
+          if (themeLayers.size === 0) {
+            return { visibleLayers: new Set(defaultVisibleLayers) };
+          }
+          // Union: defaults + currently visible (manually toggled) layers + theme layers
+          const next = new Set(defaultVisibleLayers);
+          for (const id of state.visibleLayers) {
+            next.add(id);
+          }
+          for (const id of themeLayers) {
+            next.add(id);
+          }
+          return { visibleLayers: next };
+        }),
+
+      resetToDefaults: () =>
+        set({ visibleLayers: new Set(defaultVisibleLayers) }),
 
       selectFeature: (feature) => set({ selectedFeature: feature }),
 
