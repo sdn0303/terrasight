@@ -226,6 +226,7 @@ describe("useScore", () => {
       expect(mockFetchScore).toHaveBeenCalledWith(
         35.681,
         139.767,
+        "balance",
         expect.any(AbortSignal),
       ),
     );

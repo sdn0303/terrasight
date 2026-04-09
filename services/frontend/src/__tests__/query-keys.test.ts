@@ -26,7 +26,7 @@ describe("queryKeys", () => {
     const key1 = queryKeys.score.coord(35.681, 139.767);
     const key2 = queryKeys.score.coord(35.682, 139.767);
     expect(key1).not.toEqual(key2);
-    expect(key1).toEqual(["score", 35.681, 139.767]);
+    expect(key1).toEqual(["score", 35.681, 139.767, undefined]);
   });
 
   it("stats.bbox includes the bbox object", () => {
