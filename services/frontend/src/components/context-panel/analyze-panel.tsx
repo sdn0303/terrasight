@@ -67,7 +67,7 @@ export function AnalyzePanel() {
       <SinglePointRadar axes={score.axes} />
 
       <div className="border-t border-ds-border-primary my-2" />
-      <TrendChart lat={lat!} lng={lng!} />
+      <TrendChart lat={analysisPoint.lat} lng={analysisPoint.lng} />
 
       <div className="border-t border-ds-border-primary my-2" />
       <RiskBreakdown disasterAxis={score.axes.disaster} />

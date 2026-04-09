@@ -6,10 +6,7 @@ interface InfraProximityProps {
   livabilityAxis: TlsResponse["axes"]["livability"];
 }
 
-function getNumber(
-  detail: Record<string, unknown>,
-  key: string,
-): number {
+function getNumber(detail: Record<string, unknown>, key: string): number {
   const val = detail[key];
   return typeof val === "number" ? val : 0;
 }
