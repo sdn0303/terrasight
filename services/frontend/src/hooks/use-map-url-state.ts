@@ -22,6 +22,11 @@ const mapParams = {
   layers: parseAsString.withDefault("land_price_ts,zoning"),
   theme: parseAsString.withDefault("safety"),
   year: parseAsInteger.withDefault(2024),
+  // Analysis context params
+  mode: parseAsString.withDefault("explore"),
+  alat: parseAsFloat,
+  alng: parseAsFloat,
+  cp: parseAsString.withDefault(""),
 };
 
 export function useMapUrlState() {
@@ -30,8 +35,12 @@ export function useMapUrlState() {
     shallow: true,
   });
   const initialized = useRef(false);
-  const { viewState, setViewState, visibleLayers, toggleLayer } = useMapStore();
+  const { viewState, setViewState, visibleLayers, toggleLayer } =
+    useMapStore();
   const activeThemes = useUIStore((s) => s.activeThemes);
+  const mode = useUIStore((s) => s.mode);
+  const analysisPoint = useMapStore((s) => s.analysisPoint);
+  const comparePoints = useUIStore((s) => s.comparePoints);
 
   // On mount: restore map state from URL
   useEffect(() => {
@@ -69,10 +78,53 @@ export function useMapUrlState() {
     for (const themeId of themeIds) {
       useUIStore.getState().toggleTheme(themeId);
     }
+
+    // Restore mode from URL
+    if (params.mode === "compare") {
+      useUIStore.getState().setMode("compare");
+    }
+
+    // Restore analysis point from URL (validate coordinates)
+    if (
+      params.alat != null &&
+      params.alng != null &&
+      Number.isFinite(params.alat) &&
+      Number.isFinite(params.alng) &&
+      Math.abs(params.alat) <= 90 &&
+      Math.abs(params.alng) <= 180
+    ) {
+      useMapStore.getState().setAnalysisPoint({
+        lat: params.alat,
+        lng: params.alng,
+      });
+    }
+
+    // Restore compare points from URL
+    if (params.cp) {
+      const points = params.cp
+        .split("|")
+        .filter(Boolean)
+        .map((s) => {
+          const [latStr, lngStr, ...nameParts] = s.split(",");
+          const lat = Number(latStr);
+          const lng = Number(lngStr);
+          return { lat, lng, address: nameParts.join(",") || "Unknown" };
+        })
+        .filter(
+          (pt) =>
+            Number.isFinite(pt.lat) &&
+            Number.isFinite(pt.lng) &&
+            Math.abs(pt.lat) <= 90 &&
+            Math.abs(pt.lng) <= 180,
+        );
+      for (const pt of points.slice(0, 3)) {
+        useUIStore.getState().addComparePoint(pt);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync store → URL on view state change
+  // Sync store → URL on state change
   useEffect(() => {
     if (!initialized.current) return;
     setParams({
@@ -83,6 +135,23 @@ export function useMapUrlState() {
       bearing: Math.round(viewState.bearing),
       layers: [...visibleLayers].sort().join(","),
       theme: [...activeThemes].sort().join(","),
+      mode,
+      alat: analysisPoint?.lat ?? null,
+      alng: analysisPoint?.lng ?? null,
+      cp:
+        comparePoints.length > 0
+          ? comparePoints
+              .map((p) => `${p.lat},${p.lng},${p.address}`)
+              .join("|")
+          : "",
     });
-  }, [viewState, visibleLayers, activeThemes, setParams]);
+  }, [
+    viewState,
+    visibleLayers,
+    activeThemes,
+    mode,
+    analysisPoint,
+    comparePoints,
+    setParams,
+  ]);
 }
