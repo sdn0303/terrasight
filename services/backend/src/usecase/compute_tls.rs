@@ -50,7 +50,11 @@ impl ComputeTlsUsecase {
     /// PostGIS queries and J-SHIS API calls execute in parallel.
     /// J-SHIS failures degrade gracefully — the affected sub-scores fall back
     /// to the unavailable-default (100) without failing the overall request.
-    pub async fn execute(&self, coord: &Coord) -> Result<TlsOutput, DomainError> {
+    pub async fn execute(
+        &self,
+        coord: &Coord,
+        preset: WeightPreset,
+    ) -> Result<TlsOutput, DomainError> {
         let (db_result, jshis_data) =
             tokio::join!(self.fetch_db_inputs(coord), self.fetch_jshis_inputs(coord));
 
@@ -158,7 +162,6 @@ impl ComputeTlsUsecase {
 
         // ── Axis aggregation ─────────────────────────────────────────────────
 
-        let preset = WeightPreset::Balance;
         let weights = preset.weights();
         let tls = compute_tls(s1, s2, s3, s4, s5, preset);
         let grade = Grade::from_score(tls);

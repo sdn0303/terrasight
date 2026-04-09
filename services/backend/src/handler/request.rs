@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 use crate::domain::constants::TREND_DEFAULT_YEARS;
 use crate::domain::error::DomainError;
+use crate::domain::scoring::tls::WeightPreset;
 use crate::domain::value_object::{BBox, Coord, LayerType, Year};
 
 /// Bounding box query parameters for `/api/area-data` and `/api/stats`.
@@ -28,11 +29,30 @@ impl BBoxQuery {
 pub struct CoordQuery {
     pub lat: f64,
     pub lng: f64,
+    /// Weight preset key. Defaults to `"balance"` when omitted.
+    #[serde(default = "default_preset")]
+    pub preset: String,
+}
+
+fn default_preset() -> String {
+    "balance".into()
 }
 
 impl CoordQuery {
     pub fn into_domain(self) -> Result<Coord, DomainError> {
         Coord::new(self.lat, self.lng)
+    }
+
+    /// Parse the `preset` query string into a domain [`WeightPreset`].
+    ///
+    /// Unknown strings fall back to [`WeightPreset::Balance`].
+    pub fn parse_preset(&self) -> WeightPreset {
+        match self.preset.as_str() {
+            "investment" => WeightPreset::Investment,
+            "residential" => WeightPreset::Residential,
+            "disaster" | "disaster_focus" => WeightPreset::DisasterFocus,
+            _ => WeightPreset::Balance,
+        }
     }
 }
 

@@ -9,7 +9,8 @@ export const queryKeys = {
   },
   score: {
     all: ["score"] as const,
-    coord: (lat: number, lng: number) => ["score", lat, lng] as const,
+    coord: (lat: number, lng: number, preset?: string) =>
+      ["score", lat, lng, preset] as const,
   },
   stats: {
     all: ["stats"] as const,

@@ -126,13 +126,19 @@ export function fetchAreaData(
   );
 }
 
-export function fetchScore(lat: number, lng: number, signal?: AbortSignal) {
+export function fetchScore(
+  lat: number,
+  lng: number,
+  preset: string,
+  signal?: AbortSignal,
+) {
   return get(
     TlsResponse,
     "api/score",
     {
       lat: String(lat),
       lng: String(lng),
+      preset,
     },
     signal,
   );

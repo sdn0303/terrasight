@@ -19,13 +19,15 @@ pub async fn get_score(
     State(usecase): State<Arc<ComputeTlsUsecase>>,
     Query(params): Query<CoordQuery>,
 ) -> Result<Json<TlsResponse>, AppError> {
+    let preset = params.parse_preset();
     let coord = params.into_domain()?;
     tracing::debug!(
         lat = coord.lat(),
         lng = coord.lng(),
+        preset = ?preset,
         "TLS score request parsed"
     );
-    let output = usecase.execute(&coord).await?;
+    let output = usecase.execute(&coord, preset).await?;
     tracing::info!(
         score = output.score,
         grade = output.grade.as_str(),

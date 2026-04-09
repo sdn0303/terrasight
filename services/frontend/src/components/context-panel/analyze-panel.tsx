@@ -14,9 +14,10 @@ export function AnalyzePanel() {
   const analysisPoint = useMapStore((s) => s.analysisPoint);
   const setMode = useUIStore((s) => s.setMode);
 
+  const weightPreset = useMapStore((s) => s.weightPreset);
   const lat = analysisPoint?.lat ?? null;
   const lng = analysisPoint?.lng ?? null;
-  const { data: score, isLoading } = useScore(lat, lng);
+  const { data: score, isLoading } = useScore(lat, lng, weightPreset);
 
   if (!analysisPoint) {
     return (
