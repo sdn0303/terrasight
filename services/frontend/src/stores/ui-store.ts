@@ -5,11 +5,11 @@ import type { ThemeId } from "@/lib/themes";
 
 export type AppMode = "explore" | "compare";
 
-type ComparePoint = {
+export type ComparePoint = {
   lat: number;
   lng: number;
   address: string;
-} | null;
+};
 
 interface UIState {
   mode: AppMode;
@@ -21,19 +21,15 @@ interface UIState {
   clearThemes: () => void;
   layerSettingsOpen: boolean;
   toggleLayerSettings: () => void;
-  comparePointA: ComparePoint;
-  comparePointB: ComparePoint;
-  setComparePoint: (point: {
-    lat: number;
-    lng: number;
-    address: string;
-  }) => void;
+  comparePoints: ComparePoint[];
+  addComparePoint: (point: ComparePoint) => void;
+  removeComparePoint: (index: number) => void;
   resetCompare: () => void;
 }
 
 export const useUIStore = create<UIState>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       mode: "explore",
       setMode: (mode) => set({ mode }),
 
@@ -57,19 +53,20 @@ export const useUIStore = create<UIState>()(
       toggleLayerSettings: () =>
         set((state) => ({ layerSettingsOpen: !state.layerSettingsOpen })),
 
-      comparePointA: null,
-      comparePointB: null,
+      comparePoints: [],
 
-      setComparePoint: (point) => {
-        const { comparePointA } = get();
-        if (comparePointA === null) {
-          set({ comparePointA: point });
-        } else {
-          set({ comparePointB: point });
-        }
-      },
+      addComparePoint: (point) =>
+        set((state) => {
+          if (state.comparePoints.length >= 3) return state;
+          return { comparePoints: [...state.comparePoints, point] };
+        }),
 
-      resetCompare: () => set({ comparePointA: null, comparePointB: null }),
+      removeComparePoint: (index) =>
+        set((state) => ({
+          comparePoints: state.comparePoints.filter((_, i) => i !== index),
+        })),
+
+      resetCompare: () => set({ comparePoints: [] }),
     }),
     { name: "ui-store" },
   ),

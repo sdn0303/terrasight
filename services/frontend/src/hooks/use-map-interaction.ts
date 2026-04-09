@@ -10,7 +10,7 @@ export function useMapInteraction() {
   const selectArea = useMapStore((s) => s.selectArea);
   const setAnalysisPoint = useMapStore((s) => s.setAnalysisPoint);
   const mode = useUIStore((s) => s.mode);
-  const setComparePoint = useUIStore((s) => s.setComparePoint);
+  const addComparePoint = useUIStore((s) => s.addComparePoint);
 
   const handleFeatureClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -24,7 +24,7 @@ export function useMapInteraction() {
           typeof feature.properties.address === "string"
             ? feature.properties.address
             : `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`;
-        setComparePoint({
+        addComparePoint({
           lat: e.lngLat.lat,
           lng: e.lngLat.lng,
           address,
@@ -70,7 +70,7 @@ export function useMapInteraction() {
         selectFeature(null);
       }
     },
-    [mode, selectArea, selectFeature, setAnalysisPoint, setComparePoint],
+    [mode, selectArea, selectFeature, setAnalysisPoint, addComparePoint],
   );
 
   return { handleFeatureClick };

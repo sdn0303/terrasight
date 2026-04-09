@@ -5,8 +5,7 @@ describe("useUIStore", () => {
   beforeEach(() => {
     useUIStore.setState({
       mode: "explore",
-      comparePointA: null,
-      comparePointB: null,
+      comparePoints: [],
       layerSettingsOpen: true,
     });
   });
@@ -20,7 +19,7 @@ describe("useUIStore", () => {
   });
 
   it("enters compare mode via setMode and resets points", () => {
-    useUIStore.getState().setComparePoint({
+    useUIStore.getState().addComparePoint({
       lat: 35.681,
       lng: 139.767,
       address: "東京駅",
@@ -30,13 +29,12 @@ describe("useUIStore", () => {
 
     const state = useUIStore.getState();
     expect(state.mode).toBe("compare");
-    expect(state.comparePointA).toBeNull();
-    expect(state.comparePointB).toBeNull();
+    expect(state.comparePoints).toHaveLength(0);
   });
 
   it("exits compare mode by resetCompare + setMode explore", () => {
     useUIStore.getState().setMode("compare");
-    useUIStore.getState().setComparePoint({
+    useUIStore.getState().addComparePoint({
       lat: 35.681,
       lng: 139.767,
       address: "東京駅",
@@ -46,21 +44,7 @@ describe("useUIStore", () => {
 
     const state = useUIStore.getState();
     expect(state.mode).toBe("explore");
-    expect(state.comparePointA).toBeNull();
-    expect(state.comparePointB).toBeNull();
-  });
-
-  it("sets compare point A first, then B", () => {
-    const pointA = { lat: 35.681, lng: 139.767, address: "東京駅" };
-    const pointB = { lat: 35.690, lng: 139.700, address: "新宿駅" };
-
-    useUIStore.getState().setComparePoint(pointA);
-    expect(useUIStore.getState().comparePointA).toEqual(pointA);
-    expect(useUIStore.getState().comparePointB).toBeNull();
-
-    useUIStore.getState().setComparePoint(pointB);
-    expect(useUIStore.getState().comparePointA).toEqual(pointA);
-    expect(useUIStore.getState().comparePointB).toEqual(pointB);
+    expect(state.comparePoints).toHaveLength(0);
   });
 
   it("toggles layer settings", () => {
@@ -69,5 +53,46 @@ describe("useUIStore", () => {
     expect(useUIStore.getState().layerSettingsOpen).toBe(false);
     useUIStore.getState().toggleLayerSettings();
     expect(useUIStore.getState().layerSettingsOpen).toBe(true);
+  });
+
+  describe("N-point compare", () => {
+    beforeEach(() => {
+      useUIStore.getState().resetCompare();
+    });
+
+    it("adds up to 3 compare points", () => {
+      const { addComparePoint } = useUIStore.getState();
+      addComparePoint({ lat: 35.68, lng: 139.76, address: "A" });
+      addComparePoint({ lat: 35.69, lng: 139.77, address: "B" });
+      addComparePoint({ lat: 35.70, lng: 139.78, address: "C" });
+      expect(useUIStore.getState().comparePoints).toHaveLength(3);
+    });
+
+    it("ignores 4th point when already at max", () => {
+      const { addComparePoint } = useUIStore.getState();
+      addComparePoint({ lat: 35.68, lng: 139.76, address: "A" });
+      addComparePoint({ lat: 35.69, lng: 139.77, address: "B" });
+      addComparePoint({ lat: 35.70, lng: 139.78, address: "C" });
+      addComparePoint({ lat: 35.71, lng: 139.79, address: "D" });
+      expect(useUIStore.getState().comparePoints).toHaveLength(3);
+    });
+
+    it("removes compare point by index", () => {
+      const { addComparePoint } = useUIStore.getState();
+      addComparePoint({ lat: 35.68, lng: 139.76, address: "A" });
+      addComparePoint({ lat: 35.69, lng: 139.77, address: "B" });
+      useUIStore.getState().removeComparePoint(0);
+      const pts = useUIStore.getState().comparePoints;
+      expect(pts).toHaveLength(1);
+      expect(pts[0]?.address).toBe("B");
+    });
+
+    it("resetCompare clears all points", () => {
+      const { addComparePoint } = useUIStore.getState();
+      addComparePoint({ lat: 35.68, lng: 139.76, address: "A" });
+      addComparePoint({ lat: 35.69, lng: 139.77, address: "B" });
+      useUIStore.getState().resetCompare();
+      expect(useUIStore.getState().comparePoints).toHaveLength(0);
+    });
   });
 });

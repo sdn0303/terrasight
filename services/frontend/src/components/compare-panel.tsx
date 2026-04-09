@@ -12,8 +12,9 @@ import { useScore } from "@/features/score/api/use-score";
 import { useUIStore } from "@/stores/ui-store";
 
 export function ComparePanel() {
-  const { mode, comparePointA, comparePointB, resetCompare, setMode } =
-    useUIStore();
+  const { mode, comparePoints, resetCompare, setMode } = useUIStore();
+  const comparePointA = comparePoints[0] ?? null;
+  const comparePointB = comparePoints[1] ?? null;
   const exitCompareMode = () => {
     resetCompare();
     setMode("explore");

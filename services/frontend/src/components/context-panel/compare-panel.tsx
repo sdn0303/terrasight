@@ -8,8 +8,9 @@ import { useUIStore } from "@/stores/ui-store";
 
 export function ComparePanel() {
   const t = useTranslations("compare");
-  const comparePointA = useUIStore((s) => s.comparePointA);
-  const comparePointB = useUIStore((s) => s.comparePointB);
+  const comparePoints = useUIStore((s) => s.comparePoints);
+  const comparePointA = comparePoints[0] ?? null;
+  const comparePointB = comparePoints[1] ?? null;
   const resetCompare = useUIStore((s) => s.resetCompare);
   const setMode = useUIStore((s) => s.setMode);
 
