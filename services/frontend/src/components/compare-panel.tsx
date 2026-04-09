@@ -22,10 +22,12 @@ export function ComparePanel() {
   const { data: scoreA } = useScore(
     comparePointA?.lat ?? null,
     comparePointA?.lng ?? null,
+    "balance",
   );
   const { data: scoreB } = useScore(
     comparePointB?.lat ?? null,
     comparePointB?.lng ?? null,
+    "balance",
   );
 
   const showPanel =

@@ -3,7 +3,11 @@
 import { useTranslations } from "next-intl";
 import { AxisBarList } from "@/components/analyze/axis-bar-list";
 import { CrossAnalysis } from "@/components/analyze/cross-analysis";
+import { InfraProximity } from "@/components/analyze/infra-proximity";
+import { RiskBreakdown } from "@/components/analyze/risk-breakdown";
+import { SinglePointRadar } from "@/components/analyze/single-point-radar";
 import { TlsScoreHeader } from "@/components/analyze/tls-score-header";
+import { TrendChart } from "@/components/analyze/trend-chart";
 import { WeightPresetSelector } from "@/components/analyze/weight-preset-selector";
 import { useScore } from "@/features/score/api/use-score";
 import { useMapStore } from "@/stores/map-store";
@@ -58,6 +62,18 @@ export function AnalyzePanel() {
         label={score.tls.label}
       />
       <WeightPresetSelector />
+
+      <div className="border-t border-ds-border-primary my-2" />
+      <SinglePointRadar axes={score.axes} />
+
+      <div className="border-t border-ds-border-primary my-2" />
+      <TrendChart lat={lat!} lng={lng!} />
+
+      <div className="border-t border-ds-border-primary my-2" />
+      <RiskBreakdown disasterAxis={score.axes.disaster} />
+
+      <div className="border-t border-ds-border-primary my-2" />
+      <InfraProximity livabilityAxis={score.axes.livability} />
 
       <div className="border-t border-ds-border-primary my-2" />
       <AxisBarList axes={score.axes} />
