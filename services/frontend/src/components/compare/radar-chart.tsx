@@ -17,18 +17,26 @@ const AXIS_KEYS = [
   "price",
 ] as const;
 const AXIS_LABELS = ["Disaster", "Terrain", "Livability", "Future", "Price"];
+const COLORS = ["#818cf8", "#f59e0b", "#10b981"]; // indigo, amber, emerald
 
 interface RadarComparisonProps {
-  axesA: TlsResponse["axes"];
-  axesB: TlsResponse["axes"];
+  axesList: TlsResponse["axes"][];
+  labels?: string[];
 }
 
-export function RadarComparison({ axesA, axesB }: RadarComparisonProps) {
-  const data = AXIS_KEYS.map((key, i) => ({
-    axis: AXIS_LABELS[i],
-    A: axesA[key].score,
-    B: axesB[key].score,
-  }));
+export function RadarComparison({ axesList, labels }: RadarComparisonProps) {
+  const data = AXIS_KEYS.map((key, i) => {
+    const point: Record<string, string | number> = {
+      axis: AXIS_LABELS[i] ?? key,
+    };
+    for (let j = 0; j < axesList.length; j++) {
+      const axes = axesList[j];
+      if (axes) {
+        point[`P${j}`] = axes[key].score;
+      }
+    }
+    return point;
+  });
 
   return (
     <div className="px-4 py-2" style={{ height: 200 }}>
@@ -39,20 +47,19 @@ export function RadarComparison({ axesA, axesB }: RadarComparisonProps) {
             dataKey="axis"
             tick={{ fill: "#94a3b8", fontSize: 10 }}
           />
-          <Radar
-            name="A"
-            dataKey="A"
-            stroke="#818cf8"
-            fill="#818cf8"
-            fillOpacity={0.15}
-          />
-          <Radar
-            name="B"
-            dataKey="B"
-            stroke="#f59e0b"
-            fill="#f59e0b"
-            fillOpacity={0.15}
-          />
+          {axesList.map((_, i) => (
+            <Radar
+              key={`P${i}`}
+              name={
+                labels?.[i] ??
+                `Point ${String.fromCharCode(65 + i)}`
+              }
+              dataKey={`P${i}`}
+              stroke={COLORS[i % COLORS.length]}
+              fill={COLORS[i % COLORS.length]}
+              fillOpacity={0.15}
+            />
+          ))}
         </RadarChart>
       </ResponsiveContainer>
     </div>

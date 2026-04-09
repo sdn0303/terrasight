@@ -66,12 +66,10 @@ export function ComparePanel() {
       {/* Radar + Diff Table */}
       {scoreA && scoreB ? (
         <>
-          <RadarComparison axesA={scoreA.axes} axesB={scoreB.axes} />
+          <RadarComparison axesList={[scoreA.axes, scoreB.axes]} />
           <DiffTable
-            axesA={scoreA.axes}
-            axesB={scoreB.axes}
-            tlsA={scoreA.tls.score}
-            tlsB={scoreB.tls.score}
+            axesList={[scoreA.axes, scoreB.axes]}
+            tlsScores={[scoreA.tls.score, scoreB.tls.score]}
           />
         </>
       ) : (
