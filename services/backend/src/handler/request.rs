@@ -166,6 +166,80 @@ impl LandPriceQuery {
     }
 }
 
+/// Land price all-years query parameters for `GET /api/v1/land-prices/all-years`.
+///
+/// Expects `bbox` as a comma-separated string `"sw_lng,sw_lat,ne_lng,ne_lat"`
+/// and an optional year range `from`/`to` (defaults to `2019..=2024`).
+///
+/// # Example query string
+///
+/// ```text
+/// ?bbox=139.70,35.65,139.80,35.70
+/// ?bbox=139.70,35.65,139.80,35.70&from=2020&to=2024&zoom=15
+/// ```
+#[derive(Debug, Deserialize)]
+pub struct LandPriceAllYearsQuery {
+    /// Comma-separated bounding box: `sw_lng,sw_lat,ne_lng,ne_lat`.
+    pub bbox: String,
+    #[serde(default = "default_from_year")]
+    pub from: i32,
+    #[serde(default = "default_to_year")]
+    pub to: i32,
+    #[serde(default = "default_zoom")]
+    pub zoom: u32,
+}
+
+fn default_from_year() -> i32 {
+    2019
+}
+
+fn default_to_year() -> i32 {
+    2024
+}
+
+impl LandPriceAllYearsQuery {
+    /// Parse and validate into domain value objects `(from_year, to_year, BBox, zoom)`.
+    ///
+    /// The bbox string must contain exactly four comma-separated `f64` values
+    /// in the order `sw_lng, sw_lat, ne_lng, ne_lat`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::MissingParameter`] when the bbox string cannot be
+    /// parsed or when `from > to`, and propagates year/coordinate validation errors.
+    pub fn into_domain(self) -> Result<(Year, Year, BBox, u32), DomainError> {
+        if self.from > self.to {
+            return Err(DomainError::MissingParameter(
+                "from year must be <= to year".into(),
+            ));
+        }
+
+        let from_year = Year::new(self.from)?;
+        let to_year = Year::new(self.to)?;
+
+        let parts: Vec<f64> = self
+            .bbox
+            .split(',')
+            .map(|s| {
+                s.trim()
+                    .parse::<f64>()
+                    .map_err(|_| DomainError::MissingParameter("bbox".into()))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if parts.len() != 4 {
+            return Err(DomainError::MissingParameter(
+                "bbox must have exactly 4 values: sw_lng,sw_lat,ne_lng,ne_lat".into(),
+            ));
+        }
+
+        let (sw_lng, sw_lat, ne_lng, ne_lat) = (parts[0], parts[1], parts[2], parts[3]);
+        let bbox = BBox::new(sw_lat, sw_lng, ne_lat, ne_lng)?;
+
+        Ok((from_year, to_year, bbox, self.zoom))
+    }
+}
+
 /// Trend query parameters (includes optional `years`).
 #[derive(Debug, Deserialize)]
 pub struct TrendQuery {

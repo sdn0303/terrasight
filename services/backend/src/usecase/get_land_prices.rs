@@ -45,4 +45,36 @@ impl GetLandPricesUsecase {
 
         Ok(result)
     }
+
+    /// Execute the all-years query for time machine animation.
+    ///
+    /// Returns features with `year` property so the client can filter client-side
+    /// without refetching on every year tick.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
+    pub async fn execute_all_years(
+        &self,
+        from_year: Year,
+        to_year: Year,
+        bbox: BBox,
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError> {
+        let result = self
+            .land_price_repo
+            .find_all_years_by_bbox(&from_year, &to_year, &bbox, zoom)
+            .await?;
+
+        tracing::debug!(
+            from_year = from_year.value(),
+            to_year = to_year.value(),
+            feature_count = result.features.len(),
+            truncated = result.truncated,
+            limit = result.limit,
+            "land-prices all-years query complete"
+        );
+
+        Ok(result)
+    }
 }

@@ -59,6 +59,19 @@ pub trait LandPriceRepository: Send + Sync {
         bbox: &BBox,
         zoom: u32,
     ) -> Result<LayerResult, DomainError>;
+
+    /// Fetch land price GeoJSON features across a year range for time machine animation.
+    ///
+    /// Returns features with `year` property included so the client can filter
+    /// client-side via MapLibre `setFilter`. The feature limit is multiplied by the
+    /// number of years to accommodate multi-year data in a single response.
+    async fn find_all_years_by_bbox(
+        &self,
+        from_year: &Year,
+        to_year: &Year,
+        bbox: &BBox,
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError>;
 }
 
 // ─── Admin Area Stats ────────────────────────────────

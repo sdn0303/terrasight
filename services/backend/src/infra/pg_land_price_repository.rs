@@ -16,6 +16,9 @@ use crate::domain::value_object::{BBox, Year};
 /// Maximum time to wait for the land price query before returning an error.
 const LAND_PRICE_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Longer timeout for multi-year queries which scan more rows.
+const LAND_PRICE_ALL_YEARS_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// PostgreSQL + PostGIS implementation of [`LandPriceRepository`].
 pub struct PgLandPriceRepository {
     pool: PgPool,
@@ -70,6 +73,82 @@ impl LandPriceRepository for PgLandPriceRepository {
             year = year.value(),
             limit,
             "land_prices fetched"
+        );
+
+        let mut features: Vec<GeoFeature> = rows
+            .into_iter()
+            .map(|(id, price, address, land_use, row_year, geom)| {
+                to_geo_feature(
+                    geom,
+                    json!({
+                        "id": id,
+                        "price_per_sqm": price,
+                        "address": address,
+                        "land_use": land_use,
+                        "year": row_year,
+                    }),
+                )
+            })
+            .collect();
+
+        let truncated = features.len() > limit as usize;
+        if truncated {
+            features.truncate(limit as usize);
+        }
+
+        Ok(LayerResult {
+            features,
+            truncated,
+            limit,
+        })
+    }
+
+    /// Fetch land price features across a year range for time machine animation.
+    ///
+    /// Uses the same spatial filter as `find_by_year_and_bbox` but with a `BETWEEN`
+    /// year clause. The feature limit is multiplied by the number of years in the
+    /// range so that each year gets roughly the same budget.
+    #[tracing::instrument(skip(self))]
+    async fn find_all_years_by_bbox(
+        &self,
+        from_year: &Year,
+        to_year: &Year,
+        bbox: &BBox,
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError> {
+        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let year_count = i64::from((to_year.value() - from_year.value() + 1).max(1));
+        let base_limit = compute_feature_limit("landprice", area, zoom);
+        let limit = base_limit.saturating_mul(year_count);
+
+        let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
+            r#"
+            SELECT id, price_per_sqm, address, land_use, year,
+                   ST_AsGeoJSON(geom)::jsonb AS geometry
+            FROM land_prices
+            WHERE year BETWEEN $5 AND $6
+              AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+            LIMIT $7
+            "#,
+        );
+        let rows = timeout(
+            LAND_PRICE_ALL_YEARS_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(from_year.value())
+                .bind(to_year.value())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Database("land_price all-years query timed out".into()))?
+        .map_err(map_db_err)?;
+
+        tracing::debug!(
+            row_count = rows.len(),
+            from_year = from_year.value(),
+            to_year = to_year.value(),
+            limit,
+            "land_prices all-years fetched"
         );
 
         let mut features: Vec<GeoFeature> = rows
