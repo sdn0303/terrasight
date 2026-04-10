@@ -1,6 +1,116 @@
 import { describe, expect, it } from "vitest";
+import {
+  isValidCoordinate,
+  parseComparePointsParam,
+} from "@/hooks/use-map-url-state";
 import type { ThemeId } from "@/lib/themes";
 import { THEMES } from "@/lib/themes";
+
+describe("isValidCoordinate", () => {
+  it("accepts Tokyo Station coordinates", () => {
+    expect(isValidCoordinate(35.681, 139.767)).toBe(true);
+  });
+
+  it("accepts equator / zero coordinates", () => {
+    expect(isValidCoordinate(0, 0)).toBe(true);
+  });
+
+  it("accepts extreme but valid boundaries", () => {
+    expect(isValidCoordinate(90, 180)).toBe(true);
+    expect(isValidCoordinate(-90, -180)).toBe(true);
+  });
+
+  it("rejects null coordinates", () => {
+    expect(isValidCoordinate(null, 139.767)).toBe(false);
+    expect(isValidCoordinate(35.681, null)).toBe(false);
+    expect(isValidCoordinate(null, null)).toBe(false);
+  });
+
+  it("rejects NaN", () => {
+    expect(isValidCoordinate(Number.NaN, 139.767)).toBe(false);
+    expect(isValidCoordinate(35.681, Number.NaN)).toBe(false);
+  });
+
+  it("rejects Infinity", () => {
+    expect(isValidCoordinate(Number.POSITIVE_INFINITY, 0)).toBe(false);
+    expect(isValidCoordinate(0, Number.NEGATIVE_INFINITY)).toBe(false);
+  });
+
+  it("rejects out-of-range latitude", () => {
+    expect(isValidCoordinate(91, 0)).toBe(false);
+    expect(isValidCoordinate(-91, 0)).toBe(false);
+  });
+
+  it("rejects out-of-range longitude", () => {
+    expect(isValidCoordinate(0, 181)).toBe(false);
+    expect(isValidCoordinate(0, -181)).toBe(false);
+  });
+});
+
+describe("parseComparePointsParam", () => {
+  it("returns empty array for empty string", () => {
+    expect(parseComparePointsParam("")).toEqual([]);
+  });
+
+  it("parses a single point with address", () => {
+    const pts = parseComparePointsParam("35.681,139.767,東京駅");
+    expect(pts).toHaveLength(1);
+    expect(pts[0]).toEqual({
+      lat: 35.681,
+      lng: 139.767,
+      address: "東京駅",
+    });
+  });
+
+  it("parses multiple pipe-separated points", () => {
+    const pts = parseComparePointsParam(
+      "35.681,139.767,A|35.69,139.77,B|35.70,139.78,C",
+    );
+    expect(pts).toHaveLength(3);
+    expect(pts[0]?.address).toBe("A");
+    expect(pts[1]?.address).toBe("B");
+    expect(pts[2]?.address).toBe("C");
+  });
+
+  it("caps at 3 points (extra entries dropped)", () => {
+    const pts = parseComparePointsParam(
+      "35.68,139.76,A|35.69,139.77,B|35.70,139.78,C|35.71,139.79,D",
+    );
+    expect(pts).toHaveLength(3);
+    expect(pts.find((p) => p.address === "D")).toBeUndefined();
+  });
+
+  it("filters out entries with invalid coordinates", () => {
+    const pts = parseComparePointsParam(
+      "91,0,BadLat|35.68,139.76,Good|0,200,BadLng",
+    );
+    expect(pts).toHaveLength(1);
+    expect(pts[0]?.address).toBe("Good");
+  });
+
+  it("filters out entries with NaN coordinates", () => {
+    const pts = parseComparePointsParam("abc,xyz,Garbage|35.68,139.76,Good");
+    expect(pts).toHaveLength(1);
+    expect(pts[0]?.address).toBe("Good");
+  });
+
+  it("preserves address with commas by joining remainder", () => {
+    const pts = parseComparePointsParam("35.681,139.767,Chiyoda, Tokyo");
+    expect(pts).toHaveLength(1);
+    expect(pts[0]?.address).toBe("Chiyoda, Tokyo");
+  });
+
+  it('defaults address to "Unknown" when missing', () => {
+    const pts = parseComparePointsParam("35.681,139.767,");
+    expect(pts).toHaveLength(1);
+    expect(pts[0]?.address).toBe("Unknown");
+  });
+
+  it("ignores empty entries from trailing/leading/double pipes", () => {
+    const pts = parseComparePointsParam("|35.681,139.767,A||35.69,139.77,B|");
+    expect(pts).toHaveLength(2);
+  });
+});
 
 describe("first-visit theme activation contract", () => {
   it("safety is a valid ThemeId", () => {

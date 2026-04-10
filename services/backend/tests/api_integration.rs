@@ -306,6 +306,94 @@ async fn seed_data_has_expected_landprice_rows() {
     );
 }
 
+// ============================================================
+// /api/v1/land-prices/all-years — time machine endpoint
+// ============================================================
+
+#[tokio::test]
+async fn land_prices_all_years_returns_multi_year_features() {
+    require_db!(server);
+
+    // BBox covers all 3 seed locations × 5 years
+    let resp = server
+        .get("/api/v1/land-prices/all-years")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("from", "2020")
+        .add_query_param("to", "2024")
+        .add_query_param("zoom", "14")
+        .await;
+
+    resp.assert_status_ok();
+    let body: Value = resp.json();
+    let features = body["features"]
+        .as_array()
+        .expect("features array on FeatureCollection");
+
+    // Expect 15 total (3 locations × 5 years), all with year property in range.
+    assert_eq!(
+        features.len(),
+        15,
+        "expected 15 features (3 locations × 5 years), got {}",
+        features.len()
+    );
+
+    // Verify every feature has a year property in the requested range
+    // and that all 5 distinct years are present.
+    let mut years: std::collections::BTreeSet<i64> = std::collections::BTreeSet::new();
+    for f in features {
+        let year = f["properties"]["year"]
+            .as_i64()
+            .expect("year property is number");
+        assert!(
+            (2020..=2024).contains(&year),
+            "year {year} outside requested range"
+        );
+        years.insert(year);
+    }
+    assert_eq!(
+        years.len(),
+        5,
+        "expected 5 distinct years in response, got {years:?}"
+    );
+}
+
+#[tokio::test]
+async fn land_prices_all_years_rejects_inverted_range() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/land-prices/all-years")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("from", "2024")
+        .add_query_param("to", "2020")
+        .await;
+
+    // from > to should be rejected as a bad request
+    assert_eq!(resp.status_code().as_u16(), 400);
+}
+
+#[tokio::test]
+async fn land_prices_all_years_uses_default_year_range() {
+    require_db!(server);
+
+    // Omit from/to — should default to 2019..=2024
+    let resp = server
+        .get("/api/v1/land-prices/all-years")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("zoom", "14")
+        .await;
+
+    resp.assert_status_ok();
+    let body: Value = resp.json();
+    let features = body["features"]
+        .as_array()
+        .expect("features array on FeatureCollection");
+    assert!(
+        !features.is_empty(),
+        "default year range should include seeded data"
+    );
+}
+
 #[tokio::test]
 async fn seed_data_has_expected_school_rows() {
     require_db!(server);

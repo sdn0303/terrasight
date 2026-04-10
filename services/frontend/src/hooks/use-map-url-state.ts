@@ -29,14 +29,54 @@ const mapParams = {
   cp: parseAsString.withDefault(""),
 };
 
+export interface ParsedComparePoint {
+  lat: number;
+  lng: number;
+  address: string;
+}
+
+/** True when (lat, lng) is a finite number within Earth bounds. */
+export function isValidCoordinate(
+  lat: number | null,
+  lng: number | null,
+): boolean {
+  return (
+    lat != null &&
+    lng != null &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180
+  );
+}
+
+/**
+ * Parse the `cp` URL param into validated compare points.
+ * Format: `lat,lng,address|lat,lng,address|...` (max 3 entries).
+ * Entries with invalid coordinates are filtered out.
+ */
+export function parseComparePointsParam(cp: string): ParsedComparePoint[] {
+  if (!cp) return [];
+  return cp
+    .split("|")
+    .filter(Boolean)
+    .map((s) => {
+      const [latStr, lngStr, ...nameParts] = s.split(",");
+      const lat = Number(latStr);
+      const lng = Number(lngStr);
+      return { lat, lng, address: nameParts.join(",") || "Unknown" };
+    })
+    .filter((pt) => isValidCoordinate(pt.lat, pt.lng))
+    .slice(0, 3);
+}
+
 export function useMapUrlState() {
   const [params, setParams] = useQueryStates(mapParams, {
     history: "replace",
     shallow: true,
   });
   const initialized = useRef(false);
-  const { viewState, setViewState, visibleLayers, toggleLayer } =
-    useMapStore();
+  const { viewState, setViewState, visibleLayers, toggleLayer } = useMapStore();
   const activeThemes = useUIStore((s) => s.activeThemes);
   const mode = useUIStore((s) => s.mode);
   const analysisPoint = useMapStore((s) => s.analysisPoint);
@@ -85,41 +125,18 @@ export function useMapUrlState() {
     }
 
     // Restore analysis point from URL (validate coordinates)
-    if (
-      params.alat != null &&
-      params.alng != null &&
-      Number.isFinite(params.alat) &&
-      Number.isFinite(params.alng) &&
-      Math.abs(params.alat) <= 90 &&
-      Math.abs(params.alng) <= 180
-    ) {
+    if (isValidCoordinate(params.alat, params.alng)) {
+      // isValidCoordinate guarantees both are non-null finite numbers.
       useMapStore.getState().setAnalysisPoint({
-        lat: params.alat,
-        lng: params.alng,
+        lat: params.alat as number,
+        lng: params.alng as number,
       });
     }
 
-    // Restore compare points from URL
-    if (params.cp) {
-      const points = params.cp
-        .split("|")
-        .filter(Boolean)
-        .map((s) => {
-          const [latStr, lngStr, ...nameParts] = s.split(",");
-          const lat = Number(latStr);
-          const lng = Number(lngStr);
-          return { lat, lng, address: nameParts.join(",") || "Unknown" };
-        })
-        .filter(
-          (pt) =>
-            Number.isFinite(pt.lat) &&
-            Number.isFinite(pt.lng) &&
-            Math.abs(pt.lat) <= 90 &&
-            Math.abs(pt.lng) <= 180,
-        );
-      for (const pt of points.slice(0, 3)) {
-        useUIStore.getState().addComparePoint(pt);
-      }
+    // Restore compare points from URL (capped at 3, invalid entries dropped)
+    const comparePoints = parseComparePointsParam(params.cp);
+    for (const pt of comparePoints) {
+      useUIStore.getState().addComparePoint(pt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -140,9 +157,7 @@ export function useMapUrlState() {
       alng: analysisPoint?.lng ?? null,
       cp:
         comparePoints.length > 0
-          ? comparePoints
-              .map((p) => `${p.lat},${p.lng},${p.address}`)
-              .join("|")
+          ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
           : "",
     });
   }, [

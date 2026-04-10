@@ -211,6 +211,63 @@ mod tests {
         assert!((tls - 67.95).abs() < 0.01, "expected 67.95, got {tls}");
     }
 
+    #[test]
+    fn tls_all_presets_produce_different_scores() {
+        // Guards against regression where the preset parameter is dropped
+        // somewhere in the request pipeline (wire to handler → usecase → compute).
+        // The same 5-axis input with 4 different presets must yield 4 distinct
+        // totals (each preset weights axes differently).
+        let inputs = (65.0, 60.0, 82.0, 58.0, 71.0);
+        let balance = compute_tls(
+            inputs.0,
+            inputs.1,
+            inputs.2,
+            inputs.3,
+            inputs.4,
+            WeightPreset::Balance,
+        );
+        let investment = compute_tls(
+            inputs.0,
+            inputs.1,
+            inputs.2,
+            inputs.3,
+            inputs.4,
+            WeightPreset::Investment,
+        );
+        let residential = compute_tls(
+            inputs.0,
+            inputs.1,
+            inputs.2,
+            inputs.3,
+            inputs.4,
+            WeightPreset::Residential,
+        );
+        let disaster = compute_tls(
+            inputs.0,
+            inputs.1,
+            inputs.2,
+            inputs.3,
+            inputs.4,
+            WeightPreset::DisasterFocus,
+        );
+
+        // Every pair must differ by at least 0.1 (noticeable in UI)
+        let scores = [
+            ("balance", balance),
+            ("investment", investment),
+            ("residential", residential),
+            ("disaster", disaster),
+        ];
+        for (i, (name_a, a)) in scores.iter().enumerate() {
+            for (name_b, b) in scores.iter().skip(i + 1) {
+                assert!(
+                    (a - b).abs() > 0.1,
+                    "{name_a}={a} and {name_b}={b} should differ by >0.1"
+                );
+            }
+        }
+    }
+
     // ── Weight presets sum to 1.0 ──
 
     #[test]
