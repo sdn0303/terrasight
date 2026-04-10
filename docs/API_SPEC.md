@@ -1,8 +1,12 @@
 # API_SPEC.md — Rust Axum Backend REST API 仕様書
 
-> Version: 1.0.0 | Updated: 2026-03-20
-> Runtime: Rust Axum 0.8 + tokio + sqlx + PostGIS
+> Version: 2.0.0 | Updated: 2026-04-11
+> Runtime: Rust Axum + tokio + sqlx + PostGIS
 > Base URL: `http://localhost:8000`
+>
+> **API contract source of truth**: `services/frontend/src/lib/schemas.ts` (Zod).
+> Backend DTO と Zod スキーマは必ず一致させる。差異は integration test で assert する。
+> 参照: `AGENTS.md §API Contract Rules`, `services/backend/src/handler/response.rs`.
 
 ---
 
@@ -50,23 +54,27 @@ X-Response-Time: {ms}
 
 ### 1.5 レート制限（Phase 1 P1）
 - tower-governor による IP ベースレート制限
-- `/api/area-data`: 30 req/min
-- `/api/score`: 60 req/min
-- `/api/stats`, `/api/trend`: 60 req/min
+- 実際の制限値は `services/backend/src/main.rs` の `rate_limit_rpm` / `rate_limit_burst` 設定を参照
+- 環境変数 `RATE_LIMIT_RPM`, `RATE_LIMIT_BURST` で上書き可
 
 ---
 
 ## 2. エンドポイント一覧
 
-### Phase 1
+### Phase 1 (current)
 
 | Method | Path | 概要 | 認証 |
 |--------|------|------|------|
 | GET | `/api/health` | ヘルスチェック | 不要 |
-| GET | `/api/area-data` | レイヤーデータ取得（bbox） | 不要 |
-| GET | `/api/score` | 投資スコア算出 | 不要 |
-| GET | `/api/stats` | エリア統計集計 | 不要 |
+| GET | `/api/area-data` | 複数レイヤーデータ取得（bbox） | 不要 |
+| GET | `/api/area-stats` | 行政区コード別の集計統計 | 不要 |
+| GET | `/api/v1/land-prices` | 地価公示（単年 + bbox） | 不要 |
+| GET | `/api/v1/land-prices/all-years` | 地価公示（時系列 2019〜2024, time machine 用） | 不要 |
+| GET | `/api/score` | 投資スコア算出 (TLS 5軸 + 4プリセット) | 不要 |
+| GET | `/api/stats` | bbox 統計集計 | 不要 |
 | GET | `/api/trend` | 地価推移データ | 不要 |
+
+> 実装: `services/backend/src/lib.rs` の `build_router`.
 
 ### Phase 2（SaaS化）
 
@@ -196,114 +204,91 @@ WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
 
 ### 3.3 GET /api/score
 
-指定座標の投資スコアを算出。
+指定座標の Total Location Score (TLS, 0-100) を 5 軸で算出。
+選択した重みプリセットに応じて最終スコアが変化する。
 
 **Query Parameters:**
 
-| Param | Type | Required | Description | Example |
-|-------|------|----------|-------------|---------|
-| lat | f64 | Yes | 緯度 | 35.6812 |
-| lng | f64 | Yes | 経度 | 139.7671 |
+| Param | Type | Required | Default | Description | Example |
+|-------|------|----------|---------|-------------|---------|
+| lat | f64 | Yes | — | 緯度 | 35.6812 |
+| lng | f64 | Yes | — | 経度 | 139.7671 |
+| preset | string | No | `balance` | 重みプリセット | `investment` |
 
-**Response 200:**
+**`preset` に受け付ける値:**
+- `balance` — デフォルト (disaster 0.25 / terrain 0.15 / livability 0.25 / future 0.15 / price 0.20)
+- `investment` — 投資家向け (disaster 0.15 / terrain 0.10 / livability 0.20 / future 0.25 / price 0.30)
+- `residential` — 居住者向け (disaster 0.25 / terrain 0.15 / livability 0.35 / future 0.10 / price 0.15)
+- `disaster` / `disaster_focus` — 防災重視 (disaster 0.40 / terrain 0.25 / livability 0.20 / future 0.05 / price 0.10)
+
+未知の値は `balance` にフォールバック。
+実装: `services/backend/src/handler/request.rs` `CoordQuery::parse_preset`,
+`services/backend/src/domain/scoring/tls.rs` `WeightPreset::weights`.
+
+**Response 200** (Zod: `TlsResponse` in `services/frontend/src/lib/schemas.ts`):
+
 ```json
 {
-  "score": 72,
-  "components": {
-    "trend": {
-      "value": 18,
-      "max": 25,
-      "detail": {
-        "cagr_5y": 0.032,
-        "direction": "up",
-        "latest_price": 1200000,
-        "price_5y_ago": 1020000
-      }
+  "location": { "lat": 35.6812, "lng": 139.7671 },
+  "tls": {
+    "score": 72.4,
+    "grade": "A",
+    "label": "Very Good"
+  },
+  "axes": {
+    "disaster": {
+      "score": 78.2,
+      "weight": 0.25,
+      "confidence": 0.85,
+      "sub": [
+        { "id": "flood",        "score": 80.0, "available": true,  "detail": { "depth_rank": 1 } },
+        { "id": "liquefaction", "score": 100.0,"available": false, "detail": { "pl_value": null } },
+        { "id": "seismic",      "score": 65.0, "available": true,  "detail": { "prob_30yr": 0.23 } },
+        { "id": "tsunami",      "score": 100.0,"available": true,  "detail": { "depth_m": null } },
+        { "id": "landslide",    "score": 100.0,"available": true,  "detail": { "steep_nearby": false } }
+      ]
     },
-    "risk": {
-      "value": 22,
-      "max": 25,
-      "detail": {
-        "flood_overlap": 0.0,
-        "liquefaction_overlap": 0.05,
-        "steep_slope_nearby": false,
-        "composite_risk": 0.12
-      }
-    },
-    "access": {
-      "value": 15,
-      "max": 25,
-      "detail": {
-        "schools_1km": 3,
-        "medical_1km": 5,
-        "nearest_school_m": 450,
-        "nearest_medical_m": 200
-      }
-    },
-    "yield_potential": {
-      "value": 17,
-      "max": 25,
-      "detail": {
-        "avg_transaction_price": 950000,
-        "land_price": 1200000,
-        "estimated_yield": 0.048
-      }
-    }
+    "terrain":    { "score": 70.0, "weight": 0.15, "confidence": 1.0, "sub": [ /* avs30 */ ] },
+    "livability": { "score": 82.0, "weight": 0.25, "confidence": 0.67, "sub": [ /* transit, education, medical */ ] },
+    "future":     { "score": 58.0, "weight": 0.15, "confidence": 0.67, "sub": [ /* population, price_trend, far */ ] },
+    "price":      { "score": 71.0, "weight": 0.20, "confidence": 1.0, "sub": [ /* relative_value, volume */ ] }
+  },
+  "cross_analysis": {
+    "value_discovery": 56.0,
+    "demand_signal":   47.6,
+    "ground_safety":   54.7
   },
   "metadata": {
-    "calculated_at": "2026-03-20T10:30:00Z",
+    "calculated_at": "2026-04-11T00:00:00Z",
+    "weight_preset": "balance",
     "data_freshness": "2024",
     "disclaimer": "本スコアは参考値です。投資判断は自己責任で行ってください。"
   }
 }
 ```
 
-**計算ロジック:**
+**軸・Sub-score の構造:**
 
-```
-trend (0-25):
-  CAGR = (latest / 5y_ago)^(1/5) - 1
-  score = clamp(CAGR * 500, 0, 25)  // CAGR 5% → 25点
+| 軸 | `sub[].id` | データソース |
+|---|---|---|
+| `disaster` (S1) | `flood`, `liquefaction`, `seismic`, `tsunami`, `landslide` | PostGIS + J-SHIS |
+| `terrain` (S2) | `avs30` | J-SHIS |
+| `livability` (S3) | `transit`, `education`, `medical` | PostGIS (transit は Phase 2) |
+| `future` (S4) | `population`, `price_trend`, `far` | PostGIS (population は Phase 2) |
+| `price` (S5) | `relative_value`, `volume` | PostGIS (z-score 比較) |
 
-risk (0-25):  // 反転: 低リスク = 高スコア
-  composite = flood_overlap * 0.4 + liquefaction_overlap * 0.4 + steep_slope * 0.2
-  score = 25 * (1 - composite)
+- `score`: 0-100 の数値。
+- `available`: データ取得可否。`false` の場合は該当 sub を 100 (中立) として扱い、軸スコアに加味。
+- `detail`: 軸ごとに異なる説明用フィールド (Zod は `z.record(z.string(), z.unknown())` なので **null を返さず `{}` を使うこと**)。
+- `confidence`: その軸で `available=true` だった sub weight の合計。全 available なら 1.0。
 
-access (0-25):
-  school_score = min(schools_1km / 3, 1.0) * 10
-  medical_score = min(medical_1km / 5, 1.0) * 10
-  distance_score = max(0, 5 - nearest_school_m / 200)  // 近いほど高い
-  score = clamp(school_score + medical_score + distance_score, 0, 25)
+**Grade 閾値** (`services/backend/src/domain/scoring/tls.rs` `Grade::from_score`):
+`S≥85`, `A≥70`, `B≥55`, `C≥40`, `D≥25`, それ以下は `E`.
 
-yield_potential (0-25):
-  yield = avg_transaction_price / land_price
-  score = clamp(yield * 500, 0, 25)  // yield 5% → 25点
-```
-
-**PostGIS クエリ（コンポーネント別）:**
-
-```sql
--- trend: 最寄り地点の5年間地価
-SELECT year, price_per_sqm
-FROM land_prices
-WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000)
-ORDER BY ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)
-LIMIT 1;
--- 同一地点の複数年度を year でグループ
-
--- risk: 半径500m内のリスクポリゴン重畳率
-SELECT COALESCE(
-  SUM(ST_Area(ST_Intersection(
-    ST_Buffer(ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)::geometry, geom
-  ))) / ST_Area(ST_Buffer(ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)::geometry),
-  0.0
-) FROM flood_risk
-WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500);
-
--- access: 半径1km内の施設数
-SELECT count(*) FROM schools
-WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000);
-```
+**Cross-analysis** (`compute_cross_analysis`):
+- `value_discovery = S1 × (100 - v_rel) / 100` — 安全かつ割安
+- `demand_signal   = S3 × S4 / 100` — 生活利便 × 将来性
+- `ground_safety   = S1 × S2 / 100` — 災害 × 地盤
 
 ---
 
@@ -320,12 +305,12 @@ WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geogra
 | north | f64 | Yes | bbox北端緯度 | 35.70 |
 | east | f64 | Yes | bbox東端経度 | 139.80 |
 
-**Response 200:**
+**Response 200** (Zod: `StatsResponse`):
 ```json
 {
   "land_price": {
-    "avg_per_sqm": 850000,
-    "median_per_sqm": 720000,
+    "avg_per_sqm": 850000.0,
+    "median_per_sqm": 720000.0,
     "min_per_sqm": 320000,
     "max_per_sqm": 3200000,
     "count": 45
@@ -333,7 +318,7 @@ WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geogra
   "risk": {
     "flood_area_ratio": 0.15,
     "steep_slope_area_ratio": 0.02,
-    "avg_composite_risk": 0.18
+    "composite_risk": 0.18
   },
   "facilities": {
     "schools": 12,
@@ -347,6 +332,8 @@ WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geogra
   }
 }
 ```
+
+> `land_price.{avg,median}_per_sqm` は `Option<f64>` (feature が無い bbox で `null`)。`risk.composite_risk` の古い別名 `avg_composite_risk` は削除済み。
 
 **PostGIS クエリ:**
 ```sql
@@ -396,6 +383,118 @@ WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
 
 ---
 
+### 3.6 GET /api/v1/land-prices
+
+単年の地価公示データを bbox 内で取得する。`/api/area-data?layers=landprice` の代替として
+独立したレート制限と年度指定に対応する専用エンドポイント。
+
+**Query Parameters:**
+
+| Param | Type | Required | Default | Description | Example |
+|-------|------|----------|---------|-------------|---------|
+| year | i32 | Yes | — | 公示年 (2020..=2024) | 2024 |
+| bbox | string | Yes | — | `sw_lng,sw_lat,ne_lng,ne_lat` | `139.70,35.65,139.80,35.70` |
+| zoom | u32 | No | 14 | 動的 feature limit に使用 | 15 |
+
+**Response 200** (Zod: `LandPriceTimeSeriesResponse` = `layerResponse(LandPriceProperties)`):
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Polygon", "coordinates": [[...]] },
+      "properties": {
+        "id": 123,
+        "price_per_sqm": 1200000,
+        "address": "千代田区丸の内1-1",
+        "land_use": "商業",
+        "year": 2024
+      }
+    }
+  ],
+  "truncated": false,
+  "count": 42,
+  "limit": 500
+}
+```
+
+> Point geometry は約 30m × 30m の polygon に変換されてから返される (MapLibre 3D extrusion 用)。
+> `truncated=true` の場合、`limit` 件で切り詰められた。zoom in を促すこと。
+
+実装: `services/backend/src/handler/land_price.rs`, `infra/pg_land_price_repository.rs::find_by_year_and_bbox`.
+
+---
+
+### 3.7 GET /api/v1/land-prices/all-years
+
+Time machine スライダー用。指定 bbox 内の複数年地価を **1 リクエストで** 返す。
+クライアントは MapLibre `setFilter(["==", ["get","year"], selectedYear])` で年度を
+切り替えることで、年スクラブ時に再フェッチなしでアニメーションする。
+
+**Query Parameters:**
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| bbox | string | Yes | — | `sw_lng,sw_lat,ne_lng,ne_lat` |
+| from | i32 | No | 2019 | 開始年 (含む) |
+| to | i32 | No | 2024 | 終了年 (含む) |
+| zoom | u32 | No | 14 | 動的 limit 計算 (単年 limit × (to-from+1)) |
+
+**バリデーション:** `from > to` は 400 エラー。
+
+**Response 200**: `LandPriceTimeSeriesResponse` と同じ形 (§3.6 参照)。`features[].properties.year`
+に各 feature の年度が入る。`limit` は年数倍に拡張されており、タイムアウトは 10 秒 (単年 5 秒)。
+
+実装: `services/backend/src/handler/land_price_all_years.rs`,
+`infra/pg_land_price_repository.rs::find_all_years_by_bbox`,
+フロント: `services/frontend/src/features/land-prices/api/use-land-prices-all-years.ts`.
+
+---
+
+### 3.8 GET /api/area-stats
+
+行政区コード (都道府県 2 桁 / 市区町村 5 桁) に対する集計統計。
+`/api/stats` が任意 bbox を受け付けるのに対し、こちらは管理地域境界と連動する。
+
+**Query Parameters:**
+
+| Param | Type | Required | Description | Example |
+|-------|------|----------|-------------|---------|
+| code | string | Yes | 行政区コード (2 or 5 桁) | `13105` |
+
+**Response 200** (Zod: `AreaStatsResponse`):
+
+```json
+{
+  "code": "13105",
+  "name": "文京区",
+  "level": "municipality",
+  "land_price": {
+    "avg_per_sqm": 1020000.0,
+    "median_per_sqm": 980000.0,
+    "count": 128
+  },
+  "risk": {
+    "flood_area_ratio": 0.08,
+    "composite_risk": 0.12
+  },
+  "facilities": {
+    "schools": 42,
+    "medical": 187
+  }
+}
+```
+
+- `level`: `"prefecture"` or `"municipality"`
+- `land_price.{avg,median}_per_sqm`: `Option<f64>` (データ無しで `null`)
+
+実装: `services/backend/src/handler/area_stats.rs`,
+`usecase/get_area_stats.rs`, `infra/pg_admin_area_stats_repository.rs`.
+
+---
+
 ## 4. Rust 型定義（参考）
 
 ```rust
@@ -425,20 +524,15 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response { /* ... */ }
 }
 
-// 投資スコア
+// TLS Response (5軸 + cross-analysis)
+// 実体は services/backend/src/handler/response.rs を参照
 #[derive(Serialize)]
-pub struct InvestmentScore {
-    pub score: f64,
-    pub components: ScoreComponents,
-    pub metadata: ScoreMetadata,
-}
-
-#[derive(Serialize)]
-pub struct ScoreComponents {
-    pub trend: ScoreDetail,
-    pub risk: ScoreDetail,
-    pub access: ScoreDetail,
-    pub yield_potential: ScoreDetail,
+pub struct TlsResponse {
+    pub location: LocationDto,
+    pub tls: TlsSummaryDto,   // score + grade + label
+    pub axes: AxesDto,        // disaster / terrain / livability / future / price
+    pub cross_analysis: CrossAnalysisDto,
+    pub metadata: TlsMetadataDto,
 }
 ```
 
@@ -501,3 +595,111 @@ sqlx migrate run
 # 本番データインポート（国土数値情報）
 ./scripts/commands/db-import.sh
 ```
+
+---
+
+## 7. レイヤースコープとクエリ契約
+
+> 旧 `TERRASIGHT_SPEC_V1.md` から統合。クライアントがどの粒度でどのエンドポイントを
+> 呼ぶかの契約を定義する。未実装部分は次フェーズの target state として扱う。
+
+### 7.1 レイヤースコープ 3 類型
+
+```ts
+type LayerScope = "always_national" | "selected_prefecture" | "viewport";
+```
+
+| スコープ | 表示単位 | 選択状態依存 | zoom 依存 |
+|---|---|---|---|
+| `always_national` | 全国 | しない | style のみ変化 |
+| `selected_prefecture` | 選択都道府県全域 | する | `zoom < 9` で national fallback (暫定閾値) |
+| `viewport` | 実 viewport (`map.getBounds()`) | 場合による | 動的 limit |
+
+### 7.2 現行レイヤー分類 (target)
+
+| レイヤー | scope | 備考 |
+|---|---|---|
+| 行政界 | `always_national` | Base orientation layer |
+| 鉄道路線 | `always_national` | static (FlatGeobuf) |
+| 地形分類 | `always_national` | static |
+| 断層線 | `always_national` | static |
+| 火山 | `always_national` | static |
+| 浸水履歴 | `selected_prefecture` | 都道府県全域 |
+| 洪水浸水 | `selected_prefecture` | 都道府県全域 (現行 API) |
+| 表層地質 | `selected_prefecture` | 都道府県全域 (static) |
+| 土壌図 | `selected_prefecture` | 都道府県全域 (static) |
+| 地価公示 | `viewport` | `/api/v1/land-prices?year=&bbox=` |
+| 用途地域 / 学校 / 医療 / 液状化 / 土砂災害 | 未確定 | 後続フェーズで確定 |
+
+### 7.3 bbox の source of truth
+
+viewport 系クエリの bbox は **常に `map.getBounds()`** から取得した実 bbox とする。
+
+**禁止事項:**
+1. `latitude`/`longitude`/`zoom` からの近似 bbox 再計算
+2. live `viewState` をそのまま query key に使うこと (debounce 必須)
+3. 同一画面内で API query と WASM query が異なる bbox 契約を持つこと
+
+### 7.4 クエリ発火タイミング
+
+1. `onMove` 中は view state のみ更新
+2. データクエリは `onMoveEnd + debounce` 後にのみ発火
+3. debounce 時間は実装定数化 (現行 200ms)
+
+目的: every-frame refetch 回避、query 数の予測可能化、`1 viewport action → 1 query cycle` の検証可能性。
+
+### 7.5 Static layer 取得戦略
+
+- static layer は **batched query** を唯一の標準入口とする (`useVisibleStaticLayers`)
+- layer component 側の self-fetch は禁止
+- 例外を許可する条件 (全て満たす場合のみ):
+  1. batched query に乗せると UX または可用性が明確に悪化する
+  2. データ責務が他 layer と共有されない
+  3. duplicate fetch を起こさない設計とテストがある
+  4. 例外理由が docs に明記されている
+
+### 7.6 `selected_prefecture` レイヤーのクエリキー
+
+`selected_prefecture` レイヤーの query キーは viewport bbox ではなく:
+
+- `prefectureCode`
+- `layerId`
+- 必要なら `dataVersion`
+
+`zoom < 9` の場合のみ national fallback 表示へ切り替える (暫定閾値、全国データ整備後に実測で再評価)。
+
+### 7.7 Canonical field schema (target)
+
+`AreaStatsResponse` を少なくとも `ward` を受け取れる shape に拡張する target:
+
+```ts
+const AreaStatsResponse = z.object({
+  code: z.string(),
+  level: z.enum(["prefecture", "municipality", "ward"]),
+  prefName: z.string(),
+  cityName: z.string().nullable(),
+  wardName: z.string().nullable(),
+  landPrice: z.object({
+    avgPerSqm: z.number().nullable(),
+    medianPerSqm: z.number().nullable(),
+    count: z.number(),
+  }),
+  risk: z.object({
+    floodAreaRatio: z.number(),
+    compositeRisk: z.number(),
+  }),
+  facilities: z.object({ schools: z.number(), medical: z.number() }),
+});
+```
+
+- camelCase / snake_case の最終選択は frontend Zod を先に確定してから backend DTO を合わせる
+- **`name` 単一フィールドに集約しない** — UI で `wardName ?? cityName ?? prefName` の優先順で派生する
+
+### 7.8 実装禁止事項
+
+1. `viewState` から直接 query key を組み立てること (debounce 必須)
+2. `selected_prefecture` レイヤーを viewport 断片で取得すること
+3. `name` に依存して行政階層判定すること
+4. 東京都道府県コード `"13"` を全国仕様の常設前提にすること
+5. batched path と self-fetch path を無秩序に併存させること
+
