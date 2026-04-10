@@ -20,8 +20,7 @@ export function ScoreHeroCard({
   presetStats,
 }: ScoreHeroCardProps) {
   const deltaSign = deltaVsArea >= 0 ? "+" : "";
-  const deltaArrow =
-    deltaVsArea > 0 ? "▲" : deltaVsArea < 0 ? "▼" : "—";
+  const deltaArrow = deltaVsArea > 0 ? "▲" : deltaVsArea < 0 ? "▼" : "—";
   const deltaColor =
     deltaVsArea > 0
       ? "var(--score-good-start)"
@@ -73,10 +72,7 @@ export function ScoreHeroCard({
         >
           {tls}
         </span>
-        <span
-          className="text-[10px] font-bold"
-          style={{ color: deltaColor }}
-        >
+        <span className="text-[10px] font-bold" style={{ color: deltaColor }}>
           {deltaArrow} {deltaSign}
           {deltaVsArea} vs area
         </span>

@@ -103,7 +103,9 @@ describe("AxisBreakdown", () => {
 describe("IntelTab", () => {
   it("renders loading state before score data arrives", () => {
     renderWithQuery(<IntelTab lat={35.68} lng={139.76} />);
-    expect(screen.getByRole("status", { name: /loading/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: /loading/i }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -117,13 +119,17 @@ describe("TrendTab", () => {
 describe("RiskTab", () => {
   it("renders loading state before score data arrives", () => {
     renderWithQuery(<RiskTab lat={35.68} lng={139.76} />);
-    expect(screen.getByRole("status", { name: /loading/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: /loading/i }),
+    ).toBeInTheDocument();
   });
 });
 
 describe("InfraTab", () => {
   it("renders loading state before score data arrives", () => {
     renderWithQuery(<InfraTab lat={35.68} lng={139.76} />);
-    expect(screen.getByRole("status", { name: /loading/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: /loading/i }),
+    ).toBeInTheDocument();
   });
 });
