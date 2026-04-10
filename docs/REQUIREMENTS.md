@@ -274,10 +274,59 @@ medical_facilities (id, name, facility_type, bed_count, geom:Point)
 | リアルタイム価格更新 | 公的データは四半期更新 |
 | 多言語対応 | 日本市場に集中 |
 | ストリートビュー統合 | 工数対効果低 |
+| 課金 / 認証 / 権限 | Phase 2 SaaS 化以降 |
+| UI のピクセル単位レイアウト確定 | UIUX_SPEC.md に委譲 |
+| raw データ取得元 URL の最終採用一覧 | 次フェーズ「データ再構築計画」で分解 |
 
 ---
 
-## 9. 用語集
+## 9. 受け入れ条件 (target state, ward 対応フェーズ)
+
+> 旧 `TERRASIGHT_SPEC_V1.md` §15 から統合。現状実装 (`prefecture | municipality`) から
+> 全国 / ward 対応への移行時に満たすべき acceptance criteria を定義する。
+
+### 9.1 機能受け入れ
+
+1. 行政界クリックで `highlight / breadcrumb / stats refetch / popup close` が成立する (全 level 共通)
+2. `prefecture / municipality / ward` の各 level を選択できる
+3. `selected_prefecture` 系レイヤーは、選択時に都道府県全域表示へ切り替わる
+4. `zoom < 9` で national fallback する
+
+### 9.2 契約受け入れ
+
+1. viewport 系 query は `map.getBounds()` の実 bbox を使う (live `viewState` からの近似再計算は禁止)
+2. query key は debounced state のみを使う
+3. static layer の batched path で duplicate fetch が起きない
+4. `name` 非依存で UI が成立する (`wardName ?? cityName ?? prefName` で派生)
+5. 東京都道府県コード `"13"` の hardcode を全国仕様として常設しない
+
+### 9.3 E2E 受け入れ
+
+最低限、以下を E2E で保証:
+
+1. 行政界クリックで highlight が表示される
+2. breadcrumb が期待階層で更新される
+3. area stats が新しい `selectedArea.code` で再取得される
+4. 既存 popup が閉じる
+5. pan 中に refetch が連打されず、move end 後にのみ query される
+6. `admin_boundary` の duplicate fetch が発生しない
+7. missing source / invalid filter による console error が出ない
+
+### 9.4 データ戦略 (canonical dataset 要件)
+
+現行データは初期開発用モックであり、次フェーズで全国 canonical dataset を再構築する前提:
+
+1. 47 都道府県をカバーする
+2. 行政コードが安定している
+3. 階層関係 (`parentCode`) が機械的に復元できる
+4. layer ごとの geometry / property schema が固定である
+5. バージョン管理可能である
+
+詳細 (raw source 棚卸し、ETL 実装詳細、property マッピング) は次フェーズ「データ再構築計画」で分解する。
+
+---
+
+## 10. 用語集
 
 | 用語 | 説明 |
 |------|------|

@@ -589,3 +589,77 @@ interface LayerConfig {
 ### 9.3 空状態
 - ビューポート内にデータなし: 空の FeatureCollection（マップ上に何も描画されない）
 - レイヤー全OFF: パネルで有効化を促す
+
+---
+
+## 10. ドメインモデルとインタラクション (ward 対応含む)
+
+> このセクションは旧 `TERRASIGHT_SPEC_V1.md` から統合された次フェーズ実装の target state。
+> 現状実装は `prefecture | municipality` のみで、`ward` 対応は未了。
+
+### 10.1 行政階層
+
+```ts
+type AreaLevel = "prefecture" | "municipality" | "ward";
+```
+
+- `prefecture` — 47 都道府県
+- `municipality` — 市町村
+- `ward` — 東京 23 特別区 + 政令指定都市の行政区。`municipality` とは独立した level として扱う
+
+### 10.2 選択状態モデル (target shape)
+
+現状の `SelectedArea` を拡張する target shape:
+
+```ts
+type SelectedArea = {
+  code: string;
+  level: "prefecture" | "municipality" | "ward";
+  parentCode: string | null;
+  prefName: string;
+  cityName: string | null;   // prefecture の場合 null
+  wardName: string | null;   // 該当しない場合 null
+  bbox: { south: number; west: number; north: number; east: number };
+};
+```
+
+- **`name` フィールドは canonical には含めない**。表示名は UI で `wardName ?? cityName ?? prefName` の優先順で派生する。
+- 理由: `name` は level ごとに意味が変わり、breadcrumb / popup / API 間で解釈が分裂する。
+
+### 10.3 行政界クリック動作 (全 level 共通)
+
+行政界クリックは単一トランザクションとして扱う:
+
+1. `selectedArea` を更新
+2. 対応境界をハイライト
+3. パンくずを更新
+4. `selectedArea.code` で area stats を再取得
+5. 既存 popup を閉じる
+
+> **行政界クリックは click-inspect popup より優先する**。popup を残すと選択スコープと
+> inspect 対象が不整合になりやすい。
+
+#### 状態遷移例
+
+- **未選択 → 都道府県**: 都道府県境界クリック → `level="prefecture"`, `prefName` 設定, `cityName`/`wardName` = `null`
+- **都道府県 → 市区町村**: 選択中都道府県内で市区町村境界クリック → `level="municipality"`, `parentCode` = 都道府県 code
+- **市区町村 → 行政区**: 区境界をクリック → `level="ward"`, `parentCode` = 市区町村 code
+
+### 10.4 パンくず表示ルール
+
+| level | 表示 |
+|---|---|
+| `prefecture` | `東京都` |
+| `municipality` | `東京都 / 新宿区` |
+| `ward` | `神奈川県 / 横浜市 / 中区` |
+
+- 上位要素クリックで親階層へ戻る
+- 戻る操作でも popup は閉じた状態を維持
+- breadcrumb 更新は `selectedArea` のみから決定できる (他 state に依存しない)
+
+### 10.5 `admin_boundary` の責務分離
+
+`admin_boundary` は単一概念ではなく 2 つの責務に分離する:
+
+1. **Base orientation boundary** — 常時表示の基盤レイヤー。位置関係把握のためユーザーの layer toggle には強く依存しない。表示が途切れて「どことどこに跨っているか分からない」状態を作らない
+2. **Interactive boundary settings** — 強調表示 ON/OFF、ラベル濃度、click-interaction の有効化などの設定層。Base orientation を消すためのものではない
