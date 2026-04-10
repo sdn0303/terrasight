@@ -54,33 +54,46 @@ export interface VisibleBoundsInput {
   bottomSheetHeightPct: number;
 }
 
-export interface VisibleBoundsPx {
-  left: number;
-  right: number;
+/**
+ * Edge-inset padding in pixels, directly usable as the `padding` option
+ * of MapLibre `fitBounds`. Each field is the number of pixels from the
+ * respective viewport edge that is hidden by an overlay surface.
+ */
+export interface MapOverlayPadding {
   top: number;
+  right: number;
   bottom: number;
+  left: number;
 }
 
 /**
- * Compute the map area that is actually visible (not hidden behind overlays)
- * so MapLibre `fitBounds` can pad correctly.
+ * Compute the padding (in pixels) that MapLibre `fitBounds` needs so that
+ * the fitted bounds land inside the visible map area — i.e. not behind the
+ * rail, an open left panel, the insight drawer, or an open bottom sheet.
+ *
+ * Returns edge insets: each field is the distance from that viewport edge
+ * to the nearest overlay. These values match MapLibre's
+ * `fitBounds({ padding })` contract and can be passed through directly.
+ *
+ * Note: the `viewport` height is only needed to derive the bottom-sheet
+ * pixel height from its percentage; the width is not currently used but
+ * is kept in the signature for forward compatibility with right-side
+ * percentage-sized overlays.
  */
-export function visibleMapBoundsPx(
+export function mapOverlayPaddingPx(
   ui: VisibleBoundsInput,
   viewport: { w: number; h: number },
-): VisibleBoundsPx {
-  const leftOffset =
-    ui.leftPanel !== null ? MAIN_LEFT_WITH_PANEL : MAIN_LEFT_BASE;
-  const rightOffset =
-    ui.insight !== null ? MAIN_RIGHT_WITH_DRAWER : MAIN_RIGHT_BASE;
-  const bottomOffset =
+): MapOverlayPadding {
+  const left = ui.leftPanel !== null ? MAIN_LEFT_WITH_PANEL : MAIN_LEFT_BASE;
+  const right = ui.insight !== null ? MAIN_RIGHT_WITH_DRAWER : MAIN_RIGHT_BASE;
+  const bottom =
     ui.bottomSheet !== null
       ? (ui.bottomSheetHeightPct / 100) * viewport.h + PAGE_INSET
       : PAGE_INSET;
   return {
-    left: leftOffset,
-    right: viewport.w - rightOffset,
     top: PAGE_INSET,
-    bottom: viewport.h - bottomOffset,
+    right,
+    bottom,
+    left,
   };
 }

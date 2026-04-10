@@ -38,6 +38,7 @@ const LEFT_PANEL_TOOLS: readonly LeftPanelKind[] = [
 export function SidebarRail() {
   const leftPanel = useUIStore((s) => s.leftPanel);
   const bottomSheet = useUIStore((s) => s.bottomSheet);
+  const insight = useUIStore((s) => s.insight);
   const setLeftPanel = useUIStore((s) => s.setLeftPanel);
   const toggleLeftPanel = useUIStore((s) => s.toggleLeftPanel);
   const setBottomSheet = useUIStore((s) => s.setBottomSheet);
@@ -46,7 +47,9 @@ export function SidebarRail() {
 
   const isToolActive = (id: RailToolSpec["id"]): boolean => {
     if (id === "map") {
-      return leftPanel === null && bottomSheet === null;
+      // "Map" is a neutral home state — active only when every Layer 2
+      // overlay (left panel, bottom sheet, insight drawer) is closed.
+      return leftPanel === null && bottomSheet === null && insight === null;
     }
     if (id === "opportunities") {
       return bottomSheet === "opportunities";

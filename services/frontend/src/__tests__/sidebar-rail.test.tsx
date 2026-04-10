@@ -96,4 +96,26 @@ describe("SidebarRail", () => {
     const finder = screen.getByRole("button", { name: /finder/i });
     expect(finder.getAttribute("aria-pressed")).toBe("true");
   });
+
+  it("Map tool is not active when the insight drawer is open", () => {
+    useUIStore.setState({
+      leftPanel: null,
+      bottomSheet: null,
+      insight: { kind: "point", lat: 35, lng: 139 },
+    });
+    render(<SidebarRail />);
+    const map = screen.getByRole("button", { name: /map/i });
+    expect(map.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("Map tool is active only when every overlay is closed", () => {
+    useUIStore.setState({
+      leftPanel: null,
+      bottomSheet: null,
+      insight: null,
+    });
+    render(<SidebarRail />);
+    const map = screen.getByRole("button", { name: /map/i });
+    expect(map.getAttribute("aria-pressed")).toBe("true");
+  });
 });

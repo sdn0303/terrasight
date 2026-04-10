@@ -9,9 +9,9 @@ import {
   MAIN_LEFT_WITH_PANEL,
   MAIN_RIGHT_BASE,
   MAIN_RIGHT_WITH_DRAWER,
+  mapOverlayPaddingPx,
   PAGE_INSET,
   RAIL_WIDTH,
-  visibleMapBoundsPx,
 } from "@/lib/layout";
 
 describe("layout constants", () => {
@@ -71,11 +71,11 @@ describe("layout constants", () => {
   });
 });
 
-describe("visibleMapBoundsPx", () => {
+describe("mapOverlayPaddingPx", () => {
   const viewport = { w: 1920, h: 1080 };
 
-  it("returns base bounds when no overlays open", () => {
-    const b = visibleMapBoundsPx(
+  it("returns base padding when no overlays are open", () => {
+    const p = mapOverlayPaddingPx(
       {
         leftPanel: null,
         insight: null,
@@ -84,14 +84,14 @@ describe("visibleMapBoundsPx", () => {
       },
       viewport,
     );
-    expect(b.left).toBe(MAIN_LEFT_BASE);
-    expect(b.right).toBe(viewport.w - MAIN_RIGHT_BASE);
-    expect(b.top).toBe(PAGE_INSET);
-    expect(b.bottom).toBe(viewport.h - PAGE_INSET);
+    expect(p.left).toBe(MAIN_LEFT_BASE);
+    expect(p.right).toBe(MAIN_RIGHT_BASE);
+    expect(p.top).toBe(PAGE_INSET);
+    expect(p.bottom).toBe(PAGE_INSET);
   });
 
-  it("extends left offset when a left panel is open", () => {
-    const b = visibleMapBoundsPx(
+  it("extends left padding when a left panel is open", () => {
+    const p = mapOverlayPaddingPx(
       {
         leftPanel: "finder",
         insight: null,
@@ -100,11 +100,12 @@ describe("visibleMapBoundsPx", () => {
       },
       viewport,
     );
-    expect(b.left).toBe(MAIN_LEFT_WITH_PANEL);
+    expect(p.left).toBe(MAIN_LEFT_WITH_PANEL);
+    expect(p.right).toBe(MAIN_RIGHT_BASE);
   });
 
-  it("reduces right bound when drawer is open", () => {
-    const b = visibleMapBoundsPx(
+  it("extends right padding when the insight drawer is open", () => {
+    const p = mapOverlayPaddingPx(
       {
         leftPanel: null,
         insight: { kind: "point", lat: 35, lng: 139 },
@@ -113,11 +114,11 @@ describe("visibleMapBoundsPx", () => {
       },
       viewport,
     );
-    expect(b.right).toBe(viewport.w - MAIN_RIGHT_WITH_DRAWER);
+    expect(p.right).toBe(MAIN_RIGHT_WITH_DRAWER);
   });
 
-  it("reduces bottom bound when bottom sheet is open", () => {
-    const b = visibleMapBoundsPx(
+  it("extends bottom padding when the bottom sheet is open", () => {
+    const p = mapOverlayPaddingPx(
       {
         leftPanel: null,
         insight: null,
@@ -126,11 +127,11 @@ describe("visibleMapBoundsPx", () => {
       },
       viewport,
     );
-    expect(b.bottom).toBe(viewport.h - ((40 / 100) * viewport.h + PAGE_INSET));
+    expect(p.bottom).toBe((40 / 100) * viewport.h + PAGE_INSET);
   });
 
-  it("combines all offsets when all overlays open", () => {
-    const b = visibleMapBoundsPx(
+  it("combines all padding offsets when every overlay is open", () => {
+    const p = mapOverlayPaddingPx(
       {
         leftPanel: "finder",
         insight: { kind: "point", lat: 35, lng: 139 },
@@ -139,8 +140,29 @@ describe("visibleMapBoundsPx", () => {
       },
       viewport,
     );
-    expect(b.left).toBe(MAIN_LEFT_WITH_PANEL);
-    expect(b.right).toBe(viewport.w - MAIN_RIGHT_WITH_DRAWER);
-    expect(b.bottom).toBe(viewport.h - ((40 / 100) * viewport.h + PAGE_INSET));
+    expect(p.left).toBe(MAIN_LEFT_WITH_PANEL);
+    expect(p.right).toBe(MAIN_RIGHT_WITH_DRAWER);
+    expect(p.top).toBe(PAGE_INSET);
+    expect(p.bottom).toBe((40 / 100) * viewport.h + PAGE_INSET);
+  });
+
+  it("returns values directly usable as MapLibre fitBounds padding", () => {
+    // Sanity check: padding must NEVER exceed viewport dimensions; this was
+    // the regression raised in PR review — the previous shape returned
+    // `right = viewport.w - offset`, which for 1920px viewports yielded
+    // ~1900 and would over-pad fitBounds.
+    const p = mapOverlayPaddingPx(
+      {
+        leftPanel: "finder",
+        insight: { kind: "point", lat: 35, lng: 139 },
+        bottomSheet: "opportunities",
+        bottomSheetHeightPct: 80,
+      },
+      viewport,
+    );
+    expect(p.top).toBeLessThan(viewport.h);
+    expect(p.bottom).toBeLessThan(viewport.h);
+    expect(p.left).toBeLessThan(viewport.w);
+    expect(p.right).toBeLessThan(viewport.w);
   });
 });
