@@ -9,7 +9,14 @@ use super::constants::*;
 // S1 Disaster sub-scores
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Flood inundation score from `depth_rank` (1-5). `None` = outside flood zone = 100.
+/// Flood inundation score from `depth_rank` (0-5).
+///
+/// - `None` or `Some(0)` = outside flood zone → 100 (safest).
+/// - `Some(1..=5)` = rank 1 (<0.5m) to rank 5 (≥10m) → mapped via `FLOOD_MAP`.
+/// - Any other value falls back to `FLOOD_DEFAULT` (100).
+///
+/// The DB column `flood_risk.depth_rank` is constrained to `[0, 5]`
+/// (see migration `20260326000001_schema_redesign.sql`).
 pub fn score_flood(depth_rank: Option<i32>) -> f64 {
     match depth_rank {
         None => FLOOD_DEFAULT,
@@ -236,6 +243,14 @@ mod tests {
     #[test]
     fn flood_unknown_rank_returns_default() {
         assert_eq!(score_flood(Some(99)), 100.0);
+    }
+
+    #[test]
+    fn flood_rank_zero_is_safe() {
+        // depth_rank = 0 in the DB means "outside flood zone" (区域外).
+        // The constraint `CHECK (depth_rank >= 0 AND depth_rank <= 5)` allows
+        // it, so we must handle it explicitly rather than crashing.
+        assert_eq!(score_flood(Some(0)), 100.0);
     }
 
     // ── S1 Liquefaction ──
