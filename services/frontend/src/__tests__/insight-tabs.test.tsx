@@ -59,6 +59,20 @@ describe("ScoreHeroCard", () => {
     expect(screen.getByText(/-3/)).toBeInTheDocument();
   });
 
+  it("omits the + sign when delta is exactly zero", () => {
+    render(
+      <ScoreHeroCard
+        tls={60}
+        topPercentile={50}
+        deltaVsArea={0}
+        presetStats={{ balance: 60, residential: 60, disaster: 60 }}
+      />,
+    );
+    // Neutral arrow + bare "0 vs area" without a leading "+".
+    expect(screen.getByText(/— 0 vs area/)).toBeInTheDocument();
+    expect(screen.queryByText(/\+0 vs area/)).toBeNull();
+  });
+
   it("omits Top X% pill when topPercentile is null", () => {
     render(
       <ScoreHeroCard

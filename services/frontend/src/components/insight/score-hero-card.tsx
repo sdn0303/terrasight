@@ -19,7 +19,9 @@ export function ScoreHeroCard({
   deltaVsArea,
   presetStats,
 }: ScoreHeroCardProps) {
-  const deltaSign = deltaVsArea >= 0 ? "+" : "";
+  // Only prefix with "+" for strictly positive deltas so the zero case
+  // renders as "— 0 vs area" (consistent with the neutral "—" arrow).
+  const deltaSign = deltaVsArea > 0 ? "+" : "";
   const deltaArrow = deltaVsArea > 0 ? "▲" : deltaVsArea < 0 ? "▼" : "—";
   const deltaColor =
     deltaVsArea > 0

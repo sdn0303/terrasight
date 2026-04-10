@@ -89,7 +89,6 @@ export function useMapUrlState() {
   const { viewState, setViewState, visibleLayers, toggleLayer } = useMapStore();
   const activeThemes = useUIStore((s) => s.activeThemes);
   const mode = useUIStore((s) => s.mode);
-  const analysisPoint = useMapStore((s) => s.analysisPoint);
   const comparePoints = useUIStore((s) => s.comparePoints);
   const insight = useUIStore((s) => s.insight);
   const activeTab = useUIStore((s) => s.activeTab);
@@ -176,10 +175,14 @@ export function useMapUrlState() {
       layers: [...visibleLayers].sort().join(","),
       theme: [...activeThemes].sort().join(","),
       mode,
-      // Phase 2a: prefer insight over legacy analysisPoint so closing the
-      // drawer clears alat/alng from the URL.
-      alat: insight?.lat ?? analysisPoint?.lat ?? null,
-      alng: insight?.lng ?? analysisPoint?.lng ?? null,
+      // Phase 2a: alat/alng reflect the Insight drawer selection only, so
+      // closing the drawer (setInsight(null)) clears them from the URL.
+      // The legacy mapStore.analysisPoint is still updated by
+      // useMapInteraction for back-compat with non-rendered legacy panels
+      // but is intentionally not read here; on mount we restore both from
+      // alat/alng in lockstep.
+      alat: insight?.lat ?? null,
+      alng: insight?.lng ?? null,
       cp:
         comparePoints.length > 0
           ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
@@ -191,7 +194,6 @@ export function useMapUrlState() {
     visibleLayers,
     activeThemes,
     mode,
-    analysisPoint,
     comparePoints,
     insight,
     activeTab,
