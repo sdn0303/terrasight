@@ -11,6 +11,7 @@ export function useMapInteraction() {
   const setAnalysisPoint = useMapStore((s) => s.setAnalysisPoint);
   const mode = useUIStore((s) => s.mode);
   const addComparePoint = useUIStore((s) => s.addComparePoint);
+  const setInsight = useUIStore((s) => s.setInsight);
 
   const handleFeatureClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -44,9 +45,7 @@ export function useMapInteraction() {
           selectArea({
             code: (props.adminCode as string) ?? "",
             name:
-              (props.cityName as string) ??
-              (props.prefName as string) ??
-              "",
+              (props.cityName as string) ?? (props.prefName as string) ?? "",
             level: (props.cityName as string) ? "municipality" : "prefecture",
             bbox: { south: 0, west: 0, north: 0, east: 0 }, // TODO: compute from geometry
           });
@@ -66,11 +65,24 @@ export function useMapInteraction() {
           lng: e.lngLat.lng,
           ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
+        // Open the Insight drawer for this point
+        setInsight({
+          kind: "point",
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+        });
       } else {
         selectFeature(null);
       }
     },
-    [mode, selectArea, selectFeature, setAnalysisPoint, addComparePoint],
+    [
+      mode,
+      selectArea,
+      selectFeature,
+      setAnalysisPoint,
+      addComparePoint,
+      setInsight,
+    ],
   );
 
   return { handleFeatureClick };

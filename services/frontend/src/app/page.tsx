@@ -1,47 +1,71 @@
 "use client";
 
 import { Popup } from "react-map-gl/maplibre";
-import { ComparePanel } from "@/components/context-panel/compare-panel";
-import { ContextPanel } from "@/components/context-panel/context-panel";
-import { ExplorePanel } from "@/components/context-panel/explore-panel";
+import { InfraTab } from "@/components/insight/infra-tab";
+import { IntelTab } from "@/components/insight/intel-tab";
+import { RiskTab } from "@/components/insight/risk-tab";
+import { TrendTab } from "@/components/insight/trend-tab";
+import type { DrawerTabDef } from "@/components/layout/insight-drawer";
+import { InsightDrawer } from "@/components/layout/insight-drawer";
+import { MapCanvasFrame } from "@/components/layout/map-canvas-frame";
+import { SidebarRail } from "@/components/layout/sidebar-rail";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { PopupCard } from "@/components/map/popup-card";
-import { StatusBar } from "@/components/status-bar";
-import { TopBar } from "@/components/top-bar/top-bar";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
-import {
-  PANEL_WIDTH,
-  STATUS_BAR_HEIGHT,
-  TOP_BAR_HEIGHT,
-} from "@/lib/constants";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
-  const mode = useUIStore((s) => s.mode);
   const { handleFeatureClick } = useMapInteraction();
   const page = useMapPage();
 
+  const insight = useUIStore((s) => s.insight);
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const setInsight = useUIStore((s) => s.setInsight);
+
+  const insightOpen = insight !== null;
+  const insightLat = insight?.lat ?? null;
+  const insightLng = insight?.lng ?? null;
+
+  const insightTitle =
+    insight?.kind === "point"
+      ? `${insight.lat.toFixed(4)}, ${insight.lng.toFixed(4)}`
+      : insight?.kind === "property"
+        ? insight.id
+        : "";
+
+  const drawerTabs: DrawerTabDef[] =
+    insightLat !== null && insightLng !== null
+      ? [
+          {
+            id: "intel",
+            label: "Intel",
+            content: <IntelTab lat={insightLat} lng={insightLng} />,
+          },
+          {
+            id: "trend",
+            label: "Trend",
+            content: <TrendTab lat={insightLat} lng={insightLng} />,
+          },
+          {
+            id: "risk",
+            label: "Risk",
+            content: <RiskTab lat={insightLat} lng={insightLng} />,
+          },
+          {
+            id: "infra",
+            label: "Infra",
+            content: <InfraTab lat={insightLat} lng={insightLng} />,
+          },
+        ]
+      : [];
+
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
-      <TopBar />
-
-      <ContextPanel>
-        {mode === "explore" && <ExplorePanel />}
-        {mode === "compare" && <ComparePanel />}
-      </ContextPanel>
-
-      <div
-        className="absolute"
-        style={{
-          top: TOP_BAR_HEIGHT,
-          left: PANEL_WIDTH,
-          right: 0,
-          bottom: STATUS_BAR_HEIGHT,
-        }}
-      >
+    <MapCanvasFrame aria-label="Terrasight map canvas">
+      <div className="absolute inset-0">
         <MapView
           onMoveEnd={page.handleMoveEnd}
           onFeatureClick={handleFeatureClick}
@@ -80,7 +104,7 @@ export default function Home() {
         </MapView>
         {page.isZoomTooLow && (
           <div
-            className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
             aria-hidden="true"
           >
             <div
@@ -99,6 +123,18 @@ export default function Home() {
         )}
       </div>
 
+      <SidebarRail />
+
+      <InsightDrawer
+        open={insightOpen}
+        onClose={() => setInsight(null)}
+        title={insightTitle}
+        subtitle="Selected on map"
+        tabs={drawerTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
       <style>{`
         .spatial-popup .maplibregl-popup-content {
           background: transparent;
@@ -115,18 +151,6 @@ export default function Home() {
           top: 2px;
         }
       `}</style>
-
-      <StatusBar
-        lat={page.viewState.latitude}
-        lng={page.viewState.longitude}
-        zoom={page.viewState.zoom}
-        isLoading={page.isLoading}
-        isDemoMode={page.isDemoMode}
-        truncatedLayers={page.truncatedLayers}
-        wasmError={page.wasmError}
-        areaDataError={page.areaDataError}
-        isZoomTooLow={page.isZoomTooLow}
-      />
-    </div>
+    </MapCanvasFrame>
   );
 }

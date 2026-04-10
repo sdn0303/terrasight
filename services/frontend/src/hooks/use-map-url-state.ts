@@ -4,6 +4,7 @@ import {
   parseAsFloat,
   parseAsInteger,
   parseAsString,
+  parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
 import { useEffect, useRef } from "react";
@@ -11,7 +12,14 @@ import { MAP_CONFIG } from "@/lib/constants";
 import type { ThemeId } from "@/lib/themes";
 import { THEMES } from "@/lib/themes";
 import { useMapStore } from "@/stores/map-store";
-import { useUIStore } from "@/stores/ui-store";
+import { type DrawerTab, useUIStore } from "@/stores/ui-store";
+
+const DRAWER_TABS = [
+  "intel",
+  "trend",
+  "risk",
+  "infra",
+] as const satisfies readonly DrawerTab[];
 
 const mapParams = {
   lat: parseAsFloat.withDefault(MAP_CONFIG.center[1]),
@@ -27,6 +35,8 @@ const mapParams = {
   alat: parseAsFloat,
   alng: parseAsFloat,
   cp: parseAsString.withDefault(""),
+  // Insight drawer tab (Phase 2a)
+  tab: parseAsStringLiteral(DRAWER_TABS).withDefault("intel"),
 };
 
 export interface ParsedComparePoint {
@@ -79,8 +89,9 @@ export function useMapUrlState() {
   const { viewState, setViewState, visibleLayers, toggleLayer } = useMapStore();
   const activeThemes = useUIStore((s) => s.activeThemes);
   const mode = useUIStore((s) => s.mode);
-  const analysisPoint = useMapStore((s) => s.analysisPoint);
   const comparePoints = useUIStore((s) => s.comparePoints);
+  const insight = useUIStore((s) => s.insight);
+  const activeTab = useUIStore((s) => s.activeTab);
 
   // On mount: restore map state from URL
   useEffect(() => {
@@ -127,11 +138,22 @@ export function useMapUrlState() {
     // Restore analysis point from URL (validate coordinates)
     if (isValidCoordinate(params.alat, params.alng)) {
       // isValidCoordinate guarantees both are non-null finite numbers.
+      const alat = params.alat as number;
+      const alng = params.alng as number;
       useMapStore.getState().setAnalysisPoint({
-        lat: params.alat as number,
-        lng: params.alng as number,
+        lat: alat,
+        lng: alng,
+      });
+      // Also open the Insight drawer at the same point (Phase 2a)
+      useUIStore.getState().setInsight({
+        kind: "point",
+        lat: alat,
+        lng: alng,
       });
     }
+
+    // Restore active tab from URL (Phase 2a)
+    useUIStore.getState().setActiveTab(params.tab);
 
     // Restore compare points from URL (capped at 3, invalid entries dropped)
     const comparePoints = parseComparePointsParam(params.cp);
@@ -153,20 +175,28 @@ export function useMapUrlState() {
       layers: [...visibleLayers].sort().join(","),
       theme: [...activeThemes].sort().join(","),
       mode,
-      alat: analysisPoint?.lat ?? null,
-      alng: analysisPoint?.lng ?? null,
+      // Phase 2a: alat/alng reflect the Insight drawer selection only, so
+      // closing the drawer (setInsight(null)) clears them from the URL.
+      // The legacy mapStore.analysisPoint is still updated by
+      // useMapInteraction for back-compat with non-rendered legacy panels
+      // but is intentionally not read here; on mount we restore both from
+      // alat/alng in lockstep.
+      alat: insight?.lat ?? null,
+      alng: insight?.lng ?? null,
       cp:
         comparePoints.length > 0
           ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
           : "",
+      tab: activeTab,
     });
   }, [
     viewState,
     visibleLayers,
     activeThemes,
     mode,
-    analysisPoint,
     comparePoints,
+    insight,
+    activeTab,
     setParams,
   ]);
 }
