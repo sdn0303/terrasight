@@ -23,6 +23,7 @@ const MIN_YEAR = 2020;
 const MAX_YEAR = 2024;
 const STEP = 1;
 const DEBOUNCE_MS = 200;
+const ANIMATION_INTERVAL_MS = 800;
 const YEARS = Array.from(
   { length: MAX_YEAR - MIN_YEAR + 1 },
   (_, i) => MIN_YEAR + i,
@@ -47,7 +48,11 @@ export function LandPriceYearSlider({
   isZoomTooLow = false,
 }: LandPriceYearSliderProps) {
   const [localValue, setLocalValue] = useState(value);
+  const [isAnimating, setIsAnimating] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const animationRef = useRef<ReturnType<typeof setInterval> | undefined>(
+    undefined,
+  );
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   useEffect(() => {
@@ -57,11 +62,47 @@ export function LandPriceYearSlider({
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (animationRef.current) clearInterval(animationRef.current);
     };
   }, []);
 
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current) {
+      clearInterval(animationRef.current);
+      animationRef.current = undefined;
+    }
+    setIsAnimating(false);
+  }, []);
+
+  const startAnimation = useCallback(() => {
+    if (animationRef.current) return;
+    setIsAnimating(true);
+    // Seed from current year so play starts from wherever the user left off
+    let year = localValue;
+    animationRef.current = setInterval(() => {
+      year = year >= MAX_YEAR ? MIN_YEAR : year + 1;
+      setLocalValue(year);
+      onChange(year);
+    }, ANIMATION_INTERVAL_MS);
+  }, [localValue, onChange]);
+
+  const togglePlayPause = useCallback(() => {
+    if (isAnimating) {
+      stopAnimation();
+    } else {
+      startAnimation();
+    }
+  }, [isAnimating, startAnimation, stopAnimation]);
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Manual drag stops animation
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+        animationRef.current = undefined;
+        setIsAnimating(false);
+      }
+
       const newValue = Number(e.target.value);
       setLocalValue(newValue);
 
@@ -75,6 +116,11 @@ export function LandPriceYearSlider({
 
   const handleYearButtonClick = useCallback(
     (year: number) => {
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+        animationRef.current = undefined;
+        setIsAnimating(false);
+      }
       setLocalValue(year);
       onChange(year);
     },
@@ -153,12 +199,30 @@ export function LandPriceYearSlider({
       }}
       aria-label="地価公示年度選択"
     >
-      {/* Header label */}
+      {/* Header label with play/pause button */}
       <div
-        className="text-[9px] tracking-[0.1em] mb-1"
+        className="flex items-center justify-between mb-1"
         style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
       >
-        地価公示 LAND PRICE
+        <span className="text-[9px] tracking-[0.1em]">地価公示 LAND PRICE</span>
+        <button
+          type="button"
+          onClick={togglePlayPause}
+          disabled={isFetching || isError || isZoomTooLow}
+          aria-label={isAnimating ? "アニメーション停止" : "アニメーション再生"}
+          aria-pressed={isAnimating}
+          className="text-[10px] leading-none ml-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          style={{
+            background: "transparent",
+            border: "1px solid var(--border-primary)",
+            borderRadius: 3,
+            color: isAnimating ? "var(--accent-primary)" : "var(--text-muted)",
+            padding: "2px 6px",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          {isAnimating ? "■" : "▶"}
+        </button>
       </div>
 
       {/* Year display with Decision 2: pulsing cyan dot when fetching */}
@@ -170,7 +234,7 @@ export function LandPriceYearSlider({
         }}
       >
         {localValue}
-        {isFetching && (
+        {(isFetching || isAnimating) && (
           <span
             aria-hidden="true"
             style={{

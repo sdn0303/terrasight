@@ -24,6 +24,8 @@ export const queryKeys = {
   landPrices: {
     all: ["land-prices"] as const,
     byYear: (bbox: BBox, year: number) => ["land-prices", bbox, year] as const,
+    allYears: (bbox: BBox, fromYear: number, toYear: number) =>
+      ["land-prices", "all-years", bbox, fromYear, toYear] as const,
   },
   areaStats: {
     all: ["area-stats"] as const,

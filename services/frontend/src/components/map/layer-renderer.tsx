@@ -122,6 +122,7 @@ export function LayerRenderer({
       <LandPriceExtrusionLayer
         data={landPriceData}
         visible={visibleLayers.has("land_price_ts")}
+        selectedYear={landPriceYear}
         isFetching={isLandPriceFetching}
       />
 

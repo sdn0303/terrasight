@@ -5,7 +5,7 @@ import { parseAsInteger, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useHealth } from "@/features/health/api/use-health";
-import { useLandPrices } from "@/features/land-prices/api/use-land-prices";
+import { useLandPricesAllYears } from "@/features/land-prices/api/use-land-prices-all-years";
 import { useMapUrlState } from "@/hooks/use-map-url-state";
 import type { BBox } from "@/lib/api";
 import type { LayerConfig } from "@/lib/layers";
@@ -66,11 +66,13 @@ export function useMapPage() {
     isError: areaDataError,
   } = useAreaData(bbox, layers, viewState.zoom);
   const { data: health } = useHealth();
+  // Time machine: fetch all years in a single request so the slider can
+  // filter client-side via MapLibre setFilter without refetching per tick.
   const {
     data: landPriceData,
     isFetching: isLandPriceFetching,
     isError: isLandPriceError,
-  } = useLandPrices(bbox, landPriceYear, viewState.zoom);
+  } = useLandPricesAllYears(bbox, 2020, 2024, viewState.zoom);
 
   const isZoomTooLow = viewState.zoom < 10;
   const isDemoMode = health ? !health.reinfolib_key_set : true;

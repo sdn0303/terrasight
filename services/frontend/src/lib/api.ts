@@ -6,8 +6,8 @@ import {
   AreaStatsResponse,
   HealthResponse,
   LandPriceTimeSeriesResponse,
-  TlsResponse,
   StatsResponse,
+  TlsResponse,
   TrendResponse,
 } from "./schemas";
 
@@ -170,6 +170,26 @@ export function fetchLandPrices(
     {
       year: String(year),
       bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
+      zoom: String(Math.floor(zoom)),
+    },
+    signal,
+  );
+}
+
+export function fetchLandPricesAllYears(
+  bbox: BBox,
+  fromYear: number,
+  toYear: number,
+  zoom: number,
+  signal?: AbortSignal,
+) {
+  return get(
+    LandPriceTimeSeriesResponse,
+    "api/v1/land-prices/all-years",
+    {
+      bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
+      from: String(fromYear),
+      to: String(toYear),
       zoom: String(Math.floor(zoom)),
     },
     signal,

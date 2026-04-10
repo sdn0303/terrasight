@@ -441,7 +441,11 @@ describe("LandPriceExtrusionLayer", () => {
       "@/components/map/layers/land-price-extrusion-layer"
     );
     const { container } = render(
-      <LandPriceExtrusionLayer visible={false} data={VALID_LAND_PRICE_FC} />,
+      <LandPriceExtrusionLayer
+        visible={false}
+        data={VALID_LAND_PRICE_FC}
+        selectedYear={2024}
+      />,
     );
     expect(container.innerHTML).toBe("");
   });
@@ -453,7 +457,11 @@ describe("LandPriceExtrusionLayer", () => {
     );
     const emptyFC = { type: "FeatureCollection" as const, features: [] };
     const { container } = render(
-      <LandPriceExtrusionLayer visible={true} data={emptyFC} />,
+      <LandPriceExtrusionLayer
+        visible={true}
+        data={emptyFC}
+        selectedYear={2024}
+      />,
     );
     expect(container.innerHTML).toBe("");
   });
@@ -465,7 +473,11 @@ describe("LandPriceExtrusionLayer", () => {
       "@/components/map/layers/land-price-extrusion-layer"
     );
     render(
-      <LandPriceExtrusionLayer visible={true} data={VALID_LAND_PRICE_FC} />,
+      <LandPriceExtrusionLayer
+        visible={true}
+        data={VALID_LAND_PRICE_FC}
+        selectedYear={2024}
+      />,
     );
 
     expect(screen.getByTestId("maplibre-source")).toBeInTheDocument();
