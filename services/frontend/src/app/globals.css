@@ -37,6 +37,27 @@
   --color-ds-accent-warning: var(--accent-warning);
   --color-ds-accent-success: var(--accent-success);
   --color-ds-hover-accent: var(--hover-accent);
+
+  /* Phase 0/1: Map-canvas shell tokens */
+  --color-mc-card: var(--card-fill);
+  --color-mc-card-solid: var(--card-fill-solid);
+  --color-mc-neutral-0: var(--neutral-0);
+  --color-mc-neutral-50: var(--neutral-50);
+  --color-mc-neutral-100: var(--neutral-100);
+  --color-mc-neutral-200: var(--neutral-200);
+  --color-mc-neutral-400: var(--neutral-400);
+  --color-mc-neutral-500: var(--neutral-500);
+  --color-mc-neutral-600: var(--neutral-600);
+  --color-mc-neutral-700: var(--neutral-700);
+  --color-mc-neutral-900: var(--neutral-900);
+  --color-mc-brand: var(--brand-indigo);
+  --color-mc-brand-violet: var(--brand-violet);
+  --color-mc-brand-cyan: var(--brand-cyan);
+  --color-mc-tint-indigo: var(--tint-indigo);
+  --color-mc-tint-violet: var(--tint-violet);
+  --color-mc-tint-red: var(--tint-red);
+  --color-mc-tint-amber: var(--tint-amber);
+  --color-mc-tint-emerald: var(--tint-emerald);
 }
 
 :root {
@@ -107,6 +128,60 @@
   --border: rgba(99, 102, 241, 0.15);
   --input: rgba(99, 102, 241, 0.15);
   --ring: #6366f1;
+
+  /* ─── Phase 0/1: Map-canvas design tokens (new shell) ─── */
+  /* Card surfaces — semi-opaque white floating on map canvas */
+  --card-fill: rgba(255, 255, 255, 0.98);
+  --card-fill-solid: #ffffff;
+  --card-ring: rgba(255, 255, 255, 0.5);
+
+  /* Neutrals (shared with Tailwind slate palette) */
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-900: #0f172a;
+
+  /* Brand gradient stops */
+  --brand-indigo: #6366f1;
+  --brand-violet: #8b5cf6;
+  --brand-cyan: #06b6d4;
+  --brand-purple: #a855f7;
+
+  /* Semantic gradient stops */
+  --score-good-start: #10b981;
+  --score-good-end: #059669;
+  --score-mid-start: #f59e0b;
+  --score-mid-end: #d97706;
+  --score-bad-start: #ef4444;
+  --score-bad-end: #dc2626;
+  --signal-hot-start: #f43f5e;
+  --signal-hot-end: #e11d48;
+
+  /* Light tints */
+  --tint-indigo: #eef2ff;
+  --tint-violet: #f5f3ff;
+  --tint-blue: #eff6ff;
+  --tint-red: #fef2f2;
+  --tint-amber: #fef3c7;
+  --tint-emerald: #d1fae5;
+
+  /* Shadows (strong for main cards, medium for chips, subtle for overlays) */
+  --shadow-card-strong: 0 40px 100px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.5);
+  --shadow-card-medium: 0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.4);
+  --shadow-card-subtle: 0 10px 24px rgba(0, 0, 0, 0.18);
+
+  /* Glow shadows for gradient elements */
+  --glow-primary: 0 12px 28px rgba(99, 102, 241, 0.45);
+  --glow-primary-subtle: 0 8px 20px rgba(99, 102, 241, 0.35);
+  --glow-success: 0 6px 14px rgba(16, 185, 129, 0.35);
+  --glow-warn: 0 6px 14px rgba(245, 158, 11, 0.35);
+  --glow-danger: 0 6px 14px rgba(239, 68, 68, 0.35);
+  --glow-hot: 0 6px 16px rgba(244, 63, 94, 0.4);
 }
 
 body {
