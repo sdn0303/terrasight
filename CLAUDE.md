@@ -14,10 +14,9 @@
 
 ```
 services/
-├── backend/        # Rust Axum (Clean Architecture: handler/usecase/domain/infra)
-├── frontend/       # Next.js 16 (features/components/stores/hooks)
-├── wasm/           # Rust WASM spatial engine (R-tree, FlatGeobuf)
-└── shared-domain/  # Shared Rust crate (constants, pure computation) [Phase 3]
+├── backend/    # Rust Axum (Clean Architecture: handler/usecase/domain/infra)
+├── frontend/   # Next.js 16 (features/components/stores/hooks)
+└── wasm/       # Rust WASM spatial engine (R-tree, FlatGeobuf)
 ```
 
 ## Build & Test

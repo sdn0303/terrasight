@@ -6,8 +6,8 @@
 
 - **Backend**: Rust (Axum + Tokio + SQLx + PostGIS)
 - **Frontend**: Next.js 16 (App Router) + React 19 + MapLibre GL + shadcn/ui + Tailwind CSS v4
+- **WASM**: Rust → wasm-bindgen → Web Worker (R-tree spatial queries)
 - **Database**: PostgreSQL + PostGIS
-- **Cache**: SQLite (24h TTL for MLIT API responses)
 - **Infra**: Docker Compose
 
 ## Project Structure
@@ -15,7 +15,8 @@
 ```
 services/
 ├── backend/    # Rust Axum (Clean Architecture: handler/usecase/domain/infra)
-└── frontend/   # Next.js 16 (features/components/stores/hooks)
+├── frontend/   # Next.js 16 (features/components/stores/hooks)
+└── wasm/       # Rust WASM spatial engine (R-tree, FlatGeobuf)
 ```
 
 ## Build & Test
@@ -70,5 +71,5 @@ cd services/frontend && pnpm install && pnpm tsc --noEmit && pnpm biome check . 
 
 ## Detailed Rules
 
-See `.Codex/rules/` for comprehensive guidelines:
+See `.claude/rules/` for comprehensive guidelines:
 architecture, nextjs, typescript, rust, docker, postgresql, rest-api, security, github-actions, terraform, workflow

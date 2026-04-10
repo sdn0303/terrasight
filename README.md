@@ -64,9 +64,14 @@ Static layers are stored as FlatGeobuf (`data/fgb/`) and queried via WASM R-tree
 |--------|------|-------------|
 | GET | `/api/health` | Service health check (DB connectivity, API key status) |
 | GET | `/api/area-data` | GeoJSON layers for a bounding box (flood, slope, zoning, facilities) |
-| GET | `/api/score` | Investment score (0-100) for a coordinate |
+| GET | `/api/area-stats?code=` | Aggregated statistics for an administrative code (prefecture / municipality) |
+| GET | `/api/v1/land-prices?year=&bbox=&zoom=` | Land prices for a single year within bbox |
+| GET | `/api/v1/land-prices/all-years?bbox=&from=&to=&zoom=` | Land prices across a year range (time machine) |
+| GET | `/api/score?lat=&lng=&preset=` | Total Location Score (TLS, 5-axis, 0-100). `preset` ∈ `balance \| investment \| residential \| disaster` |
 | GET | `/api/stats` | Aggregated statistics for a bounding box |
 | GET | `/api/trend` | Price trend / CAGR analysis for a coordinate |
+
+詳細: [`docs/API_SPEC.md`](docs/API_SPEC.md). Frontend Zod schemas (`services/frontend/src/lib/schemas.ts`) are the API contract source of truth.
 
 ## Getting Started
 
@@ -171,11 +176,15 @@ lefthook install
 | Document | Description |
 |----------|-------------|
 | [DESIGN.md](DESIGN.md) | Design system (colors, typography, components) |
-| [docs/API_SPEC.md](docs/API_SPEC.md) | REST API specification |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Product requirements |
-| [docs/UIUX_SPEC.md](docs/UIUX_SPEC.md) | UI/UX design specification |
-| [docs/plans/](docs/plans/) | Implementation plans and backlog |
-| [docs/sessions/](docs/sessions/) | Session reports and context |
+| [docs/API_SPEC.md](docs/API_SPEC.md) | REST API specification (v2) |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Product requirements and acceptance criteria |
+| [docs/UIUX_SPEC.md](docs/UIUX_SPEC.md) | UI/UX design specification + domain model |
+| [docs/data-inventory.md](docs/data-inventory.md) | Data source catalog and layer mappings |
+| [docs/designs/](docs/designs/) | Architecture and TLS scoring design documents |
+| [docs/research/](docs/research/) | External API and data-source research notes |
+| [docs/plans/TODOS.md](docs/plans/TODOS.md) | Current TODO backlog |
+
+> Dated per-session agent artifacts under `docs/sessions/`, `docs/superpowers/`, `docs/reviews/`, and `docs/plans/YYYY-MM-DD-*.md` are not committed (see `.gitignore`).
 
 ## License
 
