@@ -186,6 +186,51 @@ impl YearsLookback {
     }
 }
 
+/// Administrative area code.
+///
+/// Accepts a 2-digit prefecture code (e.g. "13" for Tokyo) or a 5-digit
+/// municipality code (e.g. "13104" for Shinjuku). Validated at construction
+/// to guarantee digits-only input of the expected length.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AreaCode(String);
+
+/// Granularity of an [`AreaCode`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AreaCodeLevel {
+    Prefecture,
+    Municipality,
+}
+
+impl AreaCode {
+    /// Parse a raw string into a validated `AreaCode`.
+    ///
+    /// Returns [`DomainError::Validation`] when the input is not a
+    /// 2- or 5-digit string of ASCII digits.
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        if !matches!(s.len(), 2 | 5) || !s.chars().all(|c| c.is_ascii_digit()) {
+            return Err(DomainError::Validation(format!(
+                "area code must be 2 or 5 ASCII digits, got {s:?}"
+            )));
+        }
+        Ok(Self(s.to_owned()))
+    }
+
+    /// Return the granularity of this area code.
+    pub fn level(&self) -> AreaCodeLevel {
+        match self.0.len() {
+            2 => AreaCodeLevel::Prefecture,
+            5 => AreaCodeLevel::Municipality,
+            // SAFETY: `parse` enforces the length invariant.
+            _ => unreachable!("AreaCode length invariant violated"),
+        }
+    }
+
+    /// Borrow the inner digit string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Map layer type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LayerType {
@@ -321,6 +366,27 @@ mod tests {
         assert_eq!(YearsLookback::clamped(5).value(), 5);
         assert_eq!(YearsLookback::clamped(100).value(), TREND_MAX_YEARS);
         assert_eq!(YearsLookback::DEFAULT.value(), TREND_DEFAULT_YEARS);
+    }
+
+    #[test]
+    fn area_code_accepts_prefecture_and_municipality() {
+        let pref = AreaCode::parse("13").expect("2-digit prefecture");
+        assert_eq!(pref.as_str(), "13");
+        assert_eq!(pref.level(), AreaCodeLevel::Prefecture);
+
+        let muni = AreaCode::parse("13104").expect("5-digit municipality");
+        assert_eq!(muni.as_str(), "13104");
+        assert_eq!(muni.level(), AreaCodeLevel::Municipality);
+    }
+
+    #[test]
+    fn area_code_rejects_invalid_lengths_and_non_digits() {
+        assert!(AreaCode::parse("1").is_err());
+        assert!(AreaCode::parse("131").is_err());
+        assert!(AreaCode::parse("131040").is_err());
+        assert!(AreaCode::parse("abc").is_err());
+        assert!(AreaCode::parse("13a04").is_err());
+        assert!(AreaCode::parse("").is_err());
     }
 
     #[test]

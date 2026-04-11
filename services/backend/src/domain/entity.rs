@@ -1,3 +1,47 @@
+use crate::domain::error::DomainError;
+
+/// Human-readable name for an administrative area.
+///
+/// Rejects empty / whitespace-only strings via [`DomainError::Validation`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AreaName(String);
+
+impl AreaName {
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(DomainError::Validation(
+                "area name must be non-empty".into(),
+            ));
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Postal address string for an observation point or entity.
+///
+/// Rejects empty / whitespace-only strings via [`DomainError::Validation`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Address(String);
+
+impl Address {
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(DomainError::Validation("address must be non-empty".into()));
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// GeoJSON Feature in domain representation.
 ///
 /// Corresponds to PostGIS `ST_AsGeoJSON` output. Coordinates follow
@@ -141,4 +185,34 @@ pub struct AdminAreaStats {
     pub land_price: LandPriceStats,
     pub risk: RiskStats,
     pub facilities: FacilityStats,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn area_name_accepts_nonempty_and_trims() {
+        let n = AreaName::parse("  Shinjuku  ").unwrap();
+        assert_eq!(n.as_str(), "Shinjuku");
+    }
+
+    #[test]
+    fn area_name_rejects_empty_and_whitespace() {
+        assert!(AreaName::parse("").is_err());
+        assert!(AreaName::parse("   ").is_err());
+        assert!(AreaName::parse("\t\n").is_err());
+    }
+
+    #[test]
+    fn address_accepts_nonempty_and_trims() {
+        let a = Address::parse("1-1 Shinjuku").unwrap();
+        assert_eq!(a.as_str(), "1-1 Shinjuku");
+    }
+
+    #[test]
+    fn address_rejects_empty() {
+        assert!(Address::parse("").is_err());
+        assert!(Address::parse("   ").is_err());
+    }
 }
