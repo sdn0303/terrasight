@@ -205,3 +205,28 @@ pub const HEALTH_STATUS_DEGRADED: &str = "degraded";
 /// Disclaimer appended to all investment score responses, reminding users
 /// that the score is informational and not financial advice.
 pub const SCORE_DISCLAIMER: &str = "本スコアは参考値です。投資判断は自己責任で行ってください。";
+
+// ---------------------------------------------------------------------------
+// Opportunities endpoint (/api/v1/opportunities)
+// ---------------------------------------------------------------------------
+
+/// Default `limit` for the opportunities endpoint.
+pub const DEFAULT_OPPORTUNITY_LIMIT: u32 = 50;
+
+/// Maximum server-enforced `limit` for the opportunities endpoint.
+pub const MAX_OPPORTUNITY_LIMIT: u32 = 50;
+
+/// End-to-end request timeout for the opportunities endpoint (seconds).
+pub const OPPORTUNITY_TIMEOUT_SECS: u64 = 8;
+
+/// Per-query timeout for individual SQL calls on the opportunities path.
+pub const OPPORTUNITY_QUERY_TIMEOUT_SECS: u64 = 5;
+
+/// Cache TTL for the opportunities response (seconds).
+pub const OPPORTUNITY_CACHE_TTL_SECS: u64 = 60;
+
+/// Maximum in-memory cache entries for opportunities responses.
+pub const OPPORTUNITY_CACHE_MAX_ENTRIES: u64 = 256;
+
+/// Maximum parallelism for per-record TLS computation.
+pub const OPPORTUNITY_TLS_CONCURRENCY: usize = 4;

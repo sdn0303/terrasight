@@ -335,6 +335,43 @@ impl AreaCode {
     }
 }
 
+/// Clamped page-size parameter for the opportunities endpoint.
+///
+/// Enforces `1 <= value <= MAX_OPPORTUNITY_LIMIT` by clamping; construction is
+/// infallible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpportunityLimit(u32);
+
+impl OpportunityLimit {
+    pub const MAX: u32 = crate::domain::constants::MAX_OPPORTUNITY_LIMIT;
+    pub const DEFAULT: Self = Self(crate::domain::constants::DEFAULT_OPPORTUNITY_LIMIT);
+
+    pub fn clamped(value: u32) -> Self {
+        Self(value.clamp(1, Self::MAX))
+    }
+
+    pub fn get(self) -> u32 {
+        self.0
+    }
+}
+
+/// Offset parameter for paginated opportunities responses.
+///
+/// No upper bound — callers paginate until the response is shorter than
+/// `OpportunityLimit::get()`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpportunityOffset(u32);
+
+impl OpportunityOffset {
+    pub fn new(value: u32) -> Self {
+        Self(value)
+    }
+
+    pub fn get(self) -> u32 {
+        self.0
+    }
+}
+
 /// Map layer type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LayerType {
@@ -470,6 +507,21 @@ mod tests {
         assert_eq!(YearsLookback::clamped(5).value(), 5);
         assert_eq!(YearsLookback::clamped(100).value(), TREND_MAX_YEARS);
         assert_eq!(YearsLookback::DEFAULT.value(), TREND_DEFAULT_YEARS);
+    }
+
+    #[test]
+    fn opportunity_limit_clamps() {
+        assert_eq!(OpportunityLimit::clamped(0).get(), 1);
+        assert_eq!(OpportunityLimit::clamped(1).get(), 1);
+        assert_eq!(OpportunityLimit::clamped(50).get(), 50);
+        assert_eq!(OpportunityLimit::clamped(200).get(), 50);
+        assert_eq!(OpportunityLimit::DEFAULT.get(), 50);
+    }
+
+    #[test]
+    fn opportunity_offset_preserved() {
+        assert_eq!(OpportunityOffset::new(0).get(), 0);
+        assert_eq!(OpportunityOffset::new(100).get(), 100);
     }
 
     #[test]
