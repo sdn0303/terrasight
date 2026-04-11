@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
 use crate::domain::constants::{STATS_RISK_WEIGHT_FLOOD, STATS_RISK_WEIGHT_STEEP};
@@ -10,6 +10,27 @@ use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::StatsRepository;
 use crate::domain::value_object::BBox;
+
+#[derive(Debug, FromRow)]
+struct LandPriceStatsRow {
+    avg_price: Option<f64>,
+    median_price: Option<f64>,
+    min_price: Option<i64>,
+    max_price: Option<i64>,
+    count: i64,
+}
+
+impl From<LandPriceStatsRow> for LandPriceStats {
+    fn from(row: LandPriceStatsRow) -> Self {
+        LandPriceStats {
+            avg_per_sqm: row.avg_price,
+            median_per_sqm: row.median_price,
+            min_per_sqm: row.min_price,
+            max_per_sqm: row.max_price,
+            count: row.count,
+        }
+    }
+}
 
 pub struct PgStatsRepository {
     pool: PgPool,
@@ -25,14 +46,14 @@ impl PgStatsRepository {
 impl StatsRepository for PgStatsRepository {
     #[tracing::instrument(skip(self))]
     async fn calc_land_price_stats(&self, bbox: &BBox) -> Result<LandPriceStats, DomainError> {
-        let query = sqlx::query_as::<_, (Option<f64>, Option<f64>, Option<i64>, Option<i64>, i64)>(
+        let query = sqlx::query_as::<_, LandPriceStatsRow>(
             r#"
             SELECT
                 AVG(price_per_sqm)::float8 AS avg_price,
                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm)::float8 AS median_price,
-                MIN(price_per_sqm)::int8,
-                MAX(price_per_sqm)::int8,
-                COUNT(*)
+                MIN(price_per_sqm)::int8 AS min_price,
+                MAX(price_per_sqm)::int8 AS max_price,
+                COUNT(*) AS count
             FROM land_prices
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
               AND year = (SELECT MAX(year) FROM land_prices)
@@ -42,15 +63,9 @@ impl StatsRepository for PgStatsRepository {
             .fetch_one(&self.pool)
             .await
             .map_err(map_db_err)?;
-        tracing::debug!(count = row.4, "land_price_stats fetched");
+        tracing::debug!(count = row.count, "land_price_stats fetched");
 
-        Ok(LandPriceStats {
-            avg_per_sqm: row.0,
-            median_per_sqm: row.1,
-            min_per_sqm: row.2,
-            max_per_sqm: row.3,
-            count: row.4,
-        })
+        Ok(row.into())
     }
 
     #[tracing::instrument(skip(self))]

@@ -1,12 +1,33 @@
 use async_trait::async_trait;
 use realestate_db::spatial::bind_coord;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
 use crate::domain::entity::{TrendLocation, TrendPoint};
 use crate::domain::error::DomainError;
 use crate::domain::repository::TrendRepository;
 use crate::domain::value_object::{Coord, YearsLookback};
+
+#[derive(Debug, FromRow)]
+struct NearestLocationRow {
+    address: String,
+    dist: f64,
+}
+
+#[derive(Debug, FromRow)]
+struct TrendDataRow {
+    year: i32,
+    price_per_sqm: i32,
+}
+
+impl From<TrendDataRow> for TrendPoint {
+    fn from(row: TrendDataRow) -> Self {
+        TrendPoint {
+            year: row.year,
+            price_per_sqm: row.price_per_sqm as i64,
+        }
+    }
+}
 
 pub struct PgTrendRepository {
     pool: PgPool,
@@ -28,7 +49,7 @@ impl TrendRepository for PgTrendRepository {
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError> {
         let years = years.value();
         // Search radius: RADIUS_TREND_SEARCH_M (2000m), SRID: SRID_WGS84 (4326)
-        let nearest_query = sqlx::query_as::<_, (String, f64)>(
+        let nearest_query = sqlx::query_as::<_, NearestLocationRow>(
             r#"
             SELECT address,
                    ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS dist
@@ -44,7 +65,11 @@ impl TrendRepository for PgTrendRepository {
             .map_err(map_db_err)?;
         tracing::debug!(found = nearest.is_some(), "nearest_trend_point lookup");
 
-        let Some((address, distance_m)) = nearest else {
+        let Some(NearestLocationRow {
+            address,
+            dist: distance_m,
+        }) = nearest
+        else {
             return Ok(None);
         };
 
@@ -56,7 +81,7 @@ impl TrendRepository for PgTrendRepository {
                 .map_err(map_db_err)?;
         let min_year = max_year_row.0 - years + 1;
 
-        let data = sqlx::query_as::<_, (i32, i32)>(
+        let data = sqlx::query_as::<_, TrendDataRow>(
             r#"
             SELECT year, price_per_sqm
             FROM land_prices
@@ -71,13 +96,7 @@ impl TrendRepository for PgTrendRepository {
         .map_err(map_db_err)?;
         tracing::debug!(row_count = data.len(), "trend_data fetched");
 
-        let points: Vec<TrendPoint> = data
-            .into_iter()
-            .map(|(year, price)| TrendPoint {
-                year,
-                price_per_sqm: price as i64,
-            })
-            .collect();
+        let points: Vec<TrendPoint> = data.into_iter().map(TrendPoint::from).collect();
 
         Ok(Some((
             TrendLocation {

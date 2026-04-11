@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
 use realestate_geo_math::spatial::{bbox_area_deg2, compute_feature_limit};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use tokio::time::timeout;
 
 use super::map_db_err;
@@ -18,6 +18,32 @@ const LAND_PRICE_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Longer timeout for multi-year queries which scan more rows.
 const LAND_PRICE_ALL_YEARS_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Raw row returned by land-price spatial queries.
+#[derive(Debug, FromRow)]
+struct LandPriceFeatureRow {
+    id: i64,
+    price_per_sqm: i32,
+    address: String,
+    land_use: Option<String>,
+    year: i32,
+    geometry: serde_json::Value,
+}
+
+impl From<LandPriceFeatureRow> for GeoFeature {
+    fn from(row: LandPriceFeatureRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({
+                "id": row.id,
+                "price_per_sqm": row.price_per_sqm,
+                "address": row.address,
+                "land_use": row.land_use,
+                "year": row.year,
+            }),
+        )
+    }
+}
 
 /// PostgreSQL + PostGIS implementation of [`LandPriceRepository`].
 pub struct PgLandPriceRepository {
@@ -47,7 +73,7 @@ impl LandPriceRepository for PgLandPriceRepository {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("landprice", area, zoom.get());
 
-        let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
+        let query = sqlx::query_as::<_, LandPriceFeatureRow>(
             r#"
             SELECT id, price_per_sqm, address, land_use, year,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -75,21 +101,7 @@ impl LandPriceRepository for PgLandPriceRepository {
             "land_prices fetched"
         );
 
-        let mut features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, price, address, land_use, row_year, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({
-                        "id": id,
-                        "price_per_sqm": price,
-                        "address": address,
-                        "land_use": land_use,
-                        "year": row_year,
-                    }),
-                )
-            })
-            .collect();
+        let mut features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         let truncated = features.len() > limit as usize;
         if truncated {
@@ -121,7 +133,7 @@ impl LandPriceRepository for PgLandPriceRepository {
         let base_limit = compute_feature_limit("landprice", area, zoom.get());
         let limit = base_limit.saturating_mul(year_count);
 
-        let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
+        let query = sqlx::query_as::<_, LandPriceFeatureRow>(
             r#"
             SELECT id, price_per_sqm, address, land_use, year,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -151,21 +163,7 @@ impl LandPriceRepository for PgLandPriceRepository {
             "land_prices all-years fetched"
         );
 
-        let mut features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, price, address, land_use, row_year, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({
-                        "id": id,
-                        "price_per_sqm": price,
-                        "address": address,
-                        "land_use": land_use,
-                        "year": row_year,
-                    }),
-                )
-            })
-            .collect();
+        let mut features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         let truncated = features.len() > limit as usize;
         if truncated {

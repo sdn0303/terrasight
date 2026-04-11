@@ -2,13 +2,140 @@ use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
 use realestate_geo_math::spatial::{bbox_area_deg2, compute_feature_limit};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
 use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
 use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
+
+#[derive(Debug, FromRow)]
+struct LandPriceLayerRow {
+    id: i64,
+    price_per_sqm: i32,
+    address: String,
+    land_use: Option<String>,
+    year: i32,
+    geometry: serde_json::Value,
+}
+
+impl From<LandPriceLayerRow> for GeoFeature {
+    fn from(row: LandPriceLayerRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({
+                "id": row.id,
+                "price_per_sqm": row.price_per_sqm,
+                "address": row.address,
+                "land_use": row.land_use,
+                "year": row.year,
+            }),
+        )
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct ZoningLayerRow {
+    id: i64,
+    zone_type: String,
+    zone_code: Option<String>,
+    floor_area_ratio: Option<f32>,
+    building_coverage: Option<f32>,
+    geometry: serde_json::Value,
+}
+
+impl From<ZoningLayerRow> for GeoFeature {
+    fn from(row: ZoningLayerRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({
+                "id": row.id,
+                "zone_type": row.zone_type,
+                "zone_code": row.zone_code,
+                "floor_area_ratio": row.floor_area_ratio,
+                "building_coverage": row.building_coverage,
+            }),
+        )
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct FloodRiskRow {
+    id: i64,
+    depth_rank: Option<i16>,
+    river_name: Option<String>,
+    geometry: serde_json::Value,
+}
+
+impl From<FloodRiskRow> for GeoFeature {
+    fn from(row: FloodRiskRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({
+                "id": row.id,
+                "depth_rank": row.depth_rank,
+                "river_name": row.river_name,
+            }),
+        )
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct SteepSlopeRow {
+    id: i64,
+    area_name: Option<String>,
+    geometry: serde_json::Value,
+}
+
+impl From<SteepSlopeRow> for GeoFeature {
+    fn from(row: SteepSlopeRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({ "id": row.id, "area_name": row.area_name }),
+        )
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct SchoolRow {
+    id: i64,
+    name: String,
+    school_type: Option<String>,
+    geometry: serde_json::Value,
+}
+
+impl From<SchoolRow> for GeoFeature {
+    fn from(row: SchoolRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({ "id": row.id, "name": row.name, "school_type": row.school_type }),
+        )
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct MedicalFacilityRow {
+    id: i64,
+    name: String,
+    facility_type: Option<String>,
+    bed_count: Option<i32>,
+    geometry: serde_json::Value,
+}
+
+impl From<MedicalFacilityRow> for GeoFeature {
+    fn from(row: MedicalFacilityRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({
+                "id": row.id,
+                "name": row.name,
+                "facility_type": row.facility_type,
+                "bed_count": row.bed_count,
+            }),
+        )
+    }
+}
 
 pub struct PgAreaRepository {
     pool: PgPool,
@@ -59,7 +186,7 @@ impl PgAreaRepository {
     async fn query_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("landprice", area, zoom);
-        let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
+        let query = sqlx::query_as::<_, LandPriceLayerRow>(
             r#"
             SELECT id, price_per_sqm, address, land_use, year,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -75,21 +202,7 @@ impl PgAreaRepository {
             .map_err(map_db_err)?;
         tracing::debug!(row_count = rows.len(), limit, "land_prices fetched");
 
-        let features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, price, address, land_use, year, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({
-                        "id": id,
-                        "price_per_sqm": price,
-                        "address": address,
-                        "land_use": land_use,
-                        "year": year,
-                    }),
-                )
-            })
-            .collect();
+        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
     }
@@ -97,17 +210,7 @@ impl PgAreaRepository {
     async fn query_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("zoning", area, zoom);
-        let query = sqlx::query_as::<
-            _,
-            (
-                i64,
-                String,
-                Option<String>,
-                Option<f32>,
-                Option<f32>,
-                serde_json::Value,
-            ),
-        >(
+        let query = sqlx::query_as::<_, ZoningLayerRow>(
             r#"
             SELECT id, zone_type, zone_code, floor_area_ratio, building_coverage,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -123,21 +226,7 @@ impl PgAreaRepository {
             .map_err(map_db_err)?;
         tracing::debug!(row_count = rows.len(), limit, "zoning fetched");
 
-        let features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, zone_type, zone_code, far, bc, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({
-                        "id": id,
-                        "zone_type": zone_type,
-                        "zone_code": zone_code,
-                        "floor_area_ratio": far,
-                        "building_coverage": bc,
-                    }),
-                )
-            })
-            .collect();
+        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
     }
@@ -145,7 +234,7 @@ impl PgAreaRepository {
     async fn query_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("flood", area, zoom);
-        let query = sqlx::query_as::<_, (i64, Option<i16>, Option<String>, serde_json::Value)>(
+        let query = sqlx::query_as::<_, FloodRiskRow>(
             r#"
             SELECT id, depth_rank, river_name,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -161,19 +250,7 @@ impl PgAreaRepository {
             .map_err(map_db_err)?;
         tracing::debug!(row_count = rows.len(), limit, "flood_risk fetched");
 
-        let features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, depth_rank, river_name, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({
-                        "id": id,
-                        "depth_rank": depth_rank,
-                        "river_name": river_name,
-                    }),
-                )
-            })
-            .collect();
+        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
     }
@@ -181,7 +258,7 @@ impl PgAreaRepository {
     async fn query_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("steep_slope", area, zoom);
-        let query = sqlx::query_as::<_, (i64, Option<String>, serde_json::Value)>(
+        let query = sqlx::query_as::<_, SteepSlopeRow>(
             r#"
             SELECT id, area_name,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -197,12 +274,7 @@ impl PgAreaRepository {
             .map_err(map_db_err)?;
         tracing::debug!(row_count = rows.len(), limit, "steep_slope fetched");
 
-        let features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, area_name, geom)| {
-                to_geo_feature(geom, json!({ "id": id, "area_name": area_name }))
-            })
-            .collect();
+        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
     }
@@ -210,7 +282,7 @@ impl PgAreaRepository {
     async fn query_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("schools", area, zoom);
-        let query = sqlx::query_as::<_, (i64, String, Option<String>, serde_json::Value)>(
+        let query = sqlx::query_as::<_, SchoolRow>(
             r#"
             SELECT id, name, school_type,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
@@ -226,15 +298,7 @@ impl PgAreaRepository {
             .map_err(map_db_err)?;
         tracing::debug!(row_count = rows.len(), limit, "schools fetched");
 
-        let features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, name, school_type, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({ "id": id, "name": name, "school_type": school_type }),
-                )
-            })
-            .collect();
+        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
     }
@@ -242,16 +306,15 @@ impl PgAreaRepository {
     async fn query_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("medical", area, zoom);
-        let query =
-            sqlx::query_as::<_, (i64, String, Option<String>, Option<i32>, serde_json::Value)>(
-                r#"
+        let query = sqlx::query_as::<_, MedicalFacilityRow>(
+            r#"
             SELECT id, name, facility_type, bed_count,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM medical_facilities
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
             LIMIT $5
             "#,
-            );
+        );
         let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
             .bind(limit + 1)
             .fetch_all(&self.pool)
@@ -259,20 +322,7 @@ impl PgAreaRepository {
             .map_err(map_db_err)?;
         tracing::debug!(row_count = rows.len(), limit, "medical_facilities fetched");
 
-        let features: Vec<GeoFeature> = rows
-            .into_iter()
-            .map(|(id, name, facility_type, bed_count, geom)| {
-                to_geo_feature(
-                    geom,
-                    json!({
-                        "id": id,
-                        "name": name,
-                        "facility_type": facility_type,
-                        "bed_count": bed_count,
-                    }),
-                )
-            })
-            .collect();
+        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
     }
