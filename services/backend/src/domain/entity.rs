@@ -1,4 +1,5 @@
 use crate::domain::error::DomainError;
+use crate::domain::value_object::{Coord, OpportunitySignal, RiskLevel, TlsScore, Year};
 
 /// Human-readable name for an administrative area.
 ///
@@ -311,6 +312,43 @@ pub struct AdminAreaStats {
     pub land_price: LandPriceStats,
     pub risk: RiskStats,
     pub facilities: FacilityStats,
+}
+
+/// Raw land-price record sourced from the repository layer before TLS
+/// enrichment. Mirrors the columns selected by
+/// `LandPriceRepository::find_for_opportunities`.
+#[derive(Debug, Clone)]
+pub struct OpportunityRecord {
+    pub id: i64,
+    pub coord: Coord,
+    pub address: Address,
+    pub zone: ZoneCode,
+    pub building_coverage_ratio: BuildingCoverageRatio,
+    pub floor_area_ratio: FloorAreaRatio,
+    pub price_per_sqm: PricePerSqm,
+    pub year: Year,
+}
+
+/// Nearest-station metadata attached to an [`Opportunity`] when available.
+#[derive(Debug, Clone)]
+pub struct StationHint {
+    pub name: AreaName,
+    pub distance: Meters,
+}
+
+/// TLS-enriched opportunity returned by `GetOpportunitiesUsecase`.
+///
+/// Composed from an [`OpportunityRecord`] plus the scoring pipeline output
+/// ([`TlsScore`], [`RiskLevel`], [`OpportunitySignal`]) and an optional
+/// 5-year trend percentage.
+#[derive(Debug, Clone)]
+pub struct Opportunity {
+    pub record: OpportunityRecord,
+    pub tls: TlsScore,
+    pub risk: RiskLevel,
+    pub signal: OpportunitySignal,
+    pub trend_pct: Percent,
+    pub station: Option<StationHint>,
 }
 
 #[cfg(test)]
