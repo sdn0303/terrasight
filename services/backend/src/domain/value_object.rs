@@ -186,6 +186,110 @@ impl YearsLookback {
     }
 }
 
+/// TLS (Total Location Score) clamped to `0..=100` and stored as `u8`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TlsScore(u8);
+
+impl TlsScore {
+    /// Construct a `TlsScore` from a raw `f64`, clamping to `[0, 100]`.
+    ///
+    /// `NaN` is mapped to `0` (infallible fallback for defensive callers).
+    pub fn from_f64_clamped(value: f64) -> Self {
+        if value.is_nan() {
+            return Self(0);
+        }
+        Self(value.clamp(0.0, 100.0) as u8)
+    }
+
+    pub fn value(self) -> u8 {
+        self.0
+    }
+}
+
+/// Risk level bucket derived from the S1 Disaster sub-score.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RiskLevel {
+    Low,
+    Mid,
+    High,
+}
+
+impl RiskLevel {
+    /// Parse the REST API query string value (`"low" | "mid" | "high"`).
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        match s {
+            "low" => Ok(Self::Low),
+            "mid" => Ok(Self::Mid),
+            "high" => Ok(Self::High),
+            other => Err(DomainError::Validation(format!(
+                "risk_max must be one of low|mid|high, got {other:?}"
+            ))),
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Low => "low",
+            Self::Mid => "mid",
+            Self::High => "high",
+        }
+    }
+
+    /// Derive a `RiskLevel` from a raw S1 disaster sub-score (higher = safer).
+    pub fn from_disaster_score(score: f64) -> Self {
+        use crate::domain::scoring::constants::{
+            DISASTER_SCORE_LOW_THRESHOLD, DISASTER_SCORE_MID_THRESHOLD,
+        };
+        if score >= DISASTER_SCORE_LOW_THRESHOLD {
+            Self::Low
+        } else if score >= DISASTER_SCORE_MID_THRESHOLD {
+            Self::Mid
+        } else {
+            Self::High
+        }
+    }
+}
+
+/// Opportunity signal bucket: `Hot | Warm | Neutral | Cold`.
+///
+/// Derived from the combination of TLS score and risk level. See
+/// [`OpportunitySignal::derive`] for the exact mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OpportunitySignal {
+    Hot,
+    Warm,
+    Neutral,
+    Cold,
+}
+
+impl OpportunitySignal {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Hot => "hot",
+            Self::Warm => "warm",
+            Self::Neutral => "neutral",
+            Self::Cold => "cold",
+        }
+    }
+
+    /// Derive a signal from a TLS score and risk level.
+    ///
+    /// High-risk locations are never classified as hotter than `Neutral`,
+    /// regardless of TLS score.
+    pub fn derive(tls: TlsScore, risk: RiskLevel) -> Self {
+        use crate::domain::scoring::constants::{
+            SIGNAL_HOT_MIN_TLS, SIGNAL_NEUTRAL_MIN_TLS, SIGNAL_WARM_MIN_TLS,
+        };
+        let score = tls.value();
+        match (score, risk) {
+            (s, RiskLevel::Low) if s >= SIGNAL_HOT_MIN_TLS => Self::Hot,
+            (s, RiskLevel::Low | RiskLevel::Mid) if s >= SIGNAL_WARM_MIN_TLS => Self::Warm,
+            (s, _) if s >= SIGNAL_NEUTRAL_MIN_TLS => Self::Neutral,
+            _ => Self::Cold,
+        }
+    }
+}
+
 /// Administrative area code.
 ///
 /// Accepts a 2-digit prefecture code (e.g. "13" for Tokyo) or a 5-digit
@@ -366,6 +470,69 @@ mod tests {
         assert_eq!(YearsLookback::clamped(5).value(), 5);
         assert_eq!(YearsLookback::clamped(100).value(), TREND_MAX_YEARS);
         assert_eq!(YearsLookback::DEFAULT.value(), TREND_DEFAULT_YEARS);
+    }
+
+    #[test]
+    fn tls_score_clamps_and_handles_nan() {
+        assert_eq!(TlsScore::from_f64_clamped(-10.0).value(), 0);
+        assert_eq!(TlsScore::from_f64_clamped(0.0).value(), 0);
+        assert_eq!(TlsScore::from_f64_clamped(50.7).value(), 50);
+        assert_eq!(TlsScore::from_f64_clamped(100.0).value(), 100);
+        assert_eq!(TlsScore::from_f64_clamped(150.0).value(), 100);
+        assert_eq!(TlsScore::from_f64_clamped(f64::NAN).value(), 0);
+    }
+
+    #[test]
+    fn risk_level_parse_and_display() {
+        assert_eq!(RiskLevel::parse("low").unwrap(), RiskLevel::Low);
+        assert_eq!(RiskLevel::parse("mid").unwrap(), RiskLevel::Mid);
+        assert_eq!(RiskLevel::parse("high").unwrap(), RiskLevel::High);
+        assert!(RiskLevel::parse("bad").is_err());
+        assert_eq!(RiskLevel::Low.as_str(), "low");
+        assert_eq!(RiskLevel::High.as_str(), "high");
+    }
+
+    #[test]
+    fn risk_level_from_disaster_score() {
+        assert_eq!(RiskLevel::from_disaster_score(80.0), RiskLevel::Low);
+        assert_eq!(RiskLevel::from_disaster_score(75.0), RiskLevel::Low);
+        assert_eq!(RiskLevel::from_disaster_score(60.0), RiskLevel::Mid);
+        assert_eq!(RiskLevel::from_disaster_score(50.0), RiskLevel::Mid);
+        assert_eq!(RiskLevel::from_disaster_score(30.0), RiskLevel::High);
+    }
+
+    #[test]
+    fn opportunity_signal_derive_table() {
+        let tls = |v: u8| TlsScore(v);
+        // Hot: low risk + TLS ≥ 80
+        assert_eq!(
+            OpportunitySignal::derive(tls(85), RiskLevel::Low),
+            OpportunitySignal::Hot
+        );
+        // High TLS but risk is high → Neutral
+        assert_eq!(
+            OpportunitySignal::derive(tls(90), RiskLevel::High),
+            OpportunitySignal::Neutral
+        );
+        // Warm: low/mid risk + TLS ≥ 65
+        assert_eq!(
+            OpportunitySignal::derive(tls(70), RiskLevel::Low),
+            OpportunitySignal::Warm
+        );
+        assert_eq!(
+            OpportunitySignal::derive(tls(65), RiskLevel::Mid),
+            OpportunitySignal::Warm
+        );
+        // Neutral: TLS ≥ 50 (any risk)
+        assert_eq!(
+            OpportunitySignal::derive(tls(55), RiskLevel::High),
+            OpportunitySignal::Neutral
+        );
+        // Cold: TLS < 50
+        assert_eq!(
+            OpportunitySignal::derive(tls(40), RiskLevel::Low),
+            OpportunitySignal::Cold
+        );
     }
 
     #[test]
