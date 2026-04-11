@@ -1,6 +1,5 @@
 "use client";
 
-import { Popup } from "react-map-gl/maplibre";
 import { FinderPanel } from "@/components/finder/finder-panel";
 import { CompareTab } from "@/components/insight/compare-tab";
 import { InfraTab } from "@/components/insight/infra-tab";
@@ -14,12 +13,10 @@ import { MapCanvasFrame } from "@/components/layout/map-canvas-frame";
 import { SidebarRail } from "@/components/layout/sidebar-rail";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
-import { PopupCard } from "@/components/map/popup-card";
 import { OpportunitiesSheet } from "@/components/opportunities/opportunities-sheet";
 import { ThemesPanel } from "@/components/theme/themes-panel";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
-import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
@@ -108,22 +105,6 @@ export default function Home() {
             setLandPriceYear={page.setLandPriceYear}
             landPriceFeatureCount={page.landPriceData.features.length}
           />
-          {page.selectedFeature && page.selectedLayerConfig?.popupFields && (
-            <Popup
-              longitude={page.selectedFeature.coordinates[0]}
-              latitude={page.selectedFeature.coordinates[1]}
-              anchor="bottom"
-              closeOnClick={false}
-              onClose={() => useMapStore.getState().selectFeature(null)}
-              className="spatial-popup"
-            >
-              <PopupCard
-                layerNameJa={page.selectedLayerConfig.nameJa}
-                fields={page.selectedLayerConfig.popupFields}
-                properties={page.selectedFeature.properties}
-              />
-            </Popup>
-          )}
         </MapView>
         {page.isZoomTooLow && (
           <div
@@ -178,22 +159,6 @@ export default function Home() {
         onTabChange={setActiveTab}
       />
 
-      <style>{`
-        .spatial-popup .maplibregl-popup-content {
-          background: transparent;
-          padding: 0;
-          box-shadow: none;
-        }
-        .spatial-popup .maplibregl-popup-tip {
-          border-top-color: var(--bg-secondary);
-        }
-        .spatial-popup .maplibregl-popup-close-button {
-          color: var(--text-muted);
-          font-size: 16px;
-          right: 4px;
-          top: 2px;
-        }
-      `}</style>
     </MapCanvasFrame>
   );
 }
