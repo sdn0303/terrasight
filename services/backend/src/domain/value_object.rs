@@ -132,6 +132,60 @@ impl Year {
     }
 }
 
+/// Map zoom level clamped to the MapLibre valid range `[0, 22]`.
+///
+/// `ZoomLevel::DEFAULT` (= 14, street level) is the fallback when the client
+/// omits the parameter. Stored as `u8` for compactness.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ZoomLevel(u8);
+
+impl ZoomLevel {
+    /// Default zoom level (street level).
+    pub const DEFAULT: Self = Self(14);
+    /// Minimum valid zoom level (entire world).
+    pub const MIN: u8 = 0;
+    /// Maximum valid zoom level (maximum MapLibre detail).
+    pub const MAX: u8 = 22;
+
+    /// Clamp a raw `u32` zoom value into `[MIN, MAX]`.
+    ///
+    /// This constructor is infallible — out-of-range values are saturated to
+    /// the nearest bound. Callers never see a `Result`.
+    pub fn clamped(value: u32) -> Self {
+        Self(value.clamp(Self::MIN as u32, Self::MAX as u32) as u8)
+    }
+
+    /// Return the zoom level as a `u32` for use with legacy APIs.
+    pub fn get(self) -> u32 {
+        self.0 as u32
+    }
+}
+
+/// Trend lookback window in years.
+///
+/// Clamped to `[TREND_MIN_YEARS, TREND_MAX_YEARS]` via [`YearsLookback::clamped`].
+/// `YearsLookback::DEFAULT` matches [`TREND_DEFAULT_YEARS`](crate::domain::constants::TREND_DEFAULT_YEARS).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct YearsLookback(i32);
+
+impl YearsLookback {
+    /// Default lookback window.
+    pub const DEFAULT: Self = Self(crate::domain::constants::TREND_DEFAULT_YEARS);
+
+    /// Clamp a raw `i32` year count into `[TREND_MIN_YEARS, TREND_MAX_YEARS]`.
+    pub fn clamped(value: i32) -> Self {
+        Self(value.clamp(
+            crate::domain::constants::TREND_MIN_YEARS,
+            crate::domain::constants::TREND_MAX_YEARS,
+        ))
+    }
+
+    /// Return the inner `i32` value.
+    pub fn value(self) -> i32 {
+        self.0
+    }
+}
+
 /// Map layer type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LayerType {
@@ -249,6 +303,24 @@ mod tests {
         assert_eq!(y.value(), 2023);
         assert!(Year::new(2000).is_ok());
         assert!(Year::new(2100).is_ok());
+    }
+
+    #[test]
+    fn zoom_level_clamps_to_valid_range() {
+        assert_eq!(ZoomLevel::clamped(0).get(), 0);
+        assert_eq!(ZoomLevel::clamped(14).get(), 14);
+        assert_eq!(ZoomLevel::clamped(22).get(), 22);
+        assert_eq!(ZoomLevel::clamped(100).get(), 22);
+        assert_eq!(ZoomLevel::DEFAULT.get(), 14);
+    }
+
+    #[test]
+    fn years_lookback_clamps_to_valid_range() {
+        use crate::domain::constants::{TREND_DEFAULT_YEARS, TREND_MAX_YEARS, TREND_MIN_YEARS};
+        assert_eq!(YearsLookback::clamped(0).value(), TREND_MIN_YEARS);
+        assert_eq!(YearsLookback::clamped(5).value(), 5);
+        assert_eq!(YearsLookback::clamped(100).value(), TREND_MAX_YEARS);
+        assert_eq!(YearsLookback::DEFAULT.value(), TREND_DEFAULT_YEARS);
     }
 
     #[test]
