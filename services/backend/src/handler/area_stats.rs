@@ -4,23 +4,11 @@ use axum::{
     Json,
     extract::{Query, State},
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use crate::domain::error::DomainError;
-use crate::domain::value_object::AreaCode;
 use crate::handler::error::AppError;
+use crate::handler::request::AreaStatsQuery;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
-
-#[derive(Debug, Deserialize)]
-pub struct AreaStatsQuery {
-    pub code: String,
-}
-
-impl AreaStatsQuery {
-    pub fn into_domain(self) -> Result<AreaCode, DomainError> {
-        AreaCode::parse(&self.code)
-    }
-}
 
 /// Response for `GET /api/area-stats`.
 #[derive(Debug, Serialize)]
