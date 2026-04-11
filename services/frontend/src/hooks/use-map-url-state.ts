@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  parseAsArrayOf,
   parseAsFloat,
   parseAsInteger,
   parseAsString,
@@ -9,10 +10,26 @@ import {
 } from "nuqs";
 import { useEffect, useRef } from "react";
 import { MAP_CONFIG } from "@/lib/constants";
+import {
+  clampInt,
+  PRICE_RANGE,
+  STATION_MAX_RANGE,
+  TLS_MIN_RANGE,
+  TOKYO_23_WARDS,
+  ZONE_OPTIONS,
+} from "@/lib/filter-constants";
 import type { ThemeId } from "@/lib/themes";
 import { THEMES } from "@/lib/themes";
+import {
+  type RiskLevel,
+  useFilterStore,
+  type WeightPreset,
+} from "@/stores/filter-store";
 import { useMapStore } from "@/stores/map-store";
 import { type DrawerTab, useUIStore } from "@/stores/ui-store";
+
+const ALLOWED_ZONES: ReadonlySet<string> = new Set(ZONE_OPTIONS);
+const ALLOWED_WARDS: ReadonlySet<string> = new Set(TOKYO_23_WARDS);
 
 const DRAWER_TABS = [
   "intel",
@@ -37,6 +54,21 @@ const mapParams = {
   cp: parseAsString.withDefault(""),
   // Insight drawer tab (Phase 2a)
   tab: parseAsStringLiteral(DRAWER_TABS).withDefault("intel"),
+  // Finder / filter params (Phase 3)
+  tlsMin: parseAsInteger,
+  riskMax: parseAsStringLiteral(["low", "mid", "high"] as const),
+  zones: parseAsArrayOf(parseAsString),
+  stationMax: parseAsInteger,
+  priceMin: parseAsInteger,
+  priceMax: parseAsInteger,
+  preset: parseAsStringLiteral([
+    "balance",
+    "investment",
+    "residential",
+    "disaster",
+  ] as const),
+  cities: parseAsArrayOf(parseAsString),
+  panel: parseAsStringLiteral(["finder", "layers", "themes"] as const),
 };
 
 export interface ParsedComparePoint {
@@ -58,6 +90,95 @@ export function isValidCoordinate(
     Math.abs(lat) <= 90 &&
     Math.abs(lng) <= 180
   );
+}
+
+export interface RawFilterUrlParams {
+  tlsMin: number | null;
+  riskMax: RiskLevel | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  zones: string[] | null;
+  stationMax: number | null;
+  preset: WeightPreset | null;
+  cities: string[] | null;
+}
+
+export interface NormalizedFilterUrlParams {
+  criteria?: {
+    tlsMin: number;
+    riskMax: RiskLevel;
+    priceRange: [number, number];
+  };
+  zones?: string[];
+  stationMax?: number;
+  preset?: WeightPreset;
+  cities?: string[];
+}
+
+/**
+ * Normalize filter URL params into a store-ready shape.
+ *
+ * URL values are untrusted: users can hand-craft any integer, type unknown
+ * zone/ward strings, or invert the price range. This helper clamps numeric
+ * ranges to supported bounds, swaps `priceMin`/`priceMax` if inverted,
+ * filters zones/cities against allow-lists, and drops entire sections when
+ * all inputs are null or unknown so the caller does not touch the store for
+ * empty sections.
+ *
+ * Pure (no store mutation) so it can be unit-tested in isolation.
+ */
+export function normalizeFilterUrlParams(
+  params: RawFilterUrlParams,
+): NormalizedFilterUrlParams {
+  const result: NormalizedFilterUrlParams = {};
+
+  // Criteria are grouped because the store setter takes one merged payload.
+  if (
+    params.tlsMin !== null ||
+    params.riskMax !== null ||
+    params.priceMin !== null ||
+    params.priceMax !== null
+  ) {
+    const tlsMin =
+      params.tlsMin !== null
+        ? clampInt(params.tlsMin, TLS_MIN_RANGE.min, TLS_MIN_RANGE.max)
+        : TLS_MIN_RANGE.min;
+    const riskMax: RiskLevel = params.riskMax ?? "high";
+    const rawMin =
+      params.priceMin !== null
+        ? clampInt(params.priceMin, PRICE_RANGE.min, PRICE_RANGE.max)
+        : PRICE_RANGE.min;
+    const rawMax =
+      params.priceMax !== null
+        ? clampInt(params.priceMax, PRICE_RANGE.min, PRICE_RANGE.max)
+        : PRICE_RANGE.max;
+    // Swap if inverted so the store invariant priceRange[0] <= priceRange[1] holds.
+    const priceRange: [number, number] =
+      rawMin <= rawMax ? [rawMin, rawMax] : [rawMax, rawMin];
+    result.criteria = { tlsMin, riskMax, priceRange };
+  }
+
+  if (params.zones !== null) {
+    const filtered = params.zones.filter((z) => ALLOWED_ZONES.has(z));
+    if (filtered.length > 0) result.zones = filtered;
+  }
+
+  if (params.stationMax !== null) {
+    result.stationMax = clampInt(
+      params.stationMax,
+      STATION_MAX_RANGE.min,
+      STATION_MAX_RANGE.max,
+    );
+  }
+
+  if (params.preset !== null) result.preset = params.preset;
+
+  if (params.cities !== null) {
+    const filtered = params.cities.filter((c) => ALLOWED_WARDS.has(c));
+    if (filtered.length > 0) result.cities = filtered;
+  }
+
+  return result;
 }
 
 /**
@@ -93,7 +214,18 @@ export function useMapUrlState() {
   const insight = useUIStore((s) => s.insight);
   const activeTab = useUIStore((s) => s.activeTab);
 
+  // Subscribe to filter-store slices so the sync effect re-runs on changes.
+  // We call getState().toQueryParams() inside the effect body to get a fresh
+  // snapshot; subscribing to these slices ensures re-runs because Zustand
+  // produces a new object reference on each setArea/setCriteria/setZoning/setPreset.
+  const filterArea = useFilterStore((s) => s.area);
+  const filterCriteria = useFilterStore((s) => s.criteria);
+  const filterZoning = useFilterStore((s) => s.zoning);
+  const filterPreset = useFilterStore((s) => s.preset);
+  const leftPanel = useUIStore((s) => s.leftPanel);
+
   // On mount: restore map state from URL
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once pattern intentionally reads URL params at init time
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -160,12 +292,41 @@ export function useMapUrlState() {
     for (const pt of comparePoints) {
       useUIStore.getState().addComparePoint(pt);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Restore filter state from URL (Phase 3). Normalize first so that
+    // out-of-bounds, NaN, inverted, or unknown values are clamped/dropped
+    // before we touch the store.
+    const normalized = normalizeFilterUrlParams({
+      tlsMin: params.tlsMin,
+      riskMax: params.riskMax,
+      priceMin: params.priceMin,
+      priceMax: params.priceMax,
+      zones: params.zones,
+      stationMax: params.stationMax,
+      preset: params.preset,
+      cities: params.cities,
+    });
+    const filterStore = useFilterStore.getState();
+    if (normalized.criteria) filterStore.setCriteria(normalized.criteria);
+    if (normalized.zones) filterStore.setZoning({ zones: normalized.zones });
+    if (normalized.stationMax !== undefined) {
+      filterStore.setZoning({ stationMaxDistanceM: normalized.stationMax });
+    }
+    if (normalized.preset) filterStore.setPreset(normalized.preset);
+    if (normalized.cities) filterStore.setArea({ cities: normalized.cities });
+    if (params.panel !== null) {
+      useUIStore.getState().setLeftPanel(params.panel);
+    }
   }, []);
 
   // Sync store → URL on state change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filterArea/Criteria/Zoning/Preset trigger re-runs; toQueryParams() is called via getState() inside the body
   useEffect(() => {
     if (!initialized.current) return;
+    // Compute fresh filter params from getState(); the selectors above
+    // (filterArea, filterCriteria, filterZoning, filterPreset) ensure this
+    // effect re-runs whenever filter state changes by reference.
+    const filterParams = useFilterStore.getState().toQueryParams();
     setParams({
       lat: Math.round(viewState.latitude * 10000) / 10000,
       lng: Math.round(viewState.longitude * 10000) / 10000,
@@ -188,6 +349,39 @@ export function useMapUrlState() {
           ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
           : "",
       tab: activeTab,
+      // Phase 3: filter params
+      tlsMin:
+        filterParams.tls_min !== undefined
+          ? Number(filterParams.tls_min)
+          : null,
+      riskMax:
+        (filterParams.risk_max as "low" | "mid" | "high" | undefined) ?? null,
+      zones:
+        filterParams.zones !== undefined ? filterParams.zones.split(",") : null,
+      stationMax:
+        filterParams.station_max !== undefined
+          ? Number(filterParams.station_max)
+          : null,
+      priceMin:
+        filterParams.price_min !== undefined
+          ? Number(filterParams.price_min)
+          : null,
+      priceMax:
+        filterParams.price_max !== undefined
+          ? Number(filterParams.price_max)
+          : null,
+      preset:
+        (filterParams.preset as
+          | "balance"
+          | "investment"
+          | "residential"
+          | "disaster"
+          | undefined) ?? null,
+      cities:
+        filterParams.cities !== undefined
+          ? filterParams.cities.split(",")
+          : null,
+      panel: leftPanel,
     });
   }, [
     viewState,
@@ -197,6 +391,11 @@ export function useMapUrlState() {
     comparePoints,
     insight,
     activeTab,
+    filterArea,
+    filterCriteria,
+    filterZoning,
+    filterPreset,
+    leftPanel,
     setParams,
   ]);
 }

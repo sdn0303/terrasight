@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   isValidCoordinate,
+  normalizeFilterUrlParams,
   parseComparePointsParam,
+  type RawFilterUrlParams,
 } from "@/hooks/use-map-url-state";
 import type { ThemeId } from "@/lib/themes";
 import { THEMES } from "@/lib/themes";
@@ -109,6 +111,135 @@ describe("parseComparePointsParam", () => {
   it("ignores empty entries from trailing/leading/double pipes", () => {
     const pts = parseComparePointsParam("|35.681,139.767,A||35.69,139.77,B|");
     expect(pts).toHaveLength(2);
+  });
+});
+
+describe("normalizeFilterUrlParams", () => {
+  const empty: RawFilterUrlParams = {
+    tlsMin: null,
+    riskMax: null,
+    priceMin: null,
+    priceMax: null,
+    zones: null,
+    stationMax: null,
+    preset: null,
+    cities: null,
+  };
+
+  it("returns empty object when all params are null", () => {
+    expect(normalizeFilterUrlParams(empty)).toEqual({});
+  });
+
+  it("clamps tlsMin into [0, 100]", () => {
+    expect(normalizeFilterUrlParams({ ...empty, tlsMin: 999 })).toEqual({
+      criteria: { tlsMin: 100, riskMax: "high", priceRange: [0, 10_000_000] },
+    });
+    expect(normalizeFilterUrlParams({ ...empty, tlsMin: -5 })).toEqual({
+      criteria: { tlsMin: 0, riskMax: "high", priceRange: [0, 10_000_000] },
+    });
+  });
+
+  it("clamps stationMax into [100, 2000]", () => {
+    expect(normalizeFilterUrlParams({ ...empty, stationMax: 50 })).toEqual({
+      stationMax: 100,
+    });
+    expect(normalizeFilterUrlParams({ ...empty, stationMax: 9999 })).toEqual({
+      stationMax: 2000,
+    });
+  });
+
+  it("swaps priceMin/priceMax when inverted", () => {
+    expect(
+      normalizeFilterUrlParams({
+        ...empty,
+        priceMin: 5_000_000,
+        priceMax: 1_000_000,
+      }),
+    ).toEqual({
+      criteria: {
+        tlsMin: 0,
+        riskMax: "high",
+        priceRange: [1_000_000, 5_000_000],
+      },
+    });
+  });
+
+  it("clamps price values into [0, 10_000_000]", () => {
+    expect(
+      normalizeFilterUrlParams({
+        ...empty,
+        priceMin: -100,
+        priceMax: 50_000_000,
+      }),
+    ).toEqual({
+      criteria: {
+        tlsMin: 0,
+        riskMax: "high",
+        priceRange: [0, 10_000_000],
+      },
+    });
+  });
+
+  it("filters unknown zones out", () => {
+    expect(
+      normalizeFilterUrlParams({
+        ...empty,
+        zones: ["商業", "unknown", "住居"],
+      }),
+    ).toEqual({ zones: ["商業", "住居"] });
+  });
+
+  it("drops zones entry when every value is unknown", () => {
+    expect(normalizeFilterUrlParams({ ...empty, zones: ["unknown"] })).toEqual(
+      {},
+    );
+  });
+
+  it("filters cities to known Tokyo 23 wards", () => {
+    expect(
+      normalizeFilterUrlParams({
+        ...empty,
+        cities: ["渋谷区", "大阪市", "新宿区"],
+      }),
+    ).toEqual({ cities: ["渋谷区", "新宿区"] });
+  });
+
+  it("replaces NaN numeric values with the range minimum", () => {
+    expect(
+      normalizeFilterUrlParams({
+        ...empty,
+        tlsMin: Number.NaN,
+        stationMax: Number.NaN,
+      }),
+    ).toEqual({
+      criteria: { tlsMin: 0, riskMax: "high", priceRange: [0, 10_000_000] },
+      stationMax: 100,
+    });
+  });
+
+  it("passes valid values through unchanged", () => {
+    expect(
+      normalizeFilterUrlParams({
+        tlsMin: 60,
+        riskMax: "mid",
+        priceMin: 1_000_000,
+        priceMax: 5_000_000,
+        zones: ["商業", "近商"],
+        stationMax: 800,
+        preset: "investment",
+        cities: ["渋谷区", "港区"],
+      }),
+    ).toEqual({
+      criteria: {
+        tlsMin: 60,
+        riskMax: "mid",
+        priceRange: [1_000_000, 5_000_000],
+      },
+      zones: ["商業", "近商"],
+      stationMax: 800,
+      preset: "investment",
+      cities: ["渋谷区", "港区"],
+    });
   });
 });
 
