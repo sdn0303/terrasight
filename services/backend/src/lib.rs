@@ -39,6 +39,10 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
             "/api/v1/land-prices/all-years",
             get(handler::land_price_by_year_range::get_land_prices_by_year_range),
         )
+        .route(
+            "/api/v1/opportunities",
+            get(handler::opportunities::get_opportunities),
+        )
         .route("/api/score", get(handler::score::get_score))
         .route("/api/stats", get(handler::stats::get_stats))
         .route("/api/trend", get(handler::trend::get_trend))

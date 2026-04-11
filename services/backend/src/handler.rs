@@ -4,6 +4,7 @@ pub mod error;
 pub mod health;
 pub mod land_price;
 pub mod land_price_by_year_range;
+pub mod opportunities;
 pub mod request;
 pub mod response;
 pub mod score;

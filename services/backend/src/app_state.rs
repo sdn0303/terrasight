@@ -6,6 +6,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::domain::reinfolib::ReinfolibDataSource;
+use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::infra::pg_admin_area_stats_repository::PgAdminAreaStatsRepository;
 use crate::infra::pg_area_repository::PgAreaRepository;
 use crate::infra::pg_health_repository::PgHealthRepository;
@@ -20,6 +21,7 @@ use crate::usecase::get_area_data::GetAreaDataUsecase;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 use crate::usecase::get_land_prices::GetLandPricesUsecase;
 use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
+use crate::usecase::get_opportunities::GetOpportunitiesUsecase;
 use crate::usecase::get_stats::GetStatsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
 
@@ -41,6 +43,7 @@ pub struct AppState {
     pub area_stats: Arc<GetAreaStatsUsecase>,
     pub land_prices: Arc<GetLandPricesUsecase>,
     pub land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
+    pub opportunities: Arc<GetOpportunitiesUsecase>,
     pub score: Arc<ComputeTlsUsecase>,
     pub stats: Arc<GetStatsUsecase>,
     pub trend: Arc<GetTrendUsecase>,
@@ -79,6 +82,24 @@ impl AppState {
             }
         };
 
+        // Shared across usecases: the TLS usecase is reused for both the
+        // `/api/score` single-point endpoint and the `/api/v1/opportunities`
+        // batch pipeline.
+        let score = Arc::new(ComputeTlsUsecase::new(
+            Arc::new(PgTlsRepository::new(pool.clone())),
+            jshis,
+        ));
+        let land_price_repo = Arc::new(PgLandPriceRepository::new(pool.clone()));
+        let trend_repo = Arc::new(PgTrendRepository::new(pool.clone()));
+        let opportunities_cache = Arc::new(OpportunitiesCache::new());
+
+        let opportunities = Arc::new(GetOpportunitiesUsecase::new(
+            land_price_repo.clone(),
+            trend_repo.clone(),
+            score.clone(),
+            opportunities_cache,
+        ));
+
         Self {
             health: Arc::new(CheckHealthUsecase::new(
                 Arc::new(PgHealthRepository::new(pool.clone())),
@@ -90,20 +111,16 @@ impl AppState {
             area_stats: Arc::new(GetAreaStatsUsecase::new(Arc::new(
                 PgAdminAreaStatsRepository::new(pool.clone()),
             ))),
-            land_prices: Arc::new(GetLandPricesUsecase::new(Arc::new(
-                PgLandPriceRepository::new(pool.clone()),
-            ))),
-            land_prices_by_year_range: Arc::new(GetLandPricesByYearRangeUsecase::new(Arc::new(
-                PgLandPriceRepository::new(pool.clone()),
-            ))),
-            score: Arc::new(ComputeTlsUsecase::new(
-                Arc::new(PgTlsRepository::new(pool.clone())),
-                jshis,
+            land_prices: Arc::new(GetLandPricesUsecase::new(land_price_repo.clone())),
+            land_prices_by_year_range: Arc::new(GetLandPricesByYearRangeUsecase::new(
+                land_price_repo,
             )),
+            opportunities,
+            score,
             stats: Arc::new(GetStatsUsecase::new(Arc::new(PgStatsRepository::new(
                 pool.clone(),
             )))),
-            trend: Arc::new(GetTrendUsecase::new(Arc::new(PgTrendRepository::new(pool)))),
+            trend: Arc::new(GetTrendUsecase::new(trend_repo)),
             reinfolib,
         }
     }
@@ -143,6 +160,12 @@ impl FromRef<AppState> for Arc<GetLandPricesUsecase> {
 impl FromRef<AppState> for Arc<GetLandPricesByYearRangeUsecase> {
     fn from_ref(state: &AppState) -> Self {
         Arc::clone(&state.land_prices_by_year_range)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetOpportunitiesUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.opportunities)
     }
 }
 
