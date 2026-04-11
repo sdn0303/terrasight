@@ -6,6 +6,7 @@ import {
   AreaStatsResponse,
   HealthResponse,
   LandPriceTimeSeriesResponse,
+  OpportunitiesResponse,
   StatsResponse,
   TlsResponse,
   TrendResponse,
@@ -214,4 +215,44 @@ export function fetchTrend(
 
 export function fetchAreaStats(code: string, signal?: AbortSignal) {
   return get(AreaStatsResponse, "api/area-stats", { code }, signal);
+}
+
+// ---------------------------------------------------------------------------
+// Opportunities (Phase 5)
+// ---------------------------------------------------------------------------
+
+export interface FetchOpportunitiesParams {
+  bbox: BBox;
+  limit?: number | undefined;
+  offset?: number | undefined;
+  tlsMin?: number | undefined;
+  riskMax?: "low" | "mid" | "high" | undefined;
+  zones?: string[] | undefined;
+  stationMax?: number | undefined;
+  priceMin?: number | undefined;
+  priceMax?: number | undefined;
+  preset?: string | undefined;
+}
+
+export function fetchOpportunities(
+  params: FetchOpportunitiesParams,
+  signal?: AbortSignal,
+) {
+  const query: Record<string, string> = {
+    bbox: `${params.bbox.west},${params.bbox.south},${params.bbox.east},${params.bbox.north}`,
+    limit: String(params.limit ?? 50),
+    offset: String(params.offset ?? 0),
+  };
+  if (params.tlsMin !== undefined) query.tls_min = String(params.tlsMin);
+  if (params.riskMax !== undefined) query.risk_max = params.riskMax;
+  if (params.zones !== undefined && params.zones.length > 0) {
+    query.zones = params.zones.join(",");
+  }
+  if (params.stationMax !== undefined)
+    query.station_max = String(params.stationMax);
+  if (params.priceMin !== undefined) query.price_min = String(params.priceMin);
+  if (params.priceMax !== undefined) query.price_max = String(params.priceMax);
+  if (params.preset !== undefined) query.preset = params.preset;
+
+  return get(OpportunitiesResponse, "api/v1/opportunities", query, signal);
 }

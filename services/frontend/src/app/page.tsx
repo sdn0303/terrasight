@@ -14,6 +14,7 @@ import { SidebarRail } from "@/components/layout/sidebar-rail";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { PopupCard } from "@/components/map/popup-card";
+import { OpportunitiesSheet } from "@/components/opportunities/opportunities-sheet";
 import { ThemesPanel } from "@/components/theme/themes-panel";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
@@ -30,6 +31,8 @@ export default function Home() {
   const setInsight = useUIStore((s) => s.setInsight);
   const leftPanel = useUIStore((s) => s.leftPanel);
   const setLeftPanel = useUIStore((s) => s.setLeftPanel);
+  const bottomSheet = useUIStore((s) => s.bottomSheet);
+  const setBottomSheet = useUIStore((s) => s.setBottomSheet);
 
   const insightOpen = insight !== null;
   const insightLat = insight?.lat ?? null;
@@ -141,10 +144,13 @@ export default function Home() {
       <FinderPanel
         open={leftPanel === "finder"}
         onClose={() => setLeftPanel(null)}
-        onSearch={() => {
-          useUIStore.getState().setBottomSheet("opportunities");
-        }}
+        onSearch={() => setBottomSheet("opportunities")}
         matchCount={1247}
+      />
+
+      <OpportunitiesSheet
+        open={bottomSheet === "opportunities"}
+        onClose={() => setBottomSheet(null)}
       />
 
       <InsightDrawer

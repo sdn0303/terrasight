@@ -31,4 +31,19 @@ export const queryKeys = {
     all: ["area-stats"] as const,
     byCode: (code: string) => ["area-stats", code] as const,
   },
+  opportunities: {
+    all: ["opportunities"] as const,
+    list: (
+      bbox: BBox,
+      filters: {
+        tlsMin: number | undefined;
+        riskMax: string | undefined;
+        zones: string;
+        stationMax: number | undefined;
+        priceMin: number | undefined;
+        priceMax: number | undefined;
+        preset: string | undefined;
+      },
+    ) => ["opportunities", "list", bbox, filters] as const,
+  },
 };
