@@ -1,10 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Shield } from "lucide-react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LayerControlPanel } from "@/components/layer/layer-control-panel";
 import { LayerToggleRow } from "@/components/layer/layer-toggle-row";
+import { ThemeCard } from "@/components/theme/theme-card";
+import { ThemesPanel } from "@/components/theme/themes-panel";
 import { LAYERS } from "@/lib/layers";
 import { useMapStore } from "@/stores/map-store";
+import { useUIStore } from "@/stores/ui-store";
 
 // Later tasks in this phase will add ThemeCard / LayerControlPanel /
 // ThemesPanel describe blocks to this same file. Keep this mock at the
@@ -113,6 +117,92 @@ describe("LayerControlPanel", () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
     render(<LayerControlPanel open={true} onClose={onClose} />);
+    await user.click(screen.getByRole("button", { name: /close panel/i }));
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("ThemeCard", () => {
+  const baseProps = {
+    id: "safety" as const,
+    label: "Safety",
+    description: "Disaster risk visualization",
+    layerCount: 7,
+    icon: Shield,
+    active: false,
+    onToggle: vi.fn(),
+  };
+
+  it("renders label, description, and layer count", () => {
+    render(<ThemeCard {...baseProps} />);
+    expect(screen.getByText("Safety")).toBeInTheDocument();
+    expect(screen.getByText("Disaster risk visualization")).toBeInTheDocument();
+    expect(screen.getByText("7 layers")).toBeInTheDocument();
+  });
+
+  it("marks active card with aria-pressed=true", () => {
+    render(<ThemeCard {...baseProps} active={true} />);
+    expect(screen.getByRole("button").getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  it("clicking calls onToggle with id", async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(<ThemeCard {...baseProps} onToggle={onToggle} />);
+    await user.click(screen.getByRole("button"));
+    expect(onToggle).toHaveBeenCalledWith("safety");
+  });
+});
+
+describe("ThemesPanel", () => {
+  beforeEach(() => {
+    useUIStore.setState({ activeThemes: new Set() });
+    useMapStore.setState({ visibleLayers: new Set(defaultVisibleLayers) });
+  });
+
+  it("renders nothing when closed", () => {
+    const { container } = render(
+      <ThemesPanel open={false} onClose={vi.fn()} />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders the panel title and subtitle with selection count", () => {
+    useUIStore.setState({ activeThemes: new Set(["safety", "price"]) });
+    render(<ThemesPanel open={true} onClose={vi.fn()} />);
+    expect(screen.getByText("Investment Themes")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+  });
+
+  it("renders one card per theme (4 themes)", () => {
+    render(<ThemesPanel open={true} onClose={vi.fn()} />);
+    // 4 theme buttons with aria-pressed + 1 close button in LeftPanel
+    const pressableButtons = screen
+      .getAllByRole("button")
+      .filter((el) => el.hasAttribute("aria-pressed"));
+    expect(pressableButtons.length).toBe(4);
+  });
+
+  it("clicking a card toggles activeThemes and applies theme layers to map", async () => {
+    const user = userEvent.setup();
+    render(<ThemesPanel open={true} onClose={vi.fn()} />);
+    // next-intl mock returns the key as-is, so the label for the safety
+    // theme will be "theme.safety.name"
+    const safetyBtn = screen.getByText("theme.safety.name").closest("button");
+    if (!safetyBtn) throw new Error("safety card not found");
+    await user.click(safetyBtn);
+    expect(useUIStore.getState().activeThemes.has("safety")).toBe(true);
+    // applyThemeLayers should have unioned in safety layers
+    const visible = useMapStore.getState().visibleLayers;
+    expect(visible.has("flood")).toBe(true); // flood is in safety theme
+  });
+
+  it("close button calls onClose", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<ThemesPanel open={true} onClose={onClose} />);
     await user.click(screen.getByRole("button", { name: /close panel/i }));
     expect(onClose).toHaveBeenCalled();
   });
