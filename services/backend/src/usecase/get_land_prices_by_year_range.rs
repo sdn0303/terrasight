@@ -47,3 +47,61 @@ impl GetLandPricesByYearRangeUsecase {
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::repository::mock::MockLandPriceRepository;
+
+    fn empty_layer_result() -> LayerResult {
+        LayerResult {
+            features: Vec::new(),
+            truncated: false,
+            limit: 500,
+        }
+    }
+
+    fn sample_bbox() -> BBox {
+        BBox::new(35.65, 139.70, 35.70, 139.80).unwrap()
+    }
+
+    #[tokio::test]
+    async fn execute_happy_path_forwards_repo_result() {
+        let repo = Arc::new(
+            MockLandPriceRepository::new().with_find_all_years_by_bbox(Ok(empty_layer_result())),
+        );
+        let usecase = GetLandPricesByYearRangeUsecase::new(repo);
+
+        let result = usecase
+            .execute(
+                Year::new(2019).unwrap(),
+                Year::new(2024).unwrap(),
+                sample_bbox(),
+                ZoomLevel::clamped(14),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.limit, 500);
+    }
+
+    #[tokio::test]
+    async fn execute_propagates_db_error() {
+        let repo = Arc::new(
+            MockLandPriceRepository::new()
+                .with_find_all_years_by_bbox(Err(DomainError::Database("boom".into()))),
+        );
+        let usecase = GetLandPricesByYearRangeUsecase::new(repo);
+
+        let err = usecase
+            .execute(
+                Year::new(2019).unwrap(),
+                Year::new(2024).unwrap(),
+                sample_bbox(),
+                ZoomLevel::clamped(14),
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, DomainError::Database(_)));
+    }
+}

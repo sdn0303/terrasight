@@ -65,11 +65,73 @@ impl GetTrendUsecase {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::domain::entity::{TrendLocation, TrendPoint};
+    use crate::domain::repository::mock::MockTrendRepository;
     use crate::domain::value_object::TrendDirection;
+
+    fn sample_coord() -> Coord {
+        Coord::new(35.68, 139.76).unwrap()
+    }
 
     #[test]
     fn trend_direction_as_str() {
         assert_eq!(TrendDirection::Up.as_str(), "up");
         assert_eq!(TrendDirection::Down.as_str(), "down");
+    }
+
+    #[tokio::test]
+    async fn execute_happy_path_computes_cagr_up() {
+        let location = TrendLocation {
+            address: "Shinjuku".into(),
+            distance_m: 42.5,
+        };
+        let data = vec![
+            TrendPoint {
+                year: 2019,
+                price_per_sqm: 1000,
+            },
+            TrendPoint {
+                year: 2023,
+                price_per_sqm: 1200,
+            },
+        ];
+        let repo = Arc::new(MockTrendRepository::new().with_find_trend(Ok(Some((location, data)))));
+        let usecase = GetTrendUsecase::new(repo);
+
+        let result = usecase
+            .execute(sample_coord(), YearsLookback::clamped(5))
+            .await
+            .unwrap();
+
+        assert_eq!(result.location.address, "Shinjuku");
+        assert_eq!(result.direction.as_str(), TrendDirection::Up.as_str());
+        assert!(result.cagr > 0.0);
+    }
+
+    #[tokio::test]
+    async fn execute_none_result_returns_not_found() {
+        let repo = Arc::new(MockTrendRepository::new().with_find_trend(Ok(None)));
+        let usecase = GetTrendUsecase::new(repo);
+
+        let err = usecase
+            .execute(sample_coord(), YearsLookback::clamped(5))
+            .await
+            .unwrap_err();
+        assert!(matches!(err, DomainError::NotFound));
+    }
+
+    #[tokio::test]
+    async fn execute_propagates_db_error() {
+        let repo = Arc::new(
+            MockTrendRepository::new().with_find_trend(Err(DomainError::Database("boom".into()))),
+        );
+        let usecase = GetTrendUsecase::new(repo);
+
+        let err = usecase
+            .execute(sample_coord(), YearsLookback::clamped(5))
+            .await
+            .unwrap_err();
+        assert!(matches!(err, DomainError::Database(_)));
     }
 }

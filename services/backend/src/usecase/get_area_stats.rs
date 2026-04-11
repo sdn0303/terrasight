@@ -20,3 +20,60 @@ impl GetAreaStatsUsecase {
         self.repo.get_area_stats(code).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
+    use crate::domain::repository::mock::MockAdminAreaStatsRepository;
+
+    fn sample_stats() -> AdminAreaStats {
+        AdminAreaStats {
+            code: "13".into(),
+            name: "Tokyo".into(),
+            level: "prefecture".into(),
+            land_price: LandPriceStats {
+                avg_per_sqm: Some(1000.0),
+                median_per_sqm: Some(900.0),
+                min_per_sqm: Some(500),
+                max_per_sqm: Some(2000),
+                count: 42,
+            },
+            risk: RiskStats {
+                flood_area_ratio: 0.1,
+                steep_slope_area_ratio: 0.05,
+                composite_risk: 0.08,
+            },
+            facilities: FacilityStats {
+                schools: 10,
+                medical: 5,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn execute_happy_path_returns_stats() {
+        let repo =
+            Arc::new(MockAdminAreaStatsRepository::new().with_get_area_stats(Ok(sample_stats())));
+        let usecase = GetAreaStatsUsecase::new(repo);
+        let code = AreaCode::parse("13").unwrap();
+
+        let result = usecase.execute(&code).await.unwrap();
+
+        assert_eq!(result.code, "13");
+        assert_eq!(result.land_price.count, 42);
+    }
+
+    #[tokio::test]
+    async fn execute_propagates_db_error() {
+        let repo = Arc::new(
+            MockAdminAreaStatsRepository::new()
+                .with_get_area_stats(Err(DomainError::Database("boom".into()))),
+        );
+        let usecase = GetAreaStatsUsecase::new(repo);
+        let code = AreaCode::parse("13").unwrap();
+
+        let err = usecase.execute(&code).await.unwrap_err();
+        assert!(matches!(err, DomainError::Database(_)));
+    }
+}

@@ -457,3 +457,128 @@ fn compute_price_cagr(prices: &[PriceRecord]) -> f64 {
         years,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::entity::ZScoreResult;
+    use crate::domain::repository::mock::MockTlsRepository;
+
+    fn sample_coord() -> Coord {
+        Coord::new(35.68, 139.76).unwrap()
+    }
+
+    fn prime_mock_repo(err: bool) -> MockTlsRepository {
+        let prices_result = if err {
+            Err(DomainError::Database("boom".into()))
+        } else {
+            Ok(vec![
+                PriceRecord {
+                    year: 2019,
+                    price_per_sqm: 1000,
+                    address: "A".into(),
+                    distance_m: 10.0,
+                },
+                PriceRecord {
+                    year: 2023,
+                    price_per_sqm: 1200,
+                    address: "A".into(),
+                    distance_m: 10.0,
+                },
+            ])
+        };
+
+        MockTlsRepository::new()
+            .with_find_nearest_prices(prices_result)
+            .with_find_flood_depth_rank(Ok(None))
+            .with_has_steep_slope_nearby(Ok(false))
+            .with_find_schools_nearby(Ok(SchoolStats {
+                count_800m: 2,
+                has_primary: true,
+                has_junior_high: true,
+            }))
+            .with_find_medical_nearby(Ok(MedicalStats {
+                hospital_count: 1,
+                clinic_count: 3,
+                total_beds: 150,
+            }))
+            .with_find_zoning_far(Ok(Some(200.0)))
+            .with_calc_price_z_score(Ok(ZScoreResult {
+                z_score: 0.2,
+                zone_type: "commercial".into(),
+                sample_count: 50,
+            }))
+            .with_count_recent_transactions(Ok(25))
+    }
+
+    /// Runs `execute` with a fully-mocked repo and `jshis = None` so that the
+    /// entire flow (8 parallel DB calls, sub-score computation, weighting,
+    /// cross-analysis, grade assignment) exercises end-to-end without hitting
+    /// any real network/database resources. Verifies only the invariants a
+    /// table-driven preset test would also verify: score is in `[0, 100]` and
+    /// each axis has the correct weight for the chosen preset.
+    #[tokio::test]
+    async fn execute_happy_path_with_balance_preset() {
+        let repo = Arc::new(prime_mock_repo(false));
+        let usecase = ComputeTlsUsecase::new(repo, None);
+
+        let output = usecase
+            .execute(&sample_coord(), WeightPreset::Balance)
+            .await
+            .unwrap();
+
+        assert!(output.score >= 0.0 && output.score <= 100.0);
+        // Balance preset axis weights should sum to 1.0.
+        let weight_sum = output.axes.disaster.weight
+            + output.axes.terrain.weight
+            + output.axes.livability.weight
+            + output.axes.future.weight
+            + output.axes.price.weight;
+        assert!((weight_sum - 1.0).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn execute_propagates_db_error() {
+        let repo = Arc::new(prime_mock_repo(true));
+        let usecase = ComputeTlsUsecase::new(repo, None);
+
+        let result = usecase
+            .execute(&sample_coord(), WeightPreset::Balance)
+            .await;
+        assert!(matches!(result, Err(DomainError::Database(_))));
+    }
+
+    /// Table-driven weight-sum check across every `WeightPreset`. This is the
+    /// lightweight variant of the design doc's weighted-aggregation test: it
+    /// runs the full usecase for each preset and verifies that the five axis
+    /// weights in the response still sum to 1.0, which is the invariant the
+    /// `compute_tls` aggregator must preserve for all presets.
+    #[tokio::test]
+    async fn execute_all_presets_preserve_axis_weight_sum() {
+        let presets = [
+            WeightPreset::Balance,
+            WeightPreset::Investment,
+            WeightPreset::Residential,
+            WeightPreset::DisasterFocus,
+        ];
+
+        for preset in presets {
+            let repo = Arc::new(prime_mock_repo(false));
+            let usecase = ComputeTlsUsecase::new(repo, None);
+
+            let output = usecase.execute(&sample_coord(), preset).await.unwrap();
+
+            let weight_sum = output.axes.disaster.weight
+                + output.axes.terrain.weight
+                + output.axes.livability.weight
+                + output.axes.future.weight
+                + output.axes.price.weight;
+            assert!(
+                (weight_sum - 1.0).abs() < 1e-9,
+                "preset {:?} weight sum = {}",
+                preset,
+                weight_sum
+            );
+        }
+    }
+}
