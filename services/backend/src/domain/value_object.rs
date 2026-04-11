@@ -48,6 +48,28 @@ impl BBox {
         })
     }
 
+    /// Parse a bounding box from a comma-separated `sw_lng,sw_lat,ne_lng,ne_lat`
+    /// query string (longitude-first per RFC 7946).
+    ///
+    /// Validates the component count, parses each as `f64`, and delegates to
+    /// [`BBox::new`] for invariant checks.
+    pub fn parse_sw_ne_str(s: &str) -> Result<Self, DomainError> {
+        let parts: Vec<f64> = s
+            .split(',')
+            .map(|p| {
+                p.trim().parse::<f64>().map_err(|_| {
+                    DomainError::Validation("bbox contains a non-numeric component".into())
+                })
+            })
+            .collect::<Result<_, _>>()?;
+        match parts.as_slice() {
+            [sw_lng, sw_lat, ne_lng, ne_lat] => Self::new(*sw_lat, *sw_lng, *ne_lat, *ne_lng),
+            _ => Err(DomainError::Validation(
+                "bbox must have 4 comma-separated values: sw_lng,sw_lat,ne_lng,ne_lat".into(),
+            )),
+        }
+    }
+
     pub fn south(&self) -> f64 {
         self.south
     }
@@ -451,6 +473,25 @@ mod tests {
     #[test]
     fn bbox_rejects_too_large() {
         assert!(BBox::new(35.0, 139.0, 35.6, 139.6).is_err());
+    }
+
+    #[test]
+    fn bbox_parse_sw_ne_str_happy_path() {
+        let bbox = BBox::parse_sw_ne_str("139.70,35.65,139.80,35.70").unwrap();
+        assert!((bbox.south() - 35.65).abs() < f64::EPSILON);
+        assert!((bbox.west() - 139.70).abs() < f64::EPSILON);
+        assert!((bbox.north() - 35.70).abs() < f64::EPSILON);
+        assert!((bbox.east() - 139.80).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn bbox_parse_sw_ne_str_errors() {
+        assert!(BBox::parse_sw_ne_str("139.70,abc,139.80,35.70").is_err());
+        assert!(BBox::parse_sw_ne_str("1,2,3").is_err());
+        assert!(BBox::parse_sw_ne_str("1,2,3,4,5").is_err());
+        // Out of range lat/lng surfaces as InvalidCoordinate
+        assert!(BBox::parse_sw_ne_str("200.0,35.65,201.0,35.70").is_err());
+        assert!(BBox::parse_sw_ne_str("139.70,95.0,139.80,96.0").is_err());
     }
 
     #[test]

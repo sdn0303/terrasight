@@ -139,29 +139,7 @@ impl LandPriceQuery {
     /// the domain value object constructors.
     pub fn into_domain(self) -> Result<(Year, BBox, u32), DomainError> {
         let year = Year::new(self.year)?;
-
-        let parts: Vec<f64> = self
-            .bbox
-            .split(',')
-            .map(|s| {
-                s.trim()
-                    .parse::<f64>()
-                    .map_err(|_| DomainError::MissingParameter("bbox".into()))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        if parts.len() != 4 {
-            return Err(DomainError::MissingParameter(
-                "bbox must have exactly 4 values: sw_lng,sw_lat,ne_lng,ne_lat".into(),
-            ));
-        }
-
-        // bbox format: sw_lng, sw_lat, ne_lng, ne_lat  (longitude first — RFC 7946)
-        let (sw_lng, sw_lat, ne_lng, ne_lat) = (parts[0], parts[1], parts[2], parts[3]);
-
-        // BBox::new expects (south, west, north, east)
-        let bbox = BBox::new(sw_lat, sw_lng, ne_lat, ne_lng)?;
-
+        let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
         Ok((year, bbox, self.zoom))
     }
 }
@@ -209,32 +187,14 @@ impl LandPriceAllYearsQuery {
     /// parsed or when `from > to`, and propagates year/coordinate validation errors.
     pub fn into_domain(self) -> Result<(Year, Year, BBox, u32), DomainError> {
         if self.from > self.to {
-            return Err(DomainError::MissingParameter(
+            return Err(DomainError::Validation(
                 "from year must be <= to year".into(),
             ));
         }
 
         let from_year = Year::new(self.from)?;
         let to_year = Year::new(self.to)?;
-
-        let parts: Vec<f64> = self
-            .bbox
-            .split(',')
-            .map(|s| {
-                s.trim()
-                    .parse::<f64>()
-                    .map_err(|_| DomainError::MissingParameter("bbox".into()))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        if parts.len() != 4 {
-            return Err(DomainError::MissingParameter(
-                "bbox must have exactly 4 values: sw_lng,sw_lat,ne_lng,ne_lat".into(),
-            ));
-        }
-
-        let (sw_lng, sw_lat, ne_lng, ne_lat) = (parts[0], parts[1], parts[2], parts[3]);
-        let bbox = BBox::new(sw_lat, sw_lng, ne_lat, ne_lng)?;
+        let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
 
         Ok((from_year, to_year, bbox, self.zoom))
     }
