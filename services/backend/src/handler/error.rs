@@ -12,7 +12,9 @@ impl ErrorMapping for DomainError {
             Self::BBoxTooLarge => StatusCode::BAD_REQUEST,
             Self::InvalidYear(_) => StatusCode::BAD_REQUEST,
             Self::MissingParameter(_) => StatusCode::BAD_REQUEST,
+            Self::Validation(_) => StatusCode::BAD_REQUEST,
             Self::NotFound => StatusCode::NOT_FOUND,
+            Self::Timeout(_) => StatusCode::REQUEST_TIMEOUT,
             Self::Database(_) => StatusCode::SERVICE_UNAVAILABLE,
         }
     }
@@ -23,7 +25,9 @@ impl ErrorMapping for DomainError {
             Self::BBoxTooLarge => "BBOX_TOO_LARGE",
             Self::InvalidYear(_) => "INVALID_PARAMS",
             Self::MissingParameter(_) => "INVALID_PARAMS",
+            Self::Validation(_) => "INVALID_PARAMS",
             Self::NotFound => "NOT_FOUND",
+            Self::Timeout(_) => "TIMEOUT",
             Self::Database(_) => "DB_UNAVAILABLE",
         }
     }
@@ -58,5 +62,19 @@ mod tests {
         let err: AppError = DomainError::Database("connection refused".into()).into();
         assert_eq!(err.0.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(err.0.error_code(), "DB_UNAVAILABLE");
+    }
+
+    #[test]
+    fn validation_maps_to_400() {
+        let err: AppError = DomainError::Validation("name must be non-empty".into()).into();
+        assert_eq!(err.0.status_code(), StatusCode::BAD_REQUEST);
+        assert_eq!(err.0.error_code(), "INVALID_PARAMS");
+    }
+
+    #[test]
+    fn timeout_maps_to_408() {
+        let err: AppError = DomainError::Timeout("opportunities query".into()).into();
+        assert_eq!(err.0.status_code(), StatusCode::REQUEST_TIMEOUT);
+        assert_eq!(err.0.error_code(), "TIMEOUT");
     }
 }
