@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import type { MouseEvent } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
 import { RiskPill } from "@/components/ui/risk-pill";
 import { ScoreChip } from "@/components/ui/score-chip";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -25,41 +25,40 @@ function SelectCell({ row }: { row: { original: Opportunity } }) {
   const checked = existingIndex >= 0;
   const atCapacity = !checked && comparePoints.length >= 3;
 
-  const toggle = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (checked) {
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      if (!atCapacity) {
+        addComparePoint({
+          lat: row.original.lat,
+          lng: row.original.lng,
+          address: row.original.address,
+        });
+      }
+    } else if (existingIndex >= 0) {
       removeComparePoint(existingIndex);
-    } else if (!atCapacity) {
-      addComparePoint({
-        lat: row.original.lat,
-        lng: row.original.lng,
-        address: row.original.address,
-      });
     }
   };
 
+  const stopClick = (e: MouseEvent<HTMLInputElement>) => {
+    // Prevent the click from bubbling to the row's onRowClick handler.
+    e.stopPropagation();
+  };
+
   return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
+    <input
+      type="checkbox"
       aria-label={`Compare ${row.original.address}`}
-      onClick={toggle}
+      checked={checked}
       disabled={atCapacity}
-      className="h-4 w-4 rounded"
+      onClick={stopClick}
+      onChange={onChange}
+      className="h-4 w-4 cursor-pointer rounded"
       style={{
-        background: checked ? "var(--brand-indigo)" : "var(--neutral-100)",
-        border: checked ? "none" : "1px solid var(--neutral-200)",
-        color: "#fff",
-        fontSize: 10,
-        lineHeight: "16px",
-        textAlign: "center",
+        accentColor: "var(--brand-indigo)",
         opacity: atCapacity ? 0.4 : 1,
         cursor: atCapacity ? "not-allowed" : "pointer",
       }}
-    >
-      {checked ? "✓" : ""}
-    </button>
+    />
   );
 }
 

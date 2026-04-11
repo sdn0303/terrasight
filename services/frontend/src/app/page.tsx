@@ -158,7 +158,6 @@ export default function Home() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-
     </MapCanvasFrame>
   );
 }

@@ -39,7 +39,7 @@ export function CompareTab() {
       <div className="flex flex-wrap gap-2">
         {comparePoints.map((pt, i) => (
           <div
-            key={`${pt.lat}-${pt.lng}-${i}`}
+            key={`${pt.lat}-${pt.lng}`}
             className="rounded-lg px-2.5 py-1.5 text-[10px]"
             style={{
               background: "var(--neutral-50)",
@@ -111,8 +111,8 @@ function EmptyCompareState() {
       className="flex h-full items-center justify-center p-6 text-center text-[10px]"
       style={{ color: "var(--neutral-500)" }}
     >
-      Select 2-3 properties from the Opportunities table to compare their
-      TLS axes side by side.
+      Select 2-3 properties from the Opportunities table to compare their TLS
+      axes side by side.
     </div>
   );
 }
