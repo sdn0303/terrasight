@@ -18,7 +18,7 @@ pub use area_stats::{AreaFacilitiesDto, AreaLandPriceDto, AreaRiskDto, AreaStats
 pub use health::HealthResponse;
 pub use layer::{
     FeatureCollectionDto, FeatureDto, LayerResponseDto, geo_feature_to_dto,
-    point_feature_to_polygon,
+    point_feature_to_polygon_owned,
 };
 pub use stats::{FacilityStatsDto, LandPriceStatsDto, RiskStatsDto, StatsResponse};
 pub use tls::{
