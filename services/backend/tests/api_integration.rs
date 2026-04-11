@@ -15,10 +15,19 @@ use serde_json::Value;
 
 /// Create a TestServer backed by a real PostGIS database.
 /// Returns `None` when `DATABASE_URL` is not set (skip test gracefully).
+///
+/// The pool size is deliberately generous (20 connections) because the
+/// `/api/v1/opportunities` endpoint fans out TLS compute_tls with
+/// `OPPORTUNITY_TLS_CONCURRENCY = 4` concurrent calls, each of which
+/// issues up to ~8 spatial queries. 4 × 8 = 32 simultaneous queries is
+/// the theoretical peak per request; 20 connections leave enough
+/// headroom for a single in-flight request plus housekeeping, while
+/// still exercising the backpressure path when multiple tests run in
+/// parallel.
 async fn test_server() -> Option<TestServer> {
     dotenvy::dotenv().ok();
     let db_url = std::env::var("DATABASE_URL").ok()?;
-    let pool = realestate_db::pool::create_pool(&db_url, 5)
+    let pool = realestate_db::pool::create_pool(&db_url, 20)
         .await
         .expect("failed to connect to test database");
     // No API key in tests — PostgisFallback is selected automatically.
@@ -26,7 +35,7 @@ async fn test_server() -> Option<TestServer> {
         database_url: db_url,
         reinfolib_api_key: None,
         port: 8000,
-        db_max_connections: 5,
+        db_max_connections: 20,
         rust_log_format: None,
         allowed_origins: None,
         rate_limit_rpm: 120,
@@ -419,4 +428,193 @@ async fn seed_data_has_expected_school_rows() {
         "expected at least 4 schools in central Tokyo bbox, got {}",
         features.len()
     );
+}
+
+// ============================================================
+// /api/v1/opportunities
+// ============================================================
+
+#[tokio::test]
+async fn opportunities_returns_items_in_bbox() {
+    require_db!(server);
+
+    // BBox covers Marunouchi/Ginza/Kanda seed data
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("limit", "10")
+        .await;
+
+    resp.assert_status_ok();
+
+    let body: Value = resp.json();
+    assert!(body["items"].is_array(), "items must be an array");
+    assert!(body["total"].is_u64(), "total must be a number");
+    // `truncated` reflects "there are more records beyond this page" —
+    // the sign depends on how many seed records survive TLS enrichment,
+    // so just assert it's a boolean.
+    assert!(body["truncated"].is_boolean(), "truncated must be bool");
+
+    // Seed data should produce at least one opportunity where land price
+    // records intersect zoning polygons.
+    let items = body["items"].as_array().unwrap();
+    if let Some(first) = items.first() {
+        assert!(first["id"].is_i64());
+        assert!(first["tls"].is_u64());
+        assert!(["low", "mid", "high"].contains(&first["risk_level"].as_str().unwrap()));
+        assert!(first["price_per_sqm"].is_i64());
+        assert!(first["address"].is_string());
+        assert!(first["zone"].is_string());
+    }
+}
+
+#[tokio::test]
+async fn opportunities_clamps_limit_to_server_max() {
+    require_db!(server);
+
+    // Request 200 — server should clamp to 50 (MAX_OPPORTUNITY_LIMIT)
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("limit", "200")
+        .await;
+
+    resp.assert_status_ok();
+
+    let body: Value = resp.json();
+    let items = body["items"].as_array().unwrap();
+    assert!(
+        items.len() <= 50,
+        "expected at most 50 items after clamp, got {}",
+        items.len()
+    );
+}
+
+#[tokio::test]
+async fn opportunities_filters_by_tls_min() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("limit", "50")
+        .add_query_param("tls_min", "80")
+        .await;
+
+    resp.assert_status_ok();
+
+    let body: Value = resp.json();
+    let items = body["items"].as_array().unwrap();
+    for item in items {
+        let tls = item["tls"].as_u64().unwrap();
+        assert!(tls >= 80, "tls_min filter violated: {tls} < 80");
+    }
+}
+
+#[tokio::test]
+async fn opportunities_filters_by_risk_max() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("limit", "50")
+        .add_query_param("risk_max", "mid")
+        .await;
+
+    resp.assert_status_ok();
+
+    let body: Value = resp.json();
+    let items = body["items"].as_array().unwrap();
+    for item in items {
+        let risk = item["risk_level"].as_str().unwrap();
+        assert!(
+            risk == "low" || risk == "mid",
+            "risk_max filter violated: {risk} > mid"
+        );
+    }
+}
+
+#[tokio::test]
+async fn opportunities_rejects_invalid_bbox() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "not,a,valid,bbox")
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        400,
+        "invalid bbox must return 400 Bad Request"
+    );
+}
+
+#[tokio::test]
+async fn opportunities_rejects_unknown_risk_max() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("risk_max", "extreme")
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        400,
+        "unknown risk_max must return 400 Bad Request"
+    );
+}
+
+#[tokio::test]
+async fn opportunities_cache_hit_within_60s() {
+    require_db!(server);
+
+    // First request — cold miss.
+    let resp1 = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("limit", "10")
+        .await;
+    resp1.assert_status_ok();
+    let body1: Value = resp1.json();
+
+    // Second request with identical filters — should hit the cache.
+    // We assert shape invariance because the cache returns the same Arc.
+    let resp2 = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("limit", "10")
+        .await;
+    resp2.assert_status_ok();
+    let body2: Value = resp2.json();
+
+    assert_eq!(
+        body1["total"], body2["total"],
+        "cache hit should yield identical `total`"
+    );
+    assert_eq!(
+        body1["items"].as_array().unwrap().len(),
+        body2["items"].as_array().unwrap().len(),
+        "cache hit should yield identical item count"
+    );
+}
+
+#[tokio::test]
+async fn opportunities_ignores_cities_with_warning() {
+    require_db!(server);
+
+    // The `cities` filter is not honoured in Phase 4 — the server logs a
+    // warning and proceeds. The request must succeed.
+    let resp = server
+        .get("/api/v1/opportunities")
+        .add_query_param("bbox", "139.74,35.66,139.78,35.70")
+        .add_query_param("cities", "13101,13102")
+        .await;
+
+    resp.assert_status_ok();
+    let body: Value = resp.json();
+    assert!(body["items"].is_array());
 }

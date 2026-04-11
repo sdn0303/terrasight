@@ -18,20 +18,28 @@ pub async fn get_stats(
     State(usecase): State<Arc<GetStatsUsecase>>,
     Query(params): Query<BBoxQuery>,
 ) -> Result<Json<StatsResponse>, AppError> {
-    let bbox = params.into_domain()?;
-    tracing::debug!(
-        south = bbox.south(),
-        west = bbox.west(),
-        north = bbox.north(),
-        east = bbox.east(),
-        "stats request parsed"
-    );
-    let stats = usecase.execute(&bbox).await?;
-    let composite_risk_fmt = format!("{:.3}", stats.risk.composite_risk);
-    tracing::info!(
-        land_price_count = stats.land_price.count,
-        composite_risk = %composite_risk_fmt,
-        "stats response ready"
-    );
-    Ok(Json(StatsResponse::from(stats)))
+    let bbox = params.into_domain().inspect(|b| {
+        tracing::debug!(
+            south = b.south(),
+            west = b.west(),
+            north = b.north(),
+            east = b.east(),
+            "stats request parsed"
+        )
+    })?;
+
+    usecase
+        .execute(&bbox)
+        .await
+        .inspect(|stats| {
+            tracing::info!(
+                land_price_count = stats.land_price.count,
+                composite_risk = stats.risk.composite_risk,
+                "stats response ready"
+            )
+        })
+        .inspect_err(|e| tracing::warn!(error = %e, "stats lookup failed"))
+        .map(StatsResponse::from)
+        .map(Json)
+        .map_err(Into::into)
 }

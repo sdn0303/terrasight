@@ -6,18 +6,20 @@ use crate::domain::entity::{LayerResult, MedicalStats, SchoolStats, ZScoreResult
 use crate::domain::error::DomainError;
 use crate::domain::value_object::*;
 
-// ─── Area Data ───────────────────────────────────────
-// Per-layer methods: each table has different schema, and future
-// layer-specific return types (e.g., `LandPriceFeature`) are possible.
+// ─── Layer Data ──────────────────────────────────────
+// Enum-dispatched: a single `find_layer` entry point replaces the
+// previous six per-layer methods, enabling the caller (usecase layer)
+// to drive concurrent fan-out via `LayerType` without the trait growing
+// a new method each time a layer is added.
 
 #[async_trait]
-pub trait AreaRepository: Send + Sync {
-    async fn find_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+pub trait LayerRepository: Send + Sync {
+    async fn find_layer(
+        &self,
+        layer: LayerType,
+        bbox: &BBox,
+        zoom: ZoomLevel,
+    ) -> Result<LayerResult, DomainError>;
 }
 
 // ─── Stats ───────────────────────────────────────────
@@ -40,8 +42,8 @@ pub trait TrendRepository: Send + Sync {
     /// Price trend data for the nearest observation point within 2km.
     async fn find_trend(
         &self,
-        coord: &Coord,
-        years: i32,
+        coord: Coord,
+        years: YearsLookback,
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError>;
 }
 
@@ -55,9 +57,9 @@ pub trait LandPriceRepository: Send + Sync {
     /// `compute_feature_limit`. Returns [`LayerResult`] with truncation metadata.
     async fn find_by_year_and_bbox(
         &self,
-        year: &Year,
+        year: Year,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError>;
 
     /// Fetch land price GeoJSON features across a year range for time machine animation.
@@ -67,11 +69,37 @@ pub trait LandPriceRepository: Send + Sync {
     /// number of years to accommodate multi-year data in a single response.
     async fn find_all_years_by_bbox(
         &self,
-        from_year: &Year,
-        to_year: &Year,
+        from_year: Year,
+        to_year: Year,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError>;
+
+    /// Fetch raw land price records for the `/api/v1/opportunities` endpoint.
+    ///
+    /// Returns raw [`OpportunityRecord`]s (pre-TLS-enrichment) filtered by
+    /// `bbox`, an optional price range, and a zone whitelist. The caller
+    /// must apply TLS scoring, risk classification, and signal derivation
+    /// on top.
+    ///
+    /// Uses a spatial join with the `zoning` table to populate
+    /// [`BuildingCoverageRatio`] and [`FloorAreaRatio`]. Results are
+    /// ordered by `price_per_sqm DESC` and paginated via `limit`/`offset`.
+    ///
+    /// `limit` and `offset` are raw `u32` values because the usecase layer
+    /// passes a fetch-pool size (typically
+    /// [`crate::domain::constants::OPPORTUNITY_FETCH_POOL_SIZE`]) that
+    /// can exceed the user-facing [`OpportunityLimit::MAX`]. User-facing
+    /// pagination is applied post-enrichment by the usecase, not at this
+    /// layer.
+    async fn find_for_opportunities(
+        &self,
+        bbox: &BBox,
+        limit: u32,
+        offset: u32,
+        price_range: Option<(PricePerSqm, PricePerSqm)>,
+        zones: &[ZoneCode],
+    ) -> Result<Vec<OpportunityRecord>, DomainError>;
 }
 
 // ─── Admin Area Stats ────────────────────────────────
@@ -81,7 +109,7 @@ pub trait AdminAreaStatsRepository: Send + Sync {
     /// Fetch aggregated statistics for the given administrative area code.
     ///
     /// `code` is a prefecture code (e.g. `"13"`) or municipality code (e.g. `"13105"`).
-    async fn get_area_stats(&self, code: &str) -> Result<AdminAreaStats, DomainError>;
+    async fn get_area_stats(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError>;
 }
 
 // ─── Health ──────────────────────────────────────────
@@ -121,3 +149,6 @@ pub trait TlsRepository: Send + Sync {
     /// Count of land price records within 500m from the latest available year.
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError>;
 }
+
+#[cfg(test)]
+pub mod mock;

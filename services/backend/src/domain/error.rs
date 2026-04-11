@@ -21,4 +21,10 @@ pub enum DomainError {
 
     #[error("Database error: {0}")]
     Database(String),
+
+    #[error("Invalid value: {0}")]
+    Validation(String),
+
+    #[error("Request timed out: {0}")]
+    Timeout(String),
 }

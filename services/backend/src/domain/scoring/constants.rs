@@ -225,3 +225,20 @@ pub const SCORE_MAX: f64 = 100.0;
 
 /// Default score for unavailable sub-scores (no risk / best case).
 pub const UNAVAILABLE_DEFAULT: f64 = 100.0;
+
+// ---------------------------------------------------------------------------
+// Risk level thresholds (derived from S1 Disaster sub-score)
+// ---------------------------------------------------------------------------
+
+/// S1 disaster score ≥ this value → `RiskLevel::Low`.
+pub const DISASTER_SCORE_LOW_THRESHOLD: f64 = 75.0;
+/// S1 disaster score ≥ this value → `RiskLevel::Mid`, otherwise `High`.
+pub const DISASTER_SCORE_MID_THRESHOLD: f64 = 50.0;
+
+// ---------------------------------------------------------------------------
+// Opportunity signal thresholds (derived from TLS score + risk level)
+// ---------------------------------------------------------------------------
+
+pub const SIGNAL_HOT_MIN_TLS: u8 = 80;
+pub const SIGNAL_WARM_MIN_TLS: u8 = 65;
+pub const SIGNAL_NEUTRAL_MIN_TLS: u8 = 50;

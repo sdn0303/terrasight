@@ -1,10 +1,38 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
+use tokio::time::timeout;
 
 use super::map_db_err;
 use crate::domain::entity::{AdminAreaStats, FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::AdminAreaStatsRepository;
+use crate::domain::value_object::{AreaCode, AreaCodeLevel};
+
+/// Maximum time to wait for any admin-area stats query.
+const ADMIN_STATS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[derive(Debug, FromRow)]
+struct AdminLandPriceStatsRow {
+    avg_price: Option<f64>,
+    median_price: Option<f64>,
+    min_price: Option<i64>,
+    max_price: Option<i64>,
+    count: i64,
+}
+
+impl From<AdminLandPriceStatsRow> for LandPriceStats {
+    fn from(row: AdminLandPriceStatsRow) -> Self {
+        LandPriceStats {
+            avg_per_sqm: row.avg_price,
+            median_per_sqm: row.median_price,
+            min_per_sqm: row.min_price,
+            max_per_sqm: row.max_price,
+            count: row.count,
+        }
+    }
+}
 
 pub struct PgAdminAreaStatsRepository {
     pool: PgPool,
@@ -25,43 +53,51 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
     /// not exist yet.  Once that table is available the queries should be narrowed to
     /// `WHERE ST_Intersects(geom, (SELECT geom FROM admin_boundaries WHERE code = $1))`.
     #[tracing::instrument(skip(self))]
-    async fn get_area_stats(&self, code: &str) -> Result<AdminAreaStats, DomainError> {
-        let level = if code.len() <= 2 {
-            "prefecture"
-        } else {
-            "municipality"
+    async fn get_area_stats(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError> {
+        let level = match code.level() {
+            AreaCodeLevel::Prefecture => "prefecture",
+            AreaCodeLevel::Municipality => "municipality",
         };
 
         // Land price stats — global aggregate (placeholder until admin_boundaries exists).
-        let lp_row =
-            sqlx::query_as::<_, (Option<f64>, Option<f64>, Option<i64>, Option<i64>, i64)>(
+        let lp_row = timeout(
+            ADMIN_STATS_QUERY_TIMEOUT,
+            sqlx::query_as::<_, AdminLandPriceStatsRow>(
                 r#"
             SELECT
-                AVG(price_per_sqm)::float8,
-                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm)::float8,
-                MIN(price_per_sqm)::int8,
-                MAX(price_per_sqm)::int8,
-                COUNT(*)
+                AVG(price_per_sqm)::float8 AS avg_price,
+                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm)::float8 AS median_price,
+                MIN(price_per_sqm)::int8 AS min_price,
+                MAX(price_per_sqm)::int8 AS max_price,
+                COUNT(*) AS count
             FROM land_prices
             WHERE year = (SELECT MAX(year) FROM land_prices)
             "#,
             )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-
-        tracing::debug!(count = lp_row.4, "admin_area land_price_stats fetched");
+            .fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("admin_area land_price_stats query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| tracing::debug!(count = row.count, "admin_area land_price_stats fetched"))?;
 
         // Facility counts — global aggregate (placeholder until admin_boundaries exists).
-        let schools_row = sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM schools")
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let schools_row = timeout(
+            ADMIN_STATS_QUERY_TIMEOUT,
+            sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM schools").fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("admin_area schools_count query".into()))?
+        .map_err(map_db_err)?;
 
-        let medical_row = sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM medical_facilities")
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let medical_row = timeout(
+            ADMIN_STATS_QUERY_TIMEOUT,
+            sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM medical_facilities")
+                .fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("admin_area medical_count query".into()))?
+        .map_err(map_db_err)?;
 
         tracing::debug!(
             schools = schools_row.0,
@@ -70,17 +106,11 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
         );
 
         Ok(AdminAreaStats {
-            code: code.to_string(),
+            code: code.as_str().to_string(),
             // Placeholder name until admin_boundaries table is populated.
-            name: format!("Area {code}"),
+            name: format!("Area {}", code.as_str()),
             level: level.to_string(),
-            land_price: LandPriceStats {
-                avg_per_sqm: lp_row.0,
-                median_per_sqm: lp_row.1,
-                min_per_sqm: lp_row.2,
-                max_per_sqm: lp_row.3,
-                count: lp_row.4,
-            },
+            land_price: lp_row.into(),
             risk: RiskStats {
                 flood_area_ratio: 0.0,
                 steep_slope_area_ratio: 0.0,

@@ -18,19 +18,28 @@ pub async fn get_trend(
     State(usecase): State<Arc<GetTrendUsecase>>,
     Query(params): Query<TrendQuery>,
 ) -> Result<Json<TrendResponse>, AppError> {
-    let (coord, years) = params.into_domain()?;
-    tracing::debug!(
-        lat = coord.lat(),
-        lng = coord.lng(),
-        years,
-        "trend request parsed"
-    );
-    let trend = usecase.execute(&coord, years).await?;
-    tracing::info!(
-        cagr = trend.cagr,
-        direction = trend.direction.as_str(),
-        data_points = trend.data.len(),
-        "trend response ready"
-    );
-    Ok(Json(TrendResponse::from(trend)))
+    let (coord, years) = params.into_domain().inspect(|(c, y)| {
+        tracing::debug!(
+            lat = c.lat(),
+            lng = c.lng(),
+            years = y.value(),
+            "trend request parsed"
+        )
+    })?;
+
+    usecase
+        .execute(coord, years)
+        .await
+        .inspect(|trend| {
+            tracing::info!(
+                cagr = trend.cagr,
+                direction = trend.direction.as_str(),
+                data_points = trend.data.len(),
+                "trend response ready"
+            )
+        })
+        .inspect_err(|e| tracing::warn!(error = %e, "trend lookup failed"))
+        .map(TrendResponse::from)
+        .map(Json)
+        .map_err(Into::into)
 }

@@ -1,12 +1,88 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use realestate_db::spatial::bind_coord;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
+use tokio::time::timeout;
 
 use super::map_db_err;
 use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::TlsRepository;
 use crate::domain::value_object::Coord;
+
+/// Maximum time to wait for a single TLS sub-query.
+const TLS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[derive(Debug, FromRow)]
+struct NearestPriceRow {
+    year: i32,
+    price_per_sqm: i32,
+    address: String,
+    distance_m: f64,
+}
+
+impl From<NearestPriceRow> for PriceRecord {
+    fn from(row: NearestPriceRow) -> Self {
+        PriceRecord {
+            year: row.year,
+            price_per_sqm: row.price_per_sqm as i64,
+            address: row.address,
+            distance_m: row.distance_m,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct SchoolsNearbyRow {
+    count: i64,
+    has_primary: bool,
+    has_junior_high: bool,
+}
+
+impl From<SchoolsNearbyRow> for SchoolStats {
+    fn from(row: SchoolsNearbyRow) -> Self {
+        SchoolStats {
+            count_800m: row.count,
+            has_primary: row.has_primary,
+            has_junior_high: row.has_junior_high,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct MedicalNearbyRow {
+    hospital_count: i64,
+    clinic_count: i64,
+    total_beds: i64,
+}
+
+impl From<MedicalNearbyRow> for MedicalStats {
+    fn from(row: MedicalNearbyRow) -> Self {
+        MedicalStats {
+            hospital_count: row.hospital_count,
+            clinic_count: row.clinic_count,
+            total_beds: row.total_beds,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct ZScoreRow {
+    z_score: f64,
+    zone_type: String,
+    sample_count: i64,
+}
+
+impl From<ZScoreRow> for ZScoreResult {
+    fn from(row: ZScoreRow) -> Self {
+        ZScoreResult {
+            z_score: row.z_score,
+            zone_type: row.zone_type,
+            sample_count: row.sample_count,
+        }
+    }
+}
 
 pub struct PgTlsRepository {
     pool: PgPool,
@@ -23,7 +99,7 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_nearest_prices(&self, coord: &Coord) -> Result<Vec<PriceRecord>, DomainError> {
         // Search radius: 1000m, SRID: 4326
-        let query = sqlx::query_as::<_, (i32, i32, String, f64)>(
+        let query = sqlx::query_as::<_, NearestPriceRow>(
             r#"
             WITH nearest AS (
                 SELECT address,
@@ -40,21 +116,16 @@ impl TlsRepository for PgTlsRepository {
             ORDER BY lp.year
             "#,
         );
-        let rows = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "tls nearest_prices fetched");
+        let rows = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls nearest_prices query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), "tls nearest_prices fetched"))?;
 
-        Ok(rows
-            .into_iter()
-            .map(|(year, price, address, dist)| PriceRecord {
-                year,
-                price_per_sqm: price as i64,
-                address,
-                distance_m: dist,
-            })
-            .collect())
+        Ok(rows.into_iter().map(PriceRecord::from).collect())
     }
 
     #[tracing::instrument(skip(self))]
@@ -68,10 +139,13 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls flood_depth_rank query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.0.map(|v| v as i32))
     }
@@ -86,10 +160,13 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls steep_slope_nearby query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.0 > 0)
     }
@@ -97,61 +174,63 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_schools_nearby(&self, coord: &Coord) -> Result<SchoolStats, DomainError> {
         // 800m radius, SRID: 4326
-        let query = sqlx::query_as::<_, (i64, bool, bool)>(
+        let query = sqlx::query_as::<_, SchoolsNearbyRow>(
             r#"
-            SELECT COUNT(*),
-                   COALESCE(bool_or(school_type = '小学校'), false),
-                   COALESCE(bool_or(school_type = '中学校'), false)
+            SELECT COUNT(*) AS count,
+                   COALESCE(bool_or(school_type = '小学校'), false) AS has_primary,
+                   COALESCE(bool_or(school_type = '中学校'), false) AS has_junior_high
             FROM schools
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 800)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(
-            count = row.0,
-            has_primary = row.1,
-            has_junior_high = row.2,
-            "schools_nearby fetched"
-        );
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls schools_nearby query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| {
+            tracing::debug!(
+                count = row.count,
+                has_primary = row.has_primary,
+                has_junior_high = row.has_junior_high,
+                "schools_nearby fetched"
+            )
+        })?;
 
-        Ok(SchoolStats {
-            count_800m: row.0,
-            has_primary: row.1,
-            has_junior_high: row.2,
-        })
+        Ok(row.into())
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_medical_nearby(&self, coord: &Coord) -> Result<MedicalStats, DomainError> {
         // 1000m radius, SRID: 4326
-        let query = sqlx::query_as::<_, (i64, i64, i64)>(
+        let query = sqlx::query_as::<_, MedicalNearbyRow>(
             r#"
-            SELECT COUNT(*) FILTER (WHERE facility_type = '病院'),
-                   COUNT(*) FILTER (WHERE facility_type != '病院'),
-                   COALESCE(SUM(bed_count), 0)
+            SELECT COUNT(*) FILTER (WHERE facility_type = '病院') AS hospital_count,
+                   COUNT(*) FILTER (WHERE facility_type != '病院') AS clinic_count,
+                   COALESCE(SUM(bed_count), 0)::int8 AS total_beds
             FROM medical_facilities
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(
-            hospitals = row.0,
-            clinics = row.1,
-            beds = row.2,
-            "medical_nearby fetched"
-        );
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls medical_nearby query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| {
+            tracing::debug!(
+                hospitals = row.hospital_count,
+                clinics = row.clinic_count,
+                beds = row.total_beds,
+                "medical_nearby fetched"
+            )
+        })?;
 
-        Ok(MedicalStats {
-            hospital_count: row.0,
-            clinic_count: row.1,
-            total_beds: row.2,
-        })
+        Ok(row.into())
     }
 
     #[tracing::instrument(skip(self))]
@@ -165,10 +244,13 @@ impl TlsRepository for PgTlsRepository {
             LIMIT 1
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_optional(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls zoning_far query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.and_then(|(far,)| far))
     }
@@ -177,7 +259,7 @@ impl TlsRepository for PgTlsRepository {
     async fn calc_price_z_score(&self, coord: &Coord) -> Result<ZScoreResult, DomainError> {
         // Uses the denormalized zone_type column on land_prices to avoid the slow
         // ST_Contains join against the zoning table that was causing 503 errors.
-        let query = sqlx::query_as::<_, (f64, String, i64)>(
+        let query = sqlx::query_as::<_, ZScoreRow>(
             r#"
             WITH nearest AS (
                 SELECT price_per_sqm, zone_type
@@ -205,17 +287,23 @@ impl TlsRepository for PgTlsRepository {
             LEFT JOIN zone_stats zs ON true
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(z_score = row.0, zone_type = %row.1, sample_count = row.2, "price_z_score computed");
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls price_z_score query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| {
+            tracing::debug!(
+                z_score = row.z_score,
+                zone_type = %row.zone_type,
+                sample_count = row.sample_count,
+                "price_z_score computed"
+            )
+        })?;
 
-        Ok(ZScoreResult {
-            z_score: row.0,
-            zone_type: row.1,
-            sample_count: row.2,
-        })
+        Ok(row.into())
     }
 
     #[tracing::instrument(skip(self))]
@@ -230,10 +318,13 @@ impl TlsRepository for PgTlsRepository {
               AND year >= (SELECT MAX(year) - 1 FROM land_prices)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls recent_transactions query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.0)
     }
