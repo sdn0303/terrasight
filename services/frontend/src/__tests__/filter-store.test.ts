@@ -69,5 +69,23 @@ describe("useFilterStore", () => {
     expect(p.tls_min).toBe("60");
     expect(p.risk_max).toBe("mid");
     expect(p.zones).toBe("商業,近商");
+    expect(p.price_min).toBeUndefined();
+    expect(p.price_max).toBeUndefined();
+    expect(p.station_max).toBeUndefined();
+    expect(p.preset).toBeUndefined();
+    expect(p.cities).toBeUndefined();
+  });
+
+  it("toQueryParams returns empty object at defaults", () => {
+    expect(useFilterStore.getState().toQueryParams()).toEqual({});
+  });
+
+  it("isActive matches activeCount > 0", () => {
+    const s = useFilterStore.getState();
+    expect(s.isActive()).toBe(s.activeCount() > 0);
+    s.setCriteria({ tlsMin: 50 });
+    expect(useFilterStore.getState().isActive()).toBe(
+      useFilterStore.getState().activeCount() > 0,
+    );
   });
 });

@@ -1,12 +1,9 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import type { WeightPreset } from "@/stores/map-store";
 
+export type { WeightPreset };
 export type RiskLevel = "low" | "mid" | "high";
-export type WeightPreset =
-  | "balance"
-  | "investment"
-  | "residential"
-  | "disaster";
 
 export interface FilterState {
   area: {
@@ -54,6 +51,20 @@ const DEFAULTS = {
   preset: "balance" as WeightPreset,
 };
 
+function computeActivePredicates(s: FilterState): boolean[] {
+  return [
+    s.area.cities.length > 0,
+    s.area.customPolygon !== null,
+    s.criteria.tlsMin > DEFAULTS.criteria.tlsMin,
+    s.criteria.riskMax !== DEFAULTS.criteria.riskMax,
+    s.criteria.priceRange[0] > DEFAULTS.criteria.priceRange[0] ||
+      s.criteria.priceRange[1] < DEFAULTS.criteria.priceRange[1],
+    s.zoning.zones.length > 0,
+    s.zoning.stationMaxDistanceM < DEFAULTS.zoning.stationMaxDistanceM,
+    s.preset !== DEFAULTS.preset,
+  ];
+}
+
 export const useFilterStore = create<FilterState>()(
   devtools(
     (set, get) => ({
@@ -71,53 +82,28 @@ export const useFilterStore = create<FilterState>()(
           preset: DEFAULTS.preset,
         }),
 
-      isActive: () => {
-        const s = get();
-        return (
-          s.area.cities.length > 0 ||
-          s.area.customPolygon !== null ||
-          s.criteria.tlsMin > 0 ||
-          s.criteria.riskMax !== "high" ||
-          s.criteria.priceRange[0] > 0 ||
-          s.criteria.priceRange[1] < 10_000_000 ||
-          s.zoning.zones.length > 0 ||
-          s.zoning.stationMaxDistanceM < 2000 ||
-          s.preset !== "balance"
-        );
-      },
+      isActive: () => computeActivePredicates(get()).some(Boolean),
 
-      activeCount: () => {
-        const s = get();
-        let n = 0;
-        if (s.area.cities.length > 0) n++;
-        if (s.area.customPolygon !== null) n++;
-        if (s.criteria.tlsMin > 0) n++;
-        if (s.criteria.riskMax !== "high") n++;
-        if (
-          s.criteria.priceRange[0] > 0 ||
-          s.criteria.priceRange[1] < 10_000_000
-        )
-          n++;
-        if (s.zoning.zones.length > 0) n++;
-        if (s.zoning.stationMaxDistanceM < 2000) n++;
-        if (s.preset !== "balance") n++;
-        return n;
-      },
+      activeCount: () => computeActivePredicates(get()).filter(Boolean).length,
 
       toQueryParams: () => {
         const s = get();
         const p: Record<string, string> = {};
-        if (s.criteria.tlsMin > 0) p.tls_min = String(s.criteria.tlsMin);
-        if (s.criteria.riskMax !== "high") p.risk_max = s.criteria.riskMax;
+        if (s.criteria.tlsMin > DEFAULTS.criteria.tlsMin)
+          p.tls_min = String(s.criteria.tlsMin);
+        if (s.criteria.riskMax !== DEFAULTS.criteria.riskMax)
+          p.risk_max = s.criteria.riskMax;
         if (s.zoning.zones.length > 0) p.zones = s.zoning.zones.join(",");
-        if (s.zoning.stationMaxDistanceM < 2000) {
+        if (
+          s.zoning.stationMaxDistanceM < DEFAULTS.zoning.stationMaxDistanceM
+        ) {
           p.station_max = String(s.zoning.stationMaxDistanceM);
         }
-        if (s.criteria.priceRange[0] > 0)
+        if (s.criteria.priceRange[0] > DEFAULTS.criteria.priceRange[0])
           p.price_min = String(s.criteria.priceRange[0]);
-        if (s.criteria.priceRange[1] < 10_000_000)
+        if (s.criteria.priceRange[1] < DEFAULTS.criteria.priceRange[1])
           p.price_max = String(s.criteria.priceRange[1]);
-        if (s.preset !== "balance") p.preset = s.preset;
+        if (s.preset !== DEFAULTS.preset) p.preset = s.preset;
         if (s.area.cities.length > 0) p.cities = s.area.cities.join(",");
         return p;
       },
