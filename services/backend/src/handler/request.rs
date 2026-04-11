@@ -9,10 +9,12 @@ pub mod area_data;
 pub mod area_stats;
 pub mod bbox;
 pub mod land_price;
+pub mod opportunities;
 pub mod trend;
 
 pub use area_data::AreaDataQuery;
 pub use area_stats::AreaStatsQuery;
 pub use bbox::{BBoxQuery, CoordQuery};
 pub use land_price::{LandPriceByYearRangeQuery, LandPriceQuery};
+pub use opportunities::{OpportunitiesFilters, OpportunitiesQuery};
 pub use trend::TrendQuery;
