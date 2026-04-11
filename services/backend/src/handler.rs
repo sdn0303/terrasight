@@ -3,7 +3,7 @@ pub mod area_stats;
 pub mod error;
 pub mod health;
 pub mod land_price;
-pub mod land_price_all_years;
+pub mod land_price_by_year_range;
 pub mod request;
 pub mod response;
 pub mod score;

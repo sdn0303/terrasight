@@ -14,5 +14,5 @@ pub mod trend;
 pub use area_data::AreaDataQuery;
 pub use area_stats::AreaStatsQuery;
 pub use bbox::{BBoxQuery, CoordQuery};
-pub use land_price::{LandPriceAllYearsQuery, LandPriceQuery};
+pub use land_price::{LandPriceByYearRangeQuery, LandPriceQuery};
 pub use trend::TrendQuery;

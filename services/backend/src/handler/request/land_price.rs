@@ -48,7 +48,7 @@ impl LandPriceQuery {
     }
 }
 
-/// Land price all-years query parameters for `GET /api/v1/land-prices/all-years`.
+/// Land price year-range query parameters for `GET /api/v1/land-prices/all-years`.
 ///
 /// Expects `bbox` as a comma-separated string `"sw_lng,sw_lat,ne_lng,ne_lat"`
 /// and an optional year range `from`/`to` (defaults to `2019..=2024`).
@@ -60,7 +60,7 @@ impl LandPriceQuery {
 /// ?bbox=139.70,35.65,139.80,35.70&from=2020&to=2024&zoom=15
 /// ```
 #[derive(Debug, Deserialize)]
-pub struct LandPriceAllYearsQuery {
+pub struct LandPriceByYearRangeQuery {
     /// Comma-separated bounding box: `sw_lng,sw_lat,ne_lng,ne_lat`.
     pub bbox: String,
     #[serde(default = "default_from_year")]
@@ -79,7 +79,7 @@ fn default_to_year() -> i32 {
     2024
 }
 
-impl LandPriceAllYearsQuery {
+impl LandPriceByYearRangeQuery {
     /// Parse and validate into domain value objects `(from_year, to_year, BBox, zoom)`.
     ///
     /// The bbox string must contain exactly four comma-separated `f64` values
@@ -155,8 +155,8 @@ mod tests {
     }
 
     #[test]
-    fn land_price_all_years_query_from_gt_to_is_error() {
-        let q = LandPriceAllYearsQuery {
+    fn land_price_by_year_range_query_from_gt_to_is_error() {
+        let q = LandPriceByYearRangeQuery {
             bbox: "139.70,35.65,139.80,35.70".into(),
             from: 2024,
             to: 2020,

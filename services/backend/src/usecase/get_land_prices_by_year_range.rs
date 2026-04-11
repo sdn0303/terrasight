@@ -5,41 +5,44 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
 use crate::domain::value_object::{BBox, Year, ZoomLevel};
 
-/// Fetch land price GeoJSON features for a given year, bounding box, and zoom level.
-pub struct GetLandPricesUsecase {
+/// Fetch land price GeoJSON features across a `[from_year..=to_year]` range
+/// for the time machine animation endpoint.
+///
+/// The response contains every row with its `properties.year` populated so the
+/// frontend can drive a MapLibre `setFilter` slider without additional
+/// round-trips.
+pub struct GetLandPricesByYearRangeUsecase {
     land_price_repo: Arc<dyn LandPriceRepository>,
 }
 
-impl GetLandPricesUsecase {
+impl GetLandPricesByYearRangeUsecase {
     pub fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
         Self { land_price_repo }
     }
 
-    /// Execute the query and return a [`LayerResult`] with matching features and
-    /// truncation metadata.
-    ///
-    /// `zoom` is forwarded to the repository so that `compute_feature_limit` can
-    /// derive the appropriate per-layer cap.
+    /// Execute the year-range query.
     ///
     /// # Errors
     ///
-    /// Propagates [`DomainError`] from the repository (typically a database error).
+    /// Propagates [`DomainError`] from the repository.
     pub async fn execute(
         &self,
-        year: Year,
+        from_year: Year,
+        to_year: Year,
         bbox: BBox,
         zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
         self.land_price_repo
-            .find_by_year_and_bbox(year, &bbox, zoom)
+            .find_all_years_by_bbox(from_year, to_year, &bbox, zoom)
             .await
             .inspect(|result| {
                 tracing::debug!(
-                    year = year.value(),
+                    from_year = from_year.value(),
+                    to_year = to_year.value(),
                     feature_count = result.features.len(),
                     truncated = result.truncated,
                     limit = result.limit,
-                    "land-prices query complete"
+                    "land-prices by-year-range query complete"
                 )
             })
     }

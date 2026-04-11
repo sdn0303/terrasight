@@ -18,6 +18,7 @@ use crate::usecase::compute_tls::ComputeTlsUsecase;
 use crate::usecase::get_area_data::GetAreaDataUsecase;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 use crate::usecase::get_land_prices::GetLandPricesUsecase;
+use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
 use crate::usecase::get_stats::GetStatsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
 
@@ -33,6 +34,7 @@ pub struct AppState {
     pub area_data: Arc<GetAreaDataUsecase>,
     pub area_stats: Arc<GetAreaStatsUsecase>,
     pub land_prices: Arc<GetLandPricesUsecase>,
+    pub land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
     pub score: Arc<ComputeTlsUsecase>,
     pub stats: Arc<GetStatsUsecase>,
     pub trend: Arc<GetTrendUsecase>,
@@ -83,6 +85,9 @@ impl AppState {
                 PgAdminAreaStatsRepository::new(pool.clone()),
             ))),
             land_prices: Arc::new(GetLandPricesUsecase::new(Arc::new(
+                PgLandPriceRepository::new(pool.clone()),
+            ))),
+            land_prices_by_year_range: Arc::new(GetLandPricesByYearRangeUsecase::new(Arc::new(
                 PgLandPriceRepository::new(pool.clone()),
             ))),
             score: Arc::new(ComputeTlsUsecase::new(
