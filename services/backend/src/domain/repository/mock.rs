@@ -20,8 +20,9 @@ use std::sync::Mutex;
 use async_trait::async_trait;
 
 use crate::domain::entity::{
-    AdminAreaStats, FacilityStats, LandPriceStats, LayerResult, MedicalStats, PriceRecord,
-    RiskStats, SchoolStats, TrendLocation, TrendPoint, ZScoreResult,
+    AdminAreaStats, FacilityStats, LandPriceStats, LayerResult, MedicalStats, OpportunityRecord,
+    PricePerSqm, PriceRecord, RiskStats, SchoolStats, TrendLocation, TrendPoint, ZScoreResult,
+    ZoneCode,
 };
 use crate::domain::error::DomainError;
 use crate::domain::repository::{
@@ -29,7 +30,8 @@ use crate::domain::repository::{
     StatsRepository, TlsRepository, TrendRepository,
 };
 use crate::domain::value_object::{
-    AreaCode, BBox, Coord, LayerType, Year, YearsLookback, ZoomLevel,
+    AreaCode, BBox, Coord, LayerType, OpportunityLimit, OpportunityOffset, Year, YearsLookback,
+    ZoomLevel,
 };
 
 /// Pop the next queued response or panic if the queue is empty.
@@ -175,6 +177,7 @@ impl TrendRepository for MockTrendRepository {
 pub struct MockLandPriceRepository {
     find_by_year: Mutex<Vec<Result<LayerResult, DomainError>>>,
     find_all_years: Mutex<Vec<Result<LayerResult, DomainError>>>,
+    find_for_opportunities: Mutex<Vec<Result<Vec<OpportunityRecord>, DomainError>>>,
 }
 
 impl MockLandPriceRepository {
@@ -189,6 +192,14 @@ impl MockLandPriceRepository {
 
     pub fn with_find_all_years_by_bbox(self, r: Result<LayerResult, DomainError>) -> Self {
         self.find_all_years.lock().unwrap().push(r);
+        self
+    }
+
+    pub fn with_find_for_opportunities(
+        self,
+        r: Result<Vec<OpportunityRecord>, DomainError>,
+    ) -> Self {
+        self.find_for_opportunities.lock().unwrap().push(r);
         self
     }
 }
@@ -212,6 +223,17 @@ impl LandPriceRepository for MockLandPriceRepository {
         _zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
         pop(&self.find_all_years, "find_all_years_by_bbox")
+    }
+
+    async fn find_for_opportunities(
+        &self,
+        _bbox: &BBox,
+        _limit: OpportunityLimit,
+        _offset: OpportunityOffset,
+        _price_range: Option<(PricePerSqm, PricePerSqm)>,
+        _zones: &[ZoneCode],
+    ) -> Result<Vec<OpportunityRecord>, DomainError> {
+        pop(&self.find_for_opportunities, "find_for_opportunities")
     }
 }
 
