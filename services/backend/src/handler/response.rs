@@ -13,6 +13,7 @@ pub mod stats;
 pub mod tls;
 pub mod trend;
 
+pub use area_data::AreaDataResponseDto;
 pub use area_stats::{AreaFacilitiesDto, AreaLandPriceDto, AreaRiskDto, AreaStatsResponse};
 pub use health::HealthResponse;
 pub use layer::{

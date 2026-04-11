@@ -5,9 +5,10 @@ use axum::{
     extract::{Query, State},
 };
 
+use crate::domain::value_object::LayerType;
 use crate::handler::error::AppError;
 use crate::handler::request::LandPriceAllYearsQuery;
-use crate::handler::response::{LayerResponseDto, geo_feature_to_dto, point_feature_to_polygon};
+use crate::handler::response::LayerResponseDto;
 use crate::usecase::get_land_prices::GetLandPricesUsecase;
 
 /// `GET /api/v1/land-prices/all-years?bbox={sw_lng},{sw_lat},{ne_lng},{ne_lat}&from={year}&to={year}&zoom={zoom}`
@@ -28,43 +29,32 @@ pub async fn get_land_prices_all_years(
     State(usecase): State<Arc<GetLandPricesUsecase>>,
     Query(params): Query<LandPriceAllYearsQuery>,
 ) -> Result<Json<LayerResponseDto>, AppError> {
-    let (from_year, to_year, bbox, zoom) = params.into_domain()?;
+    let (from_year, to_year, bbox, zoom) = params.into_domain().inspect(|(f, t, b, z)| {
+        tracing::debug!(
+            from_year = f.value(),
+            to_year = t.value(),
+            south = b.south(),
+            west = b.west(),
+            north = b.north(),
+            east = b.east(),
+            zoom = z.get(),
+            "land-prices/all-years request parsed"
+        )
+    })?;
 
-    tracing::debug!(
-        from_year = from_year.value(),
-        to_year = to_year.value(),
-        south = bbox.south(),
-        west = bbox.west(),
-        north = bbox.north(),
-        east = bbox.east(),
-        zoom = zoom.get(),
-        "land-prices/all-years request parsed"
-    );
-
-    let layer_result = usecase
+    usecase
         .execute_all_years(from_year, to_year, bbox, zoom)
-        .await?;
-
-    tracing::info!(
-        feature_count = layer_result.features.len(),
-        truncated = layer_result.truncated,
-        limit = layer_result.limit,
-        "land-prices/all-years response ready"
-    );
-
-    let mut feature_dtos: Vec<_> = layer_result
-        .features
-        .into_iter()
-        .map(geo_feature_to_dto)
-        .collect();
-
-    for f in &mut feature_dtos {
-        point_feature_to_polygon(f);
-    }
-
-    Ok(Json(LayerResponseDto::new(
-        feature_dtos,
-        layer_result.truncated,
-        layer_result.limit,
-    )))
+        .await
+        .inspect(|lr| {
+            tracing::info!(
+                feature_count = lr.features.len(),
+                truncated = lr.truncated,
+                limit = lr.limit,
+                "land-prices/all-years response ready"
+            )
+        })
+        .inspect_err(|e| tracing::warn!(error = %e, "land-prices/all-years fetch failed"))
+        .map(|lr| LayerResponseDto::from_layer_result(lr, LayerType::LandPrice))
+        .map(Json)
+        .map_err(Into::into)
 }

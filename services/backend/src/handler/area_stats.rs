@@ -20,13 +20,23 @@ pub async fn get_area_stats(
     State(usecase): State<Arc<GetAreaStatsUsecase>>,
     Query(params): Query<AreaStatsQuery>,
 ) -> Result<Json<AreaStatsResponse>, AppError> {
-    let code = params.into_domain()?;
-    let stats = usecase.execute(&code).await?;
-    tracing::info!(
-        code = %stats.code,
-        level = %stats.level,
-        land_price_count = stats.land_price.count,
-        "area-stats response ready"
-    );
-    Ok(Json(AreaStatsResponse::from(stats)))
+    let code = params
+        .into_domain()
+        .inspect(|c| tracing::debug!(code = c.as_str(), "area-stats request parsed"))?;
+
+    usecase
+        .execute(&code)
+        .await
+        .inspect(|stats| {
+            tracing::info!(
+                code = %stats.code,
+                level = %stats.level,
+                land_price_count = stats.land_price.count,
+                "area-stats response ready"
+            )
+        })
+        .inspect_err(|e| tracing::warn!(error = %e, "area-stats lookup failed"))
+        .map(AreaStatsResponse::from)
+        .map(Json)
+        .map_err(Into::into)
 }

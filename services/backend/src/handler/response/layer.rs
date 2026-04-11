@@ -4,6 +4,9 @@
 use realestate_geo_math::spatial::point_to_polygon;
 use serde::Serialize;
 
+use crate::domain::entity::LayerResult;
+use crate::domain::value_object::LayerType;
+
 pub use realestate_api_core::response::{FeatureCollectionDto, FeatureDto};
 
 /// GeoJSON FeatureCollection response with truncation metadata.
@@ -34,6 +37,24 @@ impl LayerResponseDto {
             count,
             limit,
         }
+    }
+
+    /// Construct a [`LayerResponseDto`] from a domain [`LayerResult`] for the
+    /// given [`LayerType`]. Point features belonging to the `LandPrice` layer
+    /// are converted into ~30 m² polygon squares for better map visibility.
+    pub fn from_layer_result(result: LayerResult, layer: LayerType) -> Self {
+        let is_land_price = layer == LayerType::LandPrice;
+        let mut features: Vec<FeatureDto> = result
+            .features
+            .into_iter()
+            .map(geo_feature_to_dto)
+            .collect();
+
+        if is_land_price {
+            features.iter_mut().for_each(point_feature_to_polygon);
+        }
+
+        Self::new(features, result.truncated, result.limit)
     }
 }
 
