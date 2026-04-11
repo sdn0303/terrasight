@@ -8,7 +8,7 @@ use super::map_db_err;
 use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType};
+use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
 
 pub struct PgAreaRepository {
     pool: PgPool,
@@ -41,15 +41,16 @@ impl LayerRepository for PgAreaRepository {
         &self,
         layer: LayerType,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
+        let z = zoom.get();
         match layer {
-            LayerType::LandPrice => self.query_land_prices(bbox, zoom).await,
-            LayerType::Zoning => self.query_zoning(bbox, zoom).await,
-            LayerType::Flood => self.query_flood_risk(bbox, zoom).await,
-            LayerType::SteepSlope => self.query_steep_slope(bbox, zoom).await,
-            LayerType::Schools => self.query_schools(bbox, zoom).await,
-            LayerType::Medical => self.query_medical(bbox, zoom).await,
+            LayerType::LandPrice => self.query_land_prices(bbox, z).await,
+            LayerType::Zoning => self.query_zoning(bbox, z).await,
+            LayerType::Flood => self.query_flood_risk(bbox, z).await,
+            LayerType::SteepSlope => self.query_steep_slope(bbox, z).await,
+            LayerType::Schools => self.query_schools(bbox, z).await,
+            LayerType::Medical => self.query_medical(bbox, z).await,
         }
     }
 }

@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::domain::constants::TREND_DEFAULT_YEARS;
 use crate::domain::error::DomainError;
 use crate::domain::scoring::tls::WeightPreset;
-use crate::domain::value_object::{BBox, Coord, LayerType, Year};
+use crate::domain::value_object::{BBox, Coord, LayerType, Year, YearsLookback, ZoomLevel};
 
 /// Bounding box query parameters for `/api/area-data` and `/api/stats`.
 ///
@@ -72,8 +72,8 @@ pub struct AreaDataQuery {
 }
 
 impl AreaDataQuery {
-    /// Convert to domain types: validated BBox + parsed LayerType list + zoom.
-    pub fn into_domain(self) -> Result<(BBox, Vec<LayerType>, u32), DomainError> {
+    /// Convert to domain types: validated BBox + parsed LayerType list + ZoomLevel.
+    pub fn into_domain(self) -> Result<(BBox, Vec<LayerType>, ZoomLevel), DomainError> {
         let bbox = BBox::new(self.south, self.west, self.north, self.east)?;
 
         let layers: Vec<LayerType> = self
@@ -94,7 +94,7 @@ impl AreaDataQuery {
             return Err(DomainError::MissingParameter("layers".into()));
         }
 
-        Ok((bbox, layers, self.zoom))
+        Ok((bbox, layers, ZoomLevel::clamped(self.zoom)))
     }
 }
 
@@ -137,10 +137,10 @@ impl LandPriceQuery {
     /// parsed, and propagates [`DomainError::InvalidYear`] /
     /// [`DomainError::InvalidCoordinate`] / [`DomainError::BBoxTooLarge`] from
     /// the domain value object constructors.
-    pub fn into_domain(self) -> Result<(Year, BBox, u32), DomainError> {
+    pub fn into_domain(self) -> Result<(Year, BBox, ZoomLevel), DomainError> {
         let year = Year::new(self.year)?;
         let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
-        Ok((year, bbox, self.zoom))
+        Ok((year, bbox, ZoomLevel::clamped(self.zoom)))
     }
 }
 
@@ -185,7 +185,7 @@ impl LandPriceAllYearsQuery {
     ///
     /// Returns [`DomainError::MissingParameter`] when the bbox string cannot be
     /// parsed or when `from > to`, and propagates year/coordinate validation errors.
-    pub fn into_domain(self) -> Result<(Year, Year, BBox, u32), DomainError> {
+    pub fn into_domain(self) -> Result<(Year, Year, BBox, ZoomLevel), DomainError> {
         if self.from > self.to {
             return Err(DomainError::Validation(
                 "from year must be <= to year".into(),
@@ -196,7 +196,7 @@ impl LandPriceAllYearsQuery {
         let to_year = Year::new(self.to)?;
         let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
 
-        Ok((from_year, to_year, bbox, self.zoom))
+        Ok((from_year, to_year, bbox, ZoomLevel::clamped(self.zoom)))
     }
 }
 
@@ -214,9 +214,9 @@ fn default_years() -> i32 {
 }
 
 impl TrendQuery {
-    pub fn into_domain(self) -> Result<(Coord, i32), DomainError> {
+    pub fn into_domain(self) -> Result<(Coord, YearsLookback), DomainError> {
         let coord = Coord::new(self.lat, self.lng)?;
-        Ok((coord, self.years))
+        Ok((coord, YearsLookback::clamped(self.years)))
     }
 }
 
@@ -258,7 +258,7 @@ mod tests {
         };
         let (_, layers, zoom) = q.into_domain().unwrap();
         assert_eq!(layers.len(), 2);
-        assert_eq!(zoom, 14);
+        assert_eq!(zoom, ZoomLevel::clamped(14));
     }
 
     #[test]
@@ -287,7 +287,7 @@ mod tests {
         assert!((bbox.south() - 35.65).abs() < f64::EPSILON);
         assert!((bbox.east() - 139.80).abs() < f64::EPSILON);
         assert!((bbox.north() - 35.70).abs() < f64::EPSILON);
-        assert_eq!(zoom, 14);
+        assert_eq!(zoom, ZoomLevel::clamped(14));
     }
 
     #[test]
@@ -328,6 +328,6 @@ mod tests {
             years: default_years(),
         };
         let (_, years) = q.into_domain().unwrap();
-        assert_eq!(years, 5);
+        assert_eq!(years, YearsLookback::clamped(5));
     }
 }

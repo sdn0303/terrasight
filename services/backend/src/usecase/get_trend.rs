@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use realestate_geo_math::{finance::compute_cagr, rounding::round_dp};
 
-use crate::domain::constants::{PRECISION_RATIO, TREND_MAX_YEARS, TREND_MIN_YEARS};
+use crate::domain::constants::PRECISION_RATIO;
 use crate::domain::error::DomainError;
 use crate::domain::repository::TrendRepository;
-use crate::domain::value_object::{Coord, TrendAnalysis, TrendDirection};
+use crate::domain::value_object::{Coord, TrendAnalysis, TrendDirection, YearsLookback};
 
 pub struct GetTrendUsecase {
     trend_repo: Arc<dyn TrendRepository>,
@@ -20,9 +20,11 @@ impl GetTrendUsecase {
     ///
     /// Business logic (CAGR calculation, direction determination) lives here
     /// rather than in the handler layer (P1 review fix).
-    pub async fn execute(&self, coord: &Coord, years: i32) -> Result<TrendAnalysis, DomainError> {
-        let years = years.clamp(TREND_MIN_YEARS, TREND_MAX_YEARS);
-
+    pub async fn execute(
+        &self,
+        coord: Coord,
+        years: YearsLookback,
+    ) -> Result<TrendAnalysis, DomainError> {
         let result = self.trend_repo.find_trend(coord, years).await?;
 
         let (location, data) = result.ok_or(DomainError::NotFound)?;

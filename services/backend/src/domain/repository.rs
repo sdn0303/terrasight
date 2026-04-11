@@ -18,7 +18,7 @@ pub trait LayerRepository: Send + Sync {
         &self,
         layer: LayerType,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError>;
 }
 
@@ -42,8 +42,8 @@ pub trait TrendRepository: Send + Sync {
     /// Price trend data for the nearest observation point within 2km.
     async fn find_trend(
         &self,
-        coord: &Coord,
-        years: i32,
+        coord: Coord,
+        years: YearsLookback,
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError>;
 }
 
@@ -57,9 +57,9 @@ pub trait LandPriceRepository: Send + Sync {
     /// `compute_feature_limit`. Returns [`LayerResult`] with truncation metadata.
     async fn find_by_year_and_bbox(
         &self,
-        year: &Year,
+        year: Year,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError>;
 
     /// Fetch land price GeoJSON features across a year range for time machine animation.
@@ -69,10 +69,10 @@ pub trait LandPriceRepository: Send + Sync {
     /// number of years to accommodate multi-year data in a single response.
     async fn find_all_years_by_bbox(
         &self,
-        from_year: &Year,
-        to_year: &Year,
+        from_year: Year,
+        to_year: Year,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError>;
 }
 
@@ -83,7 +83,7 @@ pub trait AdminAreaStatsRepository: Send + Sync {
     /// Fetch aggregated statistics for the given administrative area code.
     ///
     /// `code` is a prefecture code (e.g. `"13"`) or municipality code (e.g. `"13105"`).
-    async fn get_area_stats(&self, code: &str) -> Result<AdminAreaStats, DomainError>;
+    async fn get_area_stats(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError>;
 }
 
 // ─── Health ──────────────────────────────────────────

@@ -5,6 +5,7 @@ use super::map_db_err;
 use crate::domain::entity::{AdminAreaStats, FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::AdminAreaStatsRepository;
+use crate::domain::value_object::{AreaCode, AreaCodeLevel};
 
 pub struct PgAdminAreaStatsRepository {
     pool: PgPool,
@@ -25,11 +26,10 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
     /// not exist yet.  Once that table is available the queries should be narrowed to
     /// `WHERE ST_Intersects(geom, (SELECT geom FROM admin_boundaries WHERE code = $1))`.
     #[tracing::instrument(skip(self))]
-    async fn get_area_stats(&self, code: &str) -> Result<AdminAreaStats, DomainError> {
-        let level = if code.len() <= 2 {
-            "prefecture"
-        } else {
-            "municipality"
+    async fn get_area_stats(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError> {
+        let level = match code.level() {
+            AreaCodeLevel::Prefecture => "prefecture",
+            AreaCodeLevel::Municipality => "municipality",
         };
 
         // Land price stats — global aggregate (placeholder until admin_boundaries exists).
@@ -70,9 +70,9 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
         );
 
         Ok(AdminAreaStats {
-            code: code.to_string(),
+            code: code.as_str().to_string(),
             // Placeholder name until admin_boundaries table is populated.
-            name: format!("Area {code}"),
+            name: format!("Area {}", code.as_str()),
             level: level.to_string(),
             land_price: LandPriceStats {
                 avg_per_sqm: lp_row.0,

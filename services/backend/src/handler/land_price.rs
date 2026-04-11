@@ -42,7 +42,7 @@ pub async fn get_land_prices(
         west = bbox.west(),
         north = bbox.north(),
         east = bbox.east(),
-        zoom,
+        zoom = zoom.get(),
         "land-prices request parsed"
     );
 

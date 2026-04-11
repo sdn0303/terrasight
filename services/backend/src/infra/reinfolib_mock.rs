@@ -30,14 +30,14 @@ use crate::domain::entity::GeoFeature;
 use crate::domain::error::DomainError;
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType};
+use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
 
 /// Default zoom level used when `PostgisFallback` delegates to `LayerRepository`.
 ///
 /// The `ReinfolibDataSource` trait does not carry zoom context (it predates
-/// the zoom-aware limit feature). Using zoom 14 (street level) ensures a
-/// reasonable feature count for the PostGIS fallback path.
-const FALLBACK_ZOOM: u32 = 14;
+/// the zoom-aware limit feature). Using [`ZoomLevel::DEFAULT`] (street level)
+/// ensures a reasonable feature count for the PostGIS fallback path.
+const FALLBACK_ZOOM: ZoomLevel = ZoomLevel::DEFAULT;
 
 // ─── PostgisFallback ─────────────────────────────────────────────────────────
 
@@ -265,7 +265,7 @@ mod tests {
     use crate::domain::error::DomainError;
     use crate::domain::reinfolib::ReinfolibDataSource;
     use crate::domain::repository::LayerRepository;
-    use crate::domain::value_object::{BBox, Coord, LayerType};
+    use crate::domain::value_object::{BBox, Coord, LayerType, ZoomLevel};
 
     // ── Stub LayerRepository ─────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ mod tests {
             &self,
             layer: LayerType,
             _bbox: &BBox,
-            _zoom: u32,
+            _zoom: ZoomLevel,
         ) -> Result<LayerResult, DomainError> {
             use std::sync::atomic::Ordering::SeqCst;
             match layer {

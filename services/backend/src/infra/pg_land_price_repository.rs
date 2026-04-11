@@ -11,7 +11,7 @@ use super::map_db_err;
 use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{BBox, Year};
+use crate::domain::value_object::{BBox, Year, ZoomLevel};
 
 /// Maximum time to wait for the land price query before returning an error.
 const LAND_PRICE_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -40,12 +40,12 @@ impl LandPriceRepository for PgLandPriceRepository {
     #[tracing::instrument(skip(self))]
     async fn find_by_year_and_bbox(
         &self,
-        year: &Year,
+        year: Year,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("landprice", area, zoom);
+        let limit = compute_feature_limit("landprice", area, zoom.get());
 
         let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
             r#"
@@ -111,14 +111,14 @@ impl LandPriceRepository for PgLandPriceRepository {
     #[tracing::instrument(skip(self))]
     async fn find_all_years_by_bbox(
         &self,
-        from_year: &Year,
-        to_year: &Year,
+        from_year: Year,
+        to_year: Year,
         bbox: &BBox,
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let year_count = i64::from((to_year.value() - from_year.value() + 1).max(1));
-        let base_limit = compute_feature_limit("landprice", area, zoom);
+        let base_limit = compute_feature_limit("landprice", area, zoom.get());
         let limit = base_limit.saturating_mul(year_count);
 
         let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(

@@ -6,7 +6,7 @@ use super::map_db_err;
 use crate::domain::entity::{TrendLocation, TrendPoint};
 use crate::domain::error::DomainError;
 use crate::domain::repository::TrendRepository;
-use crate::domain::value_object::Coord;
+use crate::domain::value_object::{Coord, YearsLookback};
 
 pub struct PgTrendRepository {
     pool: PgPool,
@@ -23,9 +23,10 @@ impl TrendRepository for PgTrendRepository {
     #[tracing::instrument(skip(self))]
     async fn find_trend(
         &self,
-        coord: &Coord,
-        years: i32,
+        coord: Coord,
+        years: YearsLookback,
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError> {
+        let years = years.value();
         // Search radius: RADIUS_TREND_SEARCH_M (2000m), SRID: SRID_WGS84 (4326)
         let nearest_query = sqlx::query_as::<_, (String, f64)>(
             r#"

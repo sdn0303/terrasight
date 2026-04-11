@@ -37,7 +37,7 @@ pub async fn get_land_prices_all_years(
         west = bbox.west(),
         north = bbox.north(),
         east = bbox.east(),
-        zoom,
+        zoom = zoom.get(),
         "land-prices/all-years request parsed"
     );
 

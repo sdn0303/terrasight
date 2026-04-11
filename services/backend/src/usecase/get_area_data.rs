@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType};
+use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
 
 pub struct GetAreaDataUsecase {
     layer_repo: Arc<dyn LayerRepository>,
@@ -23,7 +23,7 @@ impl GetAreaDataUsecase {
         &self,
         bbox: &BBox,
         layers: &[LayerType],
-        zoom: u32,
+        zoom: ZoomLevel,
     ) -> Result<HashMap<LayerType, LayerResult>, DomainError> {
         if layers.is_empty() {
             return Err(DomainError::MissingParameter("layers".into()));

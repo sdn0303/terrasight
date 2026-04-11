@@ -22,10 +22,10 @@ pub async fn get_trend(
     tracing::debug!(
         lat = coord.lat(),
         lng = coord.lng(),
-        years,
+        years = years.value(),
         "trend request parsed"
     );
-    let trend = usecase.execute(&coord, years).await?;
+    let trend = usecase.execute(coord, years).await?;
     tracing::info!(
         cagr = trend.cagr,
         direction = trend.direction.as_str(),

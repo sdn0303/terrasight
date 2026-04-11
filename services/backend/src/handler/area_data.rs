@@ -28,7 +28,7 @@ pub async fn get_area_data(
         west = bbox.west(),
         north = bbox.north(),
         east = bbox.east(),
-        zoom,
+        zoom = zoom.get(),
         layers = ?layers.iter().map(|l| l.as_str()).collect::<Vec<_>>(),
         "area-data request parsed"
     );

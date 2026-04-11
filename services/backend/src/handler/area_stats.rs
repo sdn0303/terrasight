@@ -6,12 +6,20 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::domain::error::DomainError;
+use crate::domain::value_object::AreaCode;
 use crate::handler::error::AppError;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 
 #[derive(Debug, Deserialize)]
 pub struct AreaStatsQuery {
     pub code: String,
+}
+
+impl AreaStatsQuery {
+    pub fn into_domain(self) -> Result<AreaCode, DomainError> {
+        AreaCode::parse(&self.code)
+    }
 }
 
 /// Response for `GET /api/area-stats`.
@@ -54,7 +62,8 @@ pub async fn get_area_stats(
     State(usecase): State<Arc<GetAreaStatsUsecase>>,
     Query(params): Query<AreaStatsQuery>,
 ) -> Result<Json<AreaStatsResponse>, AppError> {
-    let stats = usecase.execute(&params.code).await?;
+    let code = params.into_domain()?;
+    let stats = usecase.execute(&code).await?;
     tracing::info!(
         code = %stats.code,
         level = %stats.level,
