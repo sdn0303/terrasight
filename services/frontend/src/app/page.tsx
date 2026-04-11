@@ -5,6 +5,7 @@ import { InfraTab } from "@/components/insight/infra-tab";
 import { IntelTab } from "@/components/insight/intel-tab";
 import { RiskTab } from "@/components/insight/risk-tab";
 import { TrendTab } from "@/components/insight/trend-tab";
+import { LayerControlPanel } from "@/components/layer/layer-control-panel";
 import type { DrawerTabDef } from "@/components/layout/insight-drawer";
 import { InsightDrawer } from "@/components/layout/insight-drawer";
 import { MapCanvasFrame } from "@/components/layout/map-canvas-frame";
@@ -12,6 +13,7 @@ import { SidebarRail } from "@/components/layout/sidebar-rail";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { PopupCard } from "@/components/map/popup-card";
+import { ThemesPanel } from "@/components/theme/themes-panel";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
 import { useMapStore } from "@/stores/map-store";
@@ -25,6 +27,8 @@ export default function Home() {
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const setInsight = useUIStore((s) => s.setInsight);
+  const leftPanel = useUIStore((s) => s.leftPanel);
+  const setLeftPanel = useUIStore((s) => s.setLeftPanel);
 
   const insightOpen = insight !== null;
   const insightLat = insight?.lat ?? null;
@@ -124,6 +128,15 @@ export default function Home() {
       </div>
 
       <SidebarRail />
+
+      <LayerControlPanel
+        open={leftPanel === "layers"}
+        onClose={() => setLeftPanel(null)}
+      />
+      <ThemesPanel
+        open={leftPanel === "themes"}
+        onClose={() => setLeftPanel(null)}
+      />
 
       <InsightDrawer
         open={insightOpen}
