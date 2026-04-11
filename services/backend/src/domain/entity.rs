@@ -22,6 +22,132 @@ impl AreaName {
     }
 }
 
+/// Land price per square meter, stored in JPY (integer yen).
+///
+/// Rejects negative values via [`DomainError::Validation`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PricePerSqm(i64);
+
+impl PricePerSqm {
+    pub fn new(value: i64) -> Result<Self, DomainError> {
+        if value < 0 {
+            return Err(DomainError::Validation(format!(
+                "price_per_sqm must be non-negative, got {value}"
+            )));
+        }
+        Ok(Self(value))
+    }
+
+    pub fn value(self) -> i64 {
+        self.0
+    }
+}
+
+/// Building Coverage Ratio (建蔽率) as an integer percentage in `0..=100`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BuildingCoverageRatio(i32);
+
+impl BuildingCoverageRatio {
+    pub fn new(value: i32) -> Result<Self, DomainError> {
+        if !(0..=100).contains(&value) {
+            return Err(DomainError::Validation(format!(
+                "building coverage ratio must be in 0..=100, got {value}"
+            )));
+        }
+        Ok(Self(value))
+    }
+
+    pub fn value(self) -> i32 {
+        self.0
+    }
+}
+
+/// Floor Area Ratio (容積率) as an integer percentage in `0..=2000`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FloorAreaRatio(i32);
+
+impl FloorAreaRatio {
+    pub fn new(value: i32) -> Result<Self, DomainError> {
+        if !(0..=2000).contains(&value) {
+            return Err(DomainError::Validation(format!(
+                "floor area ratio must be in 0..=2000, got {value}"
+            )));
+        }
+        Ok(Self(value))
+    }
+
+    pub fn value(self) -> i32 {
+        self.0
+    }
+}
+
+/// Distance in meters (non-negative by construction).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Meters(u32);
+
+impl Meters {
+    pub fn new(value: u32) -> Self {
+        Self(value)
+    }
+
+    pub fn value(self) -> u32 {
+        self.0
+    }
+}
+
+/// Percentage value as an `f64` (domain convention: not clamped to `0..=100`;
+/// negative values represent e.g. year-over-year decreases).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Percent(f64);
+
+impl Percent {
+    pub const fn zero() -> Self {
+        Self(0.0)
+    }
+
+    pub fn new(value: f64) -> Self {
+        Self(value)
+    }
+
+    pub fn value(self) -> f64 {
+        self.0
+    }
+}
+
+/// Zoning code (e.g. "YOYOKU_CODE_01"). Rejects empty strings.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ZoneCode(String);
+
+impl ZoneCode {
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(DomainError::Validation(
+                "zone code must be non-empty".into(),
+            ));
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Record count, clamped to `>= 0` at construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RecordCount(i64);
+
+impl RecordCount {
+    pub fn new(value: i64) -> Self {
+        Self(value.max(0))
+    }
+
+    pub fn value(self) -> i64 {
+        self.0
+    }
+}
+
 /// Postal address string for an observation point or entity.
 ///
 /// Rejects empty / whitespace-only strings via [`DomainError::Validation`].
@@ -190,6 +316,44 @@ pub struct AdminAreaStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn price_per_sqm_rejects_negative() {
+        assert!(PricePerSqm::new(-1).is_err());
+        assert_eq!(PricePerSqm::new(0).unwrap().value(), 0);
+        assert_eq!(PricePerSqm::new(1_500_000).unwrap().value(), 1_500_000);
+    }
+
+    #[test]
+    fn bcr_and_far_bounds() {
+        assert!(BuildingCoverageRatio::new(-1).is_err());
+        assert!(BuildingCoverageRatio::new(101).is_err());
+        assert_eq!(BuildingCoverageRatio::new(60).unwrap().value(), 60);
+        assert!(FloorAreaRatio::new(-1).is_err());
+        assert!(FloorAreaRatio::new(2001).is_err());
+        assert_eq!(FloorAreaRatio::new(400).unwrap().value(), 400);
+    }
+
+    #[test]
+    fn meters_and_percent_constructors() {
+        assert_eq!(Meters::new(500).value(), 500);
+        assert_eq!(Percent::zero().value(), 0.0);
+        assert_eq!(Percent::new(-5.2).value(), -5.2);
+    }
+
+    #[test]
+    fn zone_code_rejects_empty() {
+        assert!(ZoneCode::parse("").is_err());
+        assert!(ZoneCode::parse("   ").is_err());
+        assert_eq!(ZoneCode::parse(" Y1 ").unwrap().as_str(), "Y1");
+    }
+
+    #[test]
+    fn record_count_clamps_negative_to_zero() {
+        assert_eq!(RecordCount::new(-5).value(), 0);
+        assert_eq!(RecordCount::new(0).value(), 0);
+        assert_eq!(RecordCount::new(42).value(), 42);
+    }
 
     #[test]
     fn area_name_accepts_nonempty_and_trims() {
