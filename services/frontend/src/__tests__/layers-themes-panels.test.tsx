@@ -10,9 +10,9 @@ import { LAYERS } from "@/lib/layers";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
-// Later tasks in this phase will add ThemeCard / LayerControlPanel /
-// ThemesPanel describe blocks to this same file. Keep this mock at the
-// top-level so all suites pick it up.
+// Top-level next-intl mock so every describe block in this file sees
+// the same behavior: `t(key)` returns the key verbatim. Tests that need
+// to assert on translated text match against the raw key.
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
@@ -37,7 +37,11 @@ describe("LayerToggleRow", () => {
       '[data-testid="swatch"]',
     ) as HTMLElement;
     expect(swatch).not.toBeNull();
-    expect(swatch.style.background).toContain("rgb(59, 130, 246)");
+    // jsdom normalizes hex → rgb, but we accept either representation so
+    // the assertion does not depend on that behavior staying stable.
+    expect(swatch.style.background).toMatch(
+      /^(#3b82f6|rgb\(\s*59\s*,\s*130\s*,\s*246\s*\))$/i,
+    );
   });
 
   it("omits the swatch when no color is provided", () => {
@@ -197,6 +201,28 @@ describe("ThemesPanel", () => {
     // applyThemeLayers should have unioned in safety layers
     const visible = useMapStore.getState().visibleLayers;
     expect(visible.has("flood")).toBe(true); // flood is in safety theme
+  });
+
+  it("deselecting the last theme resets map layers to defaults (regression: Codex P1)", async () => {
+    // Start with a manually polluted state: safety selected + flood visible
+    useUIStore.setState({ activeThemes: new Set(["safety"]) });
+    useMapStore.setState({
+      visibleLayers: new Set([...defaultVisibleLayers, "flood"]),
+    });
+    const user = userEvent.setup();
+    render(<ThemesPanel open={true} onClose={vi.fn()} />);
+    const safetyBtn = screen.getByText("theme.safety.name").closest("button");
+    if (!safetyBtn) throw new Error("safety card not found");
+    await user.click(safetyBtn); // toggle off
+
+    expect(useUIStore.getState().activeThemes.size).toBe(0);
+    // After reset, only default-enabled layers should remain visible.
+    // `flood` is NOT default-enabled, so it must be gone.
+    expect(useMapStore.getState().visibleLayers.has("flood")).toBe(false);
+    // admin_boundary IS default-enabled, so it should still be present.
+    expect(useMapStore.getState().visibleLayers.has("admin_boundary")).toBe(
+      true,
+    );
   });
 
   it("close button calls onClose", async () => {

@@ -41,10 +41,18 @@ export function ThemesPanel({ open, onClose }: ThemesPanelProps) {
   // Sync map visibility whenever the active theme set changes, but only
   // while the panel is open so we do not stomp on manual toggles made
   // elsewhere after the panel is closed.
+  //
+  // When no themes are active we must pass an empty Set directly so the
+  // map store takes its defaults-only reset path. `getLayerIdsForThemes`
+  // always includes `admin_boundary`, so passing its result would keep
+  // any previously-added theme layers visible (Codex P1 finding).
   useEffect(() => {
     if (!open) return;
-    const themeLayerIds = getLayerIdsForThemes(activeThemes);
-    applyThemeLayers(themeLayerIds);
+    if (activeThemes.size === 0) {
+      applyThemeLayers(new Set());
+      return;
+    }
+    applyThemeLayers(getLayerIdsForThemes(activeThemes));
   }, [open, activeThemes, applyThemeLayers]);
 
   return (
@@ -60,8 +68,8 @@ export function ThemesPanel({ open, onClose }: ThemesPanelProps) {
           <ThemeCard
             key={theme.id}
             id={theme.id}
-            label={t(`theme.${theme.id}.name`)}
-            description={t(`theme.${theme.id}.desc`)}
+            label={t(theme.labelKey)}
+            description={t(theme.descKey)}
             layerCount={getLayerIdsByTheme(theme.id).length}
             icon={ICONS[theme.id]}
             active={activeThemes.has(theme.id)}

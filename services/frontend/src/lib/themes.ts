@@ -6,6 +6,8 @@ export interface ThemeConfig {
   id: ThemeId;
   /** i18n key for display name */
   labelKey: string;
+  /** i18n key for short description */
+  descKey: string;
   /** TLS axis used for choropleth coloring */
   colorAxis: "disaster" | "terrain" | "livability" | "future" | "price";
   /** Color ramp: [low, mid, high] for choropleth */
@@ -13,10 +15,34 @@ export interface ThemeConfig {
 }
 
 export const THEMES: ThemeConfig[] = [
-  { id: "safety", labelKey: "theme.safety.name", colorAxis: "disaster", colorRamp: ["#ef4444", "#eab308", "#10b981"] },
-  { id: "livability", labelKey: "theme.livability.name", colorAxis: "livability", colorRamp: ["#f97316", "#eab308", "#10b981"] },
-  { id: "price", labelKey: "theme.price.name", colorAxis: "price", colorRamp: ["#3b82f6", "#eab308", "#ef4444"] },
-  { id: "future", labelKey: "theme.future.name", colorAxis: "future", colorRamp: ["#ef4444", "#eab308", "#3b82f6"] },
+  {
+    id: "safety",
+    labelKey: "theme.safety.name",
+    descKey: "theme.safety.desc",
+    colorAxis: "disaster",
+    colorRamp: ["#ef4444", "#eab308", "#10b981"],
+  },
+  {
+    id: "livability",
+    labelKey: "theme.livability.name",
+    descKey: "theme.livability.desc",
+    colorAxis: "livability",
+    colorRamp: ["#f97316", "#eab308", "#10b981"],
+  },
+  {
+    id: "price",
+    labelKey: "theme.price.name",
+    descKey: "theme.price.desc",
+    colorAxis: "price",
+    colorRamp: ["#3b82f6", "#eab308", "#ef4444"],
+  },
+  {
+    id: "future",
+    labelKey: "theme.future.name",
+    descKey: "theme.future.desc",
+    colorAxis: "future",
+    colorRamp: ["#ef4444", "#eab308", "#3b82f6"],
+  },
 ];
 
 /** Get layer IDs that belong to a given theme */
