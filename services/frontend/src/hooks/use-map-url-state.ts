@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  parseAsArrayOf,
   parseAsFloat,
   parseAsInteger,
   parseAsString,
@@ -11,6 +12,7 @@ import { useEffect, useRef } from "react";
 import { MAP_CONFIG } from "@/lib/constants";
 import type { ThemeId } from "@/lib/themes";
 import { THEMES } from "@/lib/themes";
+import { useFilterStore } from "@/stores/filter-store";
 import { useMapStore } from "@/stores/map-store";
 import { type DrawerTab, useUIStore } from "@/stores/ui-store";
 
@@ -37,6 +39,21 @@ const mapParams = {
   cp: parseAsString.withDefault(""),
   // Insight drawer tab (Phase 2a)
   tab: parseAsStringLiteral(DRAWER_TABS).withDefault("intel"),
+  // Finder / filter params (Phase 3)
+  tlsMin: parseAsInteger,
+  riskMax: parseAsStringLiteral(["low", "mid", "high"] as const),
+  zones: parseAsArrayOf(parseAsString),
+  stationMax: parseAsInteger,
+  priceMin: parseAsInteger,
+  priceMax: parseAsInteger,
+  preset: parseAsStringLiteral([
+    "balance",
+    "investment",
+    "residential",
+    "disaster",
+  ] as const),
+  cities: parseAsArrayOf(parseAsString),
+  panel: parseAsStringLiteral(["finder", "layers", "themes"] as const),
 };
 
 export interface ParsedComparePoint {
@@ -93,7 +110,18 @@ export function useMapUrlState() {
   const insight = useUIStore((s) => s.insight);
   const activeTab = useUIStore((s) => s.activeTab);
 
+  // Subscribe to filter-store slices so the sync effect re-runs on changes.
+  // We call getState().toQueryParams() inside the effect body to get a fresh
+  // snapshot; subscribing to these slices ensures re-runs because Zustand
+  // produces a new object reference on each setArea/setCriteria/setZoning/setPreset.
+  const filterArea = useFilterStore((s) => s.area);
+  const filterCriteria = useFilterStore((s) => s.criteria);
+  const filterZoning = useFilterStore((s) => s.zoning);
+  const filterPreset = useFilterStore((s) => s.preset);
+  const leftPanel = useUIStore((s) => s.leftPanel);
+
   // On mount: restore map state from URL
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once pattern intentionally reads URL params at init time
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -160,12 +188,46 @@ export function useMapUrlState() {
     for (const pt of comparePoints) {
       useUIStore.getState().addComparePoint(pt);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Restore filter state from URL (Phase 3)
+    const filterStore = useFilterStore.getState();
+    if (
+      params.tlsMin !== null ||
+      params.riskMax !== null ||
+      params.priceMin !== null ||
+      params.priceMax !== null
+    ) {
+      filterStore.setCriteria({
+        tlsMin: params.tlsMin ?? 0,
+        riskMax: params.riskMax ?? "high",
+        priceRange: [params.priceMin ?? 0, params.priceMax ?? 10_000_000],
+      });
+    }
+    if (params.zones !== null && params.zones.length > 0) {
+      filterStore.setZoning({ zones: params.zones });
+    }
+    if (params.stationMax !== null) {
+      filterStore.setZoning({ stationMaxDistanceM: params.stationMax });
+    }
+    if (params.preset !== null) {
+      filterStore.setPreset(params.preset);
+    }
+    if (params.cities !== null && params.cities.length > 0) {
+      filterStore.setArea({ cities: params.cities });
+    }
+    if (params.panel !== null) {
+      useUIStore.getState().setLeftPanel(params.panel);
+    }
   }, []);
 
   // Sync store → URL on state change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filterArea/Criteria/Zoning/Preset trigger re-runs; toQueryParams() is called via getState() inside the body
   useEffect(() => {
     if (!initialized.current) return;
+    // Compute fresh filter params from getState(); the selectors above
+    // (filterArea, filterCriteria, filterZoning, filterPreset) ensure this
+    // effect re-runs whenever filter state changes by reference.
+    const filterParams = useFilterStore.getState().toQueryParams();
     setParams({
       lat: Math.round(viewState.latitude * 10000) / 10000,
       lng: Math.round(viewState.longitude * 10000) / 10000,
@@ -188,6 +250,39 @@ export function useMapUrlState() {
           ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
           : "",
       tab: activeTab,
+      // Phase 3: filter params
+      tlsMin:
+        filterParams.tls_min !== undefined
+          ? Number(filterParams.tls_min)
+          : null,
+      riskMax:
+        (filterParams.risk_max as "low" | "mid" | "high" | undefined) ?? null,
+      zones:
+        filterParams.zones !== undefined ? filterParams.zones.split(",") : null,
+      stationMax:
+        filterParams.station_max !== undefined
+          ? Number(filterParams.station_max)
+          : null,
+      priceMin:
+        filterParams.price_min !== undefined
+          ? Number(filterParams.price_min)
+          : null,
+      priceMax:
+        filterParams.price_max !== undefined
+          ? Number(filterParams.price_max)
+          : null,
+      preset:
+        (filterParams.preset as
+          | "balance"
+          | "investment"
+          | "residential"
+          | "disaster"
+          | undefined) ?? null,
+      cities:
+        filterParams.cities !== undefined
+          ? filterParams.cities.split(",")
+          : null,
+      panel: leftPanel,
     });
   }, [
     viewState,
@@ -197,6 +292,11 @@ export function useMapUrlState() {
     comparePoints,
     insight,
     activeTab,
+    filterArea,
+    filterCriteria,
+    filterZoning,
+    filterPreset,
+    leftPanel,
     setParams,
   ]);
 }

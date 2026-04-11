@@ -1,6 +1,7 @@
 "use client";
 
 import { Popup } from "react-map-gl/maplibre";
+import { FinderPanel } from "@/components/finder/finder-panel";
 import { InfraTab } from "@/components/insight/infra-tab";
 import { IntelTab } from "@/components/insight/intel-tab";
 import { RiskTab } from "@/components/insight/risk-tab";
@@ -136,6 +137,14 @@ export default function Home() {
       <ThemesPanel
         open={leftPanel === "themes"}
         onClose={() => setLeftPanel(null)}
+      />
+      <FinderPanel
+        open={leftPanel === "finder"}
+        onClose={() => setLeftPanel(null)}
+        onSearch={() => {
+          useUIStore.getState().setBottomSheet("opportunities");
+        }}
+        matchCount={1247}
       />
 
       <InsightDrawer
