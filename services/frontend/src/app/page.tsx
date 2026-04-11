@@ -2,6 +2,7 @@
 
 import { Popup } from "react-map-gl/maplibre";
 import { FinderPanel } from "@/components/finder/finder-panel";
+import { CompareTab } from "@/components/insight/compare-tab";
 import { InfraTab } from "@/components/insight/infra-tab";
 import { IntelTab } from "@/components/insight/intel-tab";
 import { RiskTab } from "@/components/insight/risk-tab";
@@ -33,6 +34,7 @@ export default function Home() {
   const setLeftPanel = useUIStore((s) => s.setLeftPanel);
   const bottomSheet = useUIStore((s) => s.bottomSheet);
   const setBottomSheet = useUIStore((s) => s.setBottomSheet);
+  const comparePoints = useUIStore((s) => s.comparePoints);
 
   const insightOpen = insight !== null;
   const insightLat = insight?.lat ?? null;
@@ -45,7 +47,7 @@ export default function Home() {
         ? insight.id
         : "";
 
-  const drawerTabs: DrawerTabDef[] =
+  const baseDrawerTabs: DrawerTabDef[] =
     insightLat !== null && insightLng !== null
       ? [
           {
@@ -70,6 +72,19 @@ export default function Home() {
           },
         ]
       : [];
+
+  // Phase 6: the Compare tab is a conditional 5th drawer tab that only
+  // appears when the user has ticked at least 2 rows in the opportunities
+  // sheet. It is tied to `insight !== null` so the drawer still opens via
+  // a row click; opening the drawer from compare-only mode is deferred to
+  // a follow-up PR (see docs/designs/2026-04-12-known-issues-frontend.md).
+  const drawerTabs: DrawerTabDef[] =
+    baseDrawerTabs.length > 0 && comparePoints.length >= 2
+      ? [
+          ...baseDrawerTabs,
+          { id: "compare", label: "Compare", content: <CompareTab /> },
+        ]
+      : baseDrawerTabs;
 
   return (
     <MapCanvasFrame aria-label="Terrasight map canvas">

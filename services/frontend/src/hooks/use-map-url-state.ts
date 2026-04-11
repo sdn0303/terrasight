@@ -348,7 +348,10 @@ export function useMapUrlState() {
         comparePoints.length > 0
           ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
           : "",
-      tab: activeTab,
+      // The ephemeral "compare" tab (Phase 6) is not URL-persistable: it
+      // only exists while comparePoints has >= 2 entries, so restoring it
+      // from a bookmark would be meaningless. Fall back to "intel".
+      tab: activeTab === "compare" ? "intel" : activeTab,
       // Phase 3: filter params
       tlsMin:
         filterParams.tls_min !== undefined

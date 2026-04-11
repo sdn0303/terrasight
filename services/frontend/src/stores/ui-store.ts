@@ -9,7 +9,7 @@ export type AppMode = "explore" | "compare";
 /** New overlay state types (Phase 1+). */
 export type LeftPanelKind = "finder" | "layers" | "themes";
 export type BottomSheetKind = "opportunities";
-export type DrawerTab = "intel" | "trend" | "risk" | "infra";
+export type DrawerTab = "intel" | "trend" | "risk" | "infra" | "compare";
 export type BaseMap = "light" | "dark" | "satellite";
 
 export type InsightContext =
