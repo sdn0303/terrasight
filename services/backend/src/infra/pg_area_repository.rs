@@ -7,8 +7,8 @@ use sqlx::PgPool;
 use super::map_db_err;
 use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
-use crate::domain::repository::AreaRepository;
-use crate::domain::value_object::BBox;
+use crate::domain::repository::LayerRepository;
+use crate::domain::value_object::{BBox, LayerType};
 
 pub struct PgAreaRepository {
     pool: PgPool,
@@ -35,9 +35,27 @@ fn apply_limit(mut rows: Vec<GeoFeature>, limit: i64) -> LayerResult {
 }
 
 #[async_trait]
-impl AreaRepository for PgAreaRepository {
-    #[tracing::instrument(skip(self))]
-    async fn find_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+impl LayerRepository for PgAreaRepository {
+    #[tracing::instrument(skip(self), fields(layer = ?layer))]
+    async fn find_layer(
+        &self,
+        layer: LayerType,
+        bbox: &BBox,
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError> {
+        match layer {
+            LayerType::LandPrice => self.query_land_prices(bbox, zoom).await,
+            LayerType::Zoning => self.query_zoning(bbox, zoom).await,
+            LayerType::Flood => self.query_flood_risk(bbox, zoom).await,
+            LayerType::SteepSlope => self.query_steep_slope(bbox, zoom).await,
+            LayerType::Schools => self.query_schools(bbox, zoom).await,
+            LayerType::Medical => self.query_medical(bbox, zoom).await,
+        }
+    }
+}
+
+impl PgAreaRepository {
+    async fn query_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("landprice", area, zoom);
         let query = sqlx::query_as::<_, (i64, i32, String, Option<String>, i32, serde_json::Value)>(
@@ -75,8 +93,7 @@ impl AreaRepository for PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    #[tracing::instrument(skip(self))]
-    async fn find_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("zoning", area, zoom);
         let query = sqlx::query_as::<
@@ -124,8 +141,7 @@ impl AreaRepository for PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    #[tracing::instrument(skip(self))]
-    async fn find_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("flood", area, zoom);
         let query = sqlx::query_as::<_, (i64, Option<i16>, Option<String>, serde_json::Value)>(
@@ -161,8 +177,7 @@ impl AreaRepository for PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    #[tracing::instrument(skip(self))]
-    async fn find_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("steep_slope", area, zoom);
         let query = sqlx::query_as::<_, (i64, Option<String>, serde_json::Value)>(
@@ -191,8 +206,7 @@ impl AreaRepository for PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    #[tracing::instrument(skip(self))]
-    async fn find_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("schools", area, zoom);
         let query = sqlx::query_as::<_, (i64, String, Option<String>, serde_json::Value)>(
@@ -224,8 +238,7 @@ impl AreaRepository for PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    #[tracing::instrument(skip(self))]
-    async fn find_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("medical", area, zoom);
         let query =

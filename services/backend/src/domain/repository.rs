@@ -6,18 +6,20 @@ use crate::domain::entity::{LayerResult, MedicalStats, SchoolStats, ZScoreResult
 use crate::domain::error::DomainError;
 use crate::domain::value_object::*;
 
-// ─── Area Data ───────────────────────────────────────
-// Per-layer methods: each table has different schema, and future
-// layer-specific return types (e.g., `LandPriceFeature`) are possible.
+// ─── Layer Data ──────────────────────────────────────
+// Enum-dispatched: a single `find_layer` entry point replaces the
+// previous six per-layer methods, enabling the caller (usecase layer)
+// to drive concurrent fan-out via `LayerType` without the trait growing
+// a new method each time a layer is added.
 
 #[async_trait]
-pub trait AreaRepository: Send + Sync {
-    async fn find_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
-    async fn find_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError>;
+pub trait LayerRepository: Send + Sync {
+    async fn find_layer(
+        &self,
+        layer: LayerType,
+        bbox: &BBox,
+        zoom: u32,
+    ) -> Result<LayerResult, DomainError>;
 }
 
 // ─── Stats ───────────────────────────────────────────

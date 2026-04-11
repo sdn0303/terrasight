@@ -29,10 +29,10 @@ use crate::config::Config;
 use crate::domain::entity::GeoFeature;
 use crate::domain::error::DomainError;
 use crate::domain::reinfolib::ReinfolibDataSource;
-use crate::domain::repository::AreaRepository;
-use crate::domain::value_object::BBox;
+use crate::domain::repository::LayerRepository;
+use crate::domain::value_object::{BBox, LayerType};
 
-/// Default zoom level used when `PostgisFallback` delegates to `AreaRepository`.
+/// Default zoom level used when `PostgisFallback` delegates to `LayerRepository`.
 ///
 /// The `ReinfolibDataSource` trait does not carry zoom context (it predates
 /// the zoom-aware limit feature). Using zoom 14 (street level) ensures a
@@ -43,7 +43,7 @@ const FALLBACK_ZOOM: u32 = 14;
 
 /// PostGIS-backed implementation of [`ReinfolibDataSource`].
 ///
-/// Delegates every method to the injected [`AreaRepository`], which queries
+/// Delegates every method to the injected [`LayerRepository`], which queries
 /// the local PostGIS database. This is the default when no API key is set.
 ///
 /// # Note on `get_hazard_areas`
@@ -52,13 +52,13 @@ const FALLBACK_ZOOM: u32 = 14;
 /// single call. The PostGIS fallback approximates this by merging results from
 /// both the `flood_risk` and `steep_slope` tables.
 pub struct PostgisFallback {
-    area_repo: Arc<dyn AreaRepository>,
+    layer_repo: Arc<dyn LayerRepository>,
 }
 
 impl PostgisFallback {
     /// Create a new `PostgisFallback` backed by the given repository.
-    pub fn new(area_repo: Arc<dyn AreaRepository>) -> Self {
-        Self { area_repo }
+    pub fn new(layer_repo: Arc<dyn LayerRepository>) -> Self {
+        Self { layer_repo }
     }
 }
 
@@ -72,32 +72,32 @@ impl ReinfolibDataSource for PostgisFallback {
     ) -> Result<Vec<GeoFeature>, DomainError> {
         // The PostGIS `land_prices` table stores all years; the `year` parameter
         // is ignored here. A future enhancement could add a WHERE year = $5 filter.
-        self.area_repo
-            .find_land_prices(bbox, FALLBACK_ZOOM)
+        self.layer_repo
+            .find_layer(LayerType::LandPrice, bbox, FALLBACK_ZOOM)
             .await
             .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_zoning(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
-        self.area_repo
-            .find_zoning(bbox, FALLBACK_ZOOM)
+        self.layer_repo
+            .find_layer(LayerType::Zoning, bbox, FALLBACK_ZOOM)
             .await
             .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_schools(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
-        self.area_repo
-            .find_schools(bbox, FALLBACK_ZOOM)
+        self.layer_repo
+            .find_layer(LayerType::Schools, bbox, FALLBACK_ZOOM)
             .await
             .map(|lr| lr.features)
     }
 
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_medical(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
-        self.area_repo
-            .find_medical(bbox, FALLBACK_ZOOM)
+        self.layer_repo
+            .find_layer(LayerType::Medical, bbox, FALLBACK_ZOOM)
             .await
             .map(|lr| lr.features)
     }
@@ -106,8 +106,10 @@ impl ReinfolibDataSource for PostgisFallback {
     async fn get_hazard_areas(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
         // Merge flood-risk and steep-slope results to approximate XKT016 coverage.
         let (flood, steep) = tokio::try_join!(
-            self.area_repo.find_flood_risk(bbox, FALLBACK_ZOOM),
-            self.area_repo.find_steep_slope(bbox, FALLBACK_ZOOM),
+            self.layer_repo
+                .find_layer(LayerType::Flood, bbox, FALLBACK_ZOOM),
+            self.layer_repo
+                .find_layer(LayerType::SteepSlope, bbox, FALLBACK_ZOOM),
         )?;
         let mut merged = flood.features;
         merged.extend(steep.features);
@@ -262,14 +264,14 @@ mod tests {
     use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
     use crate::domain::error::DomainError;
     use crate::domain::reinfolib::ReinfolibDataSource;
-    use crate::domain::repository::AreaRepository;
-    use crate::domain::value_object::{BBox, Coord};
+    use crate::domain::repository::LayerRepository;
+    use crate::domain::value_object::{BBox, Coord, LayerType};
 
-    // ── Stub AreaRepository ──────────────────────────────────────────────────
+    // ── Stub LayerRepository ─────────────────────────────────────────────────
 
-    /// Records which methods were called so tests can assert delegation.
+    /// Records which layer variants were requested so tests can assert delegation.
     #[derive(Default)]
-    struct StubAreaRepo {
+    struct StubLayerRepo {
         pub land_prices_calls: std::sync::atomic::AtomicU32,
         pub zoning_calls: std::sync::atomic::AtomicU32,
         pub flood_risk_calls: std::sync::atomic::AtomicU32,
@@ -278,7 +280,7 @@ mod tests {
         pub medical_calls: std::sync::atomic::AtomicU32,
     }
 
-    impl StubAreaRepo {
+    impl StubLayerRepo {
         fn land_prices_count(&self) -> u32 {
             self.land_prices_calls
                 .load(std::sync::atomic::Ordering::SeqCst)
@@ -321,53 +323,40 @@ mod tests {
     }
 
     #[async_trait]
-    impl AreaRepository for StubAreaRepo {
-        async fn find_land_prices(
+    impl LayerRepository for StubLayerRepo {
+        async fn find_layer(
             &self,
+            layer: LayerType,
             _bbox: &BBox,
             _zoom: u32,
         ) -> Result<LayerResult, DomainError> {
-            self.land_prices_calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(stub_layer_result("Point"))
-        }
-
-        async fn find_zoning(&self, _bbox: &BBox, _zoom: u32) -> Result<LayerResult, DomainError> {
-            self.zoning_calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(stub_layer_result("Polygon"))
-        }
-
-        async fn find_flood_risk(
-            &self,
-            _bbox: &BBox,
-            _zoom: u32,
-        ) -> Result<LayerResult, DomainError> {
-            self.flood_risk_calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(stub_layer_result("Polygon"))
-        }
-
-        async fn find_steep_slope(
-            &self,
-            _bbox: &BBox,
-            _zoom: u32,
-        ) -> Result<LayerResult, DomainError> {
-            self.steep_slope_calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(stub_layer_result("Polygon"))
-        }
-
-        async fn find_schools(&self, _bbox: &BBox, _zoom: u32) -> Result<LayerResult, DomainError> {
-            self.schools_calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(stub_layer_result("Point"))
-        }
-
-        async fn find_medical(&self, _bbox: &BBox, _zoom: u32) -> Result<LayerResult, DomainError> {
-            self.medical_calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(stub_layer_result("Point"))
+            use std::sync::atomic::Ordering::SeqCst;
+            match layer {
+                LayerType::LandPrice => {
+                    self.land_prices_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Point"))
+                }
+                LayerType::Zoning => {
+                    self.zoning_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Polygon"))
+                }
+                LayerType::Flood => {
+                    self.flood_risk_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Polygon"))
+                }
+                LayerType::SteepSlope => {
+                    self.steep_slope_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Polygon"))
+                }
+                LayerType::Schools => {
+                    self.schools_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Point"))
+                }
+                LayerType::Medical => {
+                    self.medical_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Point"))
+                }
+            }
         }
     }
 
@@ -377,9 +366,9 @@ mod tests {
         BBox::new(35.65, 139.70, 35.70, 139.80).expect("test bbox coordinates are valid")
     }
 
-    fn make_fallback() -> (Arc<StubAreaRepo>, PostgisFallback) {
-        let stub = Arc::new(StubAreaRepo::default());
-        let fallback = PostgisFallback::new(Arc::clone(&stub) as Arc<dyn AreaRepository>);
+    fn make_fallback() -> (Arc<StubLayerRepo>, PostgisFallback) {
+        let stub = Arc::new(StubLayerRepo::default());
+        let fallback = PostgisFallback::new(Arc::clone(&stub) as Arc<dyn LayerRepository>);
         (stub, fallback)
     }
 
@@ -479,9 +468,9 @@ mod tests {
 
     #[tokio::test]
     async fn postgis_fallback_is_usable_as_trait_object() {
-        let stub = Arc::new(StubAreaRepo::default());
+        let stub = Arc::new(StubLayerRepo::default());
         let source: Arc<dyn ReinfolibDataSource> =
-            Arc::new(PostgisFallback::new(stub as Arc<dyn AreaRepository>));
+            Arc::new(PostgisFallback::new(stub as Arc<dyn LayerRepository>));
         // Exercise every method through the trait object to confirm vtable wiring.
         let bbox = test_bbox();
         assert!(source.get_land_prices(&bbox, 2024).await.is_ok());
