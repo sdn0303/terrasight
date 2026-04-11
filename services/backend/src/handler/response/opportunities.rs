@@ -5,8 +5,6 @@
 //! newtype back into a JSON-friendly scalar (e.g. [`TlsScore`] -> `u8`,
 //! [`RiskLevel`] -> `&'static str`).
 
-use std::sync::Arc;
-
 use serde::Serialize;
 
 use crate::domain::entity::Opportunity;
@@ -41,6 +39,12 @@ pub struct OpportunityDto {
 }
 
 /// Top-level response for `GET /api/v1/opportunities`.
+///
+/// `total` is the number of records that survived TLS enrichment +
+/// `tls_min`/`risk_max` filtering (i.e. the full cached pool size).
+/// `truncated` is `true` iff there are more records beyond the returned
+/// page — clients can detect "has more pages" via this flag without
+/// doing an extra request.
 #[derive(Debug, Clone, Serialize)]
 pub struct OpportunitiesResponseDto {
     pub items: Vec<OpportunityDto>,
@@ -71,18 +75,26 @@ impl From<&Opportunity> for OpportunityDto {
     }
 }
 
-impl From<&CachedOpportunitiesResponse> for OpportunitiesResponseDto {
-    fn from(cached: &CachedOpportunitiesResponse) -> Self {
+impl OpportunitiesResponseDto {
+    /// Build a paginated response from a cached pool.
+    ///
+    /// Applies `offset` and `limit` as an in-memory slice of the cached
+    /// items, converts the slice to [`OpportunityDto`]s, and computes
+    /// `truncated` = *there are records beyond the returned page*.
+    pub fn paginated(cached: &CachedOpportunitiesResponse, offset: usize, limit: usize) -> Self {
+        let total = cached.total;
+        let items: Vec<OpportunityDto> = cached
+            .items
+            .iter()
+            .skip(offset)
+            .take(limit)
+            .map(OpportunityDto::from)
+            .collect();
+        let truncated = offset.saturating_add(items.len()) < total;
         Self {
-            items: cached.items.iter().map(OpportunityDto::from).collect(),
-            total: cached.total,
-            truncated: cached.truncated,
+            items,
+            total,
+            truncated,
         }
-    }
-}
-
-impl From<Arc<CachedOpportunitiesResponse>> for OpportunitiesResponseDto {
-    fn from(cached: Arc<CachedOpportunitiesResponse>) -> Self {
-        Self::from(&*cached)
     }
 }

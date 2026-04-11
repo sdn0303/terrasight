@@ -230,3 +230,23 @@ pub const OPPORTUNITY_CACHE_MAX_ENTRIES: u64 = 256;
 
 /// Maximum parallelism for per-record TLS computation.
 pub const OPPORTUNITY_TLS_CONCURRENCY: usize = 4;
+
+/// Size of the raw record pool fetched from the DB per `/api/v1/opportunities`
+/// request.
+///
+/// The usecase fetches this many records (with `offset = 0`) from
+/// `LandPriceRepository::find_for_opportunities`, runs TLS enrichment
+/// plus `tls_min`/`risk_max` filtering on the full pool, and caches
+/// the result. User-facing `limit`/`offset` pagination is then applied
+/// after the cache by slicing the cached pool in-memory.
+///
+/// This design guarantees that `limit` is honoured even when
+/// `tls_min`/`risk_max` reject most raw records, cache entries are
+/// shared across pagination pages for the same filter set, and TLS
+/// compute cost per cache miss is bounded to
+/// `OPPORTUNITY_FETCH_POOL_SIZE` records.
+///
+/// The trade-off is that pagination is limited to the first
+/// `OPPORTUNITY_FETCH_POOL_SIZE` records after filtering — `offset`
+/// values beyond that return empty results.
+pub const OPPORTUNITY_FETCH_POOL_SIZE: u32 = 100;

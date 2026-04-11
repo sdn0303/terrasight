@@ -95,7 +95,6 @@ impl AppState {
 
         let opportunities = Arc::new(GetOpportunitiesUsecase::new(
             land_price_repo.clone(),
-            trend_repo.clone(),
             score.clone(),
             opportunities_cache,
         ));

@@ -38,19 +38,18 @@ pub async fn get_opportunities(
         .into_filters()
         .inspect(|f| tracing::debug!(limit = f.limit.get(), "opportunities request parsed"))?;
 
+    // Capture pagination params before `filters` is consumed by the
+    // usecase. Post-cache slicing is applied after the usecase returns
+    // the full filtered pool.
+    let offset = filters.offset.get() as usize;
+    let limit = filters.limit.get() as usize;
+
     usecase
         .execute(filters)
         .await
-        .inspect(|response| {
-            tracing::info!(
-                items = response.items.len(),
-                total = response.total,
-                truncated = response.truncated,
-                "opportunities response ready",
-            )
-        })
+        .inspect(|cached| tracing::info!(pool_total = cached.total, "opportunities pool ready",))
         .inspect_err(|e| tracing::warn!(error = %e, "opportunities usecase failed"))
-        .map(OpportunitiesResponseDto::from)
+        .map(|cached| OpportunitiesResponseDto::paginated(&cached, offset, limit))
         .map(Json)
         .map_err(Into::into)
 }

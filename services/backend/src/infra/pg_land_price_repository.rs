@@ -15,9 +15,7 @@ use crate::domain::entity::{
 };
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{
-    BBox, Coord, OpportunityLimit, OpportunityOffset, Year, ZoomLevel,
-};
+use crate::domain::value_object::{BBox, Coord, Year, ZoomLevel};
 
 /// Maximum time to wait for the land price query before returning an error.
 const LAND_PRICE_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -229,8 +227,8 @@ impl LandPriceRepository for PgLandPriceRepository {
     async fn find_for_opportunities(
         &self,
         bbox: &BBox,
-        limit: OpportunityLimit,
-        offset: OpportunityOffset,
+        limit: u32,
+        offset: u32,
         price_range: Option<(PricePerSqm, PricePerSqm)>,
         zones: &[ZoneCode],
     ) -> Result<Vec<OpportunityRecord>, DomainError> {
@@ -254,12 +252,32 @@ impl LandPriceRepository for PgLandPriceRepository {
             .push_bind(bbox.north())
             .push(", 4326))");
 
+        // `price_per_sqm` is a 32-bit `integer` column. `PricePerSqm`
+        // stores an `i64` internally, but the handler boundary
+        // (`handler::request::opportunities::parse_price_range`)
+        // rejects values outside the `i32` range with
+        // `DomainError::Validation`, so this conversion is
+        // guaranteed to succeed. Downgrade to a database error if
+        // the invariant is ever violated by future callers rather
+        // than silently clamping.
         if let Some((lo, hi)) = price_range {
-            builder.push(" AND lp.price_per_sqm BETWEEN ");
+            let lo_i32 = i32::try_from(lo.value()).map_err(|_| {
+                DomainError::Database(format!(
+                    "internal invariant violated: price_min {} does not fit in i32",
+                    lo.value()
+                ))
+            })?;
+            let hi_i32 = i32::try_from(hi.value()).map_err(|_| {
+                DomainError::Database(format!(
+                    "internal invariant violated: price_max {} does not fit in i32",
+                    hi.value()
+                ))
+            })?;
             builder
-                .push_bind(i32::try_from(lo.value()).unwrap_or(i32::MAX))
+                .push(" AND lp.price_per_sqm BETWEEN ")
+                .push_bind(lo_i32)
                 .push(" AND ")
-                .push_bind(i32::try_from(hi.value()).unwrap_or(i32::MAX));
+                .push_bind(hi_i32);
         }
 
         if let Some((first, rest)) = zones.split_first() {
@@ -274,9 +292,9 @@ impl LandPriceRepository for PgLandPriceRepository {
 
         builder
             .push(" ORDER BY lp.price_per_sqm DESC LIMIT ")
-            .push_bind(i64::from(limit.get()))
+            .push_bind(i64::from(limit))
             .push(" OFFSET ")
-            .push_bind(i64::from(offset.get()));
+            .push_bind(i64::from(offset));
 
         timeout(
             Duration::from_secs(OPPORTUNITY_QUERY_TIMEOUT_SECS),

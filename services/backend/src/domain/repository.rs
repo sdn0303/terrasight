@@ -75,20 +75,28 @@ pub trait LandPriceRepository: Send + Sync {
         zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError>;
 
-    /// Fetch enriched land price records for the `/api/v1/opportunities` endpoint.
+    /// Fetch raw land price records for the `/api/v1/opportunities` endpoint.
     ///
-    /// Returns raw [`OpportunityRecord`]s (pre-TLS-enrichment) filtered by `bbox`
-    /// and an optional price range and zone whitelist. The caller must apply TLS
-    /// scoring, risk classification, and signal derivation on top.
+    /// Returns raw [`OpportunityRecord`]s (pre-TLS-enrichment) filtered by
+    /// `bbox`, an optional price range, and a zone whitelist. The caller
+    /// must apply TLS scoring, risk classification, and signal derivation
+    /// on top.
     ///
     /// Uses a spatial join with the `zoning` table to populate
-    /// [`BuildingCoverageRatio`] and [`FloorAreaRatio`]. Results are ordered by
-    /// `price_per_sqm DESC` and paginated via `limit`/`offset`.
+    /// [`BuildingCoverageRatio`] and [`FloorAreaRatio`]. Results are
+    /// ordered by `price_per_sqm DESC` and paginated via `limit`/`offset`.
+    ///
+    /// `limit` and `offset` are raw `u32` values because the usecase layer
+    /// passes a fetch-pool size (typically
+    /// [`crate::domain::constants::OPPORTUNITY_FETCH_POOL_SIZE`]) that
+    /// can exceed the user-facing [`OpportunityLimit::MAX`]. User-facing
+    /// pagination is applied post-enrichment by the usecase, not at this
+    /// layer.
     async fn find_for_opportunities(
         &self,
         bbox: &BBox,
-        limit: OpportunityLimit,
-        offset: OpportunityOffset,
+        limit: u32,
+        offset: u32,
         price_range: Option<(PricePerSqm, PricePerSqm)>,
         zones: &[ZoneCode],
     ) -> Result<Vec<OpportunityRecord>, DomainError>;

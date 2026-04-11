@@ -30,8 +30,7 @@ use crate::domain::repository::{
     StatsRepository, TlsRepository, TrendRepository,
 };
 use crate::domain::value_object::{
-    AreaCode, BBox, Coord, LayerType, OpportunityLimit, OpportunityOffset, Year, YearsLookback,
-    ZoomLevel,
+    AreaCode, BBox, Coord, LayerType, Year, YearsLookback, ZoomLevel,
 };
 
 /// Pop the next queued response or panic if the queue is empty.
@@ -228,8 +227,8 @@ impl LandPriceRepository for MockLandPriceRepository {
     async fn find_for_opportunities(
         &self,
         _bbox: &BBox,
-        _limit: OpportunityLimit,
-        _offset: OpportunityOffset,
+        _limit: u32,
+        _offset: u32,
         _price_range: Option<(PricePerSqm, PricePerSqm)>,
         _zones: &[ZoneCode],
     ) -> Result<Vec<OpportunityRecord>, DomainError> {

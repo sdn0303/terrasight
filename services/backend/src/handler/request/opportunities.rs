@@ -72,10 +72,16 @@ pub struct OpportunitiesFilters {
 impl OpportunitiesQuery {
     /// Validate and convert the raw query into [`OpportunitiesFilters`].
     ///
-    /// Returns [`DomainError::Validation`] if `bbox` cannot be parsed,
-    /// `risk_max` is not one of `low|mid|high`, `zones` contains an empty
-    /// entry after trimming, or the `price_min`/`price_max` pair yields
-    /// an invalid [`PricePerSqm`].
+    /// Returns [`DomainError::Validation`] if:
+    ///
+    /// - `bbox` cannot be parsed,
+    /// - `risk_max` is not one of `low|mid|high`,
+    /// - `zones` contains an empty entry after trimming (catches
+    ///   malformed CSV like `",,商業地域,"`),
+    /// - `price_min > price_max` when both bounds are present,
+    /// - either price bound does not fit the database's 32-bit
+    ///   `integer` column,
+    /// - [`PricePerSqm::new`] rejects a negative price.
     pub fn into_filters(self) -> Result<OpportunitiesFilters, DomainError> {
         let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
         let limit = OpportunityLimit::clamped(self.limit);
@@ -122,30 +128,65 @@ impl OpportunitiesQuery {
     }
 }
 
+/// Parse a comma-separated list of zone codes.
+///
+/// An empty token after trimming (e.g. `"商業地域,,住居"`) is treated as
+/// a validation error rather than silently dropped, so that client
+/// serialization bugs surface as `400 Bad Request` instead of quietly
+/// broadening the result set.
 fn parse_zones_csv(raw: Option<&str>) -> Result<Vec<ZoneCode>, DomainError> {
-    match raw {
-        None => Ok(Vec::new()),
-        Some(csv) => csv
-            .split(',')
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(ZoneCode::parse)
-            .collect(),
-    }
+    let Some(csv) = raw else {
+        return Ok(Vec::new());
+    };
+    csv.split(',').map(str::trim).map(ZoneCode::parse).collect()
 }
 
+/// Parse the `price_min`/`price_max` query pair.
+///
+/// Rules:
+///
+/// - `(None, None)` yields `Ok(None)` (no filter).
+/// - Missing bounds default to `0` / `i32::MAX` so the resulting
+///   [`PricePerSqm`] pair always fits in the database's 32-bit
+///   `integer` column. Using `i64::MAX` here would cause the infra
+///   layer's `i64 -> i32` conversion to reject the upper bound, which
+///   is the silent-clamping bug Copilot flagged.
+/// - `price_min > price_max` returns
+///   [`DomainError::Validation`] so clients get `400 Bad Request`
+///   rather than an empty result set that is indistinguishable from
+///   "no matching data".
+/// - Out-of-`i32`-range values return
+///   [`DomainError::Validation`] since the DB column cannot store them.
 fn parse_price_range(
     lo: Option<i64>,
     hi: Option<i64>,
 ) -> Result<Option<(PricePerSqm, PricePerSqm)>, DomainError> {
-    match (lo, hi) {
-        (None, None) => Ok(None),
-        (lo, hi) => {
-            let min = PricePerSqm::new(lo.unwrap_or(0))?;
-            let max = PricePerSqm::new(hi.unwrap_or(i64::MAX))?;
-            Ok(Some((min, max)))
-        }
+    if lo.is_none() && hi.is_none() {
+        return Ok(None);
     }
+
+    let lo_raw = lo.unwrap_or(0);
+    let hi_raw = hi.unwrap_or(i64::from(i32::MAX));
+
+    if lo_raw > hi_raw {
+        return Err(DomainError::Validation(format!(
+            "price_min ({lo_raw}) must be <= price_max ({hi_raw})"
+        )));
+    }
+    if lo_raw > i64::from(i32::MAX) {
+        return Err(DomainError::Validation(format!(
+            "price_min ({lo_raw}) exceeds the maximum supported value {}",
+            i32::MAX
+        )));
+    }
+    if hi_raw > i64::from(i32::MAX) {
+        return Err(DomainError::Validation(format!(
+            "price_max ({hi_raw}) exceeds the maximum supported value {}",
+            i32::MAX
+        )));
+    }
+
+    Ok(Some((PricePerSqm::new(lo_raw)?, PricePerSqm::new(hi_raw)?)))
 }
 
 fn parse_preset(raw: &str) -> WeightPreset {
@@ -255,7 +296,9 @@ mod tests {
         let filters = query.into_filters().unwrap();
         let (lo, hi) = filters.price_range.unwrap();
         assert_eq!(lo.value(), 500_000);
-        assert_eq!(hi.value(), i64::MAX);
+        // Upper bound defaults to i32::MAX (not i64::MAX) so it always
+        // fits the DB's 32-bit `integer` column.
+        assert_eq!(hi.value(), i64::from(i32::MAX));
     }
 
     #[test]
@@ -276,6 +319,60 @@ mod tests {
         let query = OpportunitiesQuery {
             price_min: Some(-1),
             price_max: Some(100),
+            ..valid_query()
+        };
+        assert!(query.into_filters().is_err());
+    }
+
+    #[test]
+    fn into_filters_rejects_price_min_greater_than_max() {
+        let query = OpportunitiesQuery {
+            price_min: Some(2_000_000),
+            price_max: Some(500_000),
+            ..valid_query()
+        };
+        let err = query.into_filters().unwrap_err();
+        match err {
+            DomainError::Validation(msg) => {
+                assert!(msg.contains("price_min"), "expected price message: {msg}");
+            }
+            other => panic!("expected Validation, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn into_filters_rejects_price_above_i32_max() {
+        let query = OpportunitiesQuery {
+            price_min: None,
+            price_max: Some(i64::from(i32::MAX) + 1),
+            ..valid_query()
+        };
+        let err = query.into_filters().unwrap_err();
+        assert!(matches!(err, DomainError::Validation(_)));
+    }
+
+    #[test]
+    fn into_filters_rejects_empty_zone_token() {
+        // Empty token (double comma) must surface as a validation
+        // error, not be silently dropped — otherwise client-side
+        // serialization bugs quietly broaden the result set.
+        let query = OpportunitiesQuery {
+            zones: Some("商業地域,,第一種住居地域".to_string()),
+            ..valid_query()
+        };
+        assert!(query.into_filters().is_err());
+    }
+
+    #[test]
+    fn into_filters_rejects_leading_trailing_empty_zone_token() {
+        let query = OpportunitiesQuery {
+            zones: Some(",商業地域".to_string()),
+            ..valid_query()
+        };
+        assert!(query.into_filters().is_err());
+
+        let query = OpportunitiesQuery {
+            zones: Some("商業地域,".to_string()),
             ..valid_query()
         };
         assert!(query.into_filters().is_err());

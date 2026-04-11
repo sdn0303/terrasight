@@ -1,14 +1,20 @@
 //! In-memory TTL cache for the `/api/v1/opportunities` endpoint.
 //!
-//! Wraps a `moka::future::Cache` keyed by [`OpportunitiesCacheKey`] — a
-//! fingerprint of the validated filter set — so that two requests with the
-//! same filters within `OPPORTUNITY_CACHE_TTL_SECS` share a single TLS
-//! enrichment pass.
+//! Wraps a [`moka::future::Cache`] keyed by [`OpportunitiesCacheKey`] —
+//! a fingerprint of the validated filter set — so that two requests
+//! with the same filters within `OPPORTUNITY_CACHE_TTL_SECS` share a
+//! single TLS enrichment pass.
 //!
-//! `CachedOpportunitiesResponse` is defined here as a placeholder in Phase
-//! F2 and replaced in F5 with a `pub use` of the real type from
-//! `usecase::get_opportunities`. The placeholder exists because the usecase
-//! cannot be written before the cache it depends on is available.
+//! The cached value is a [`CachedOpportunitiesResponse`] holding the
+//! full TLS-enriched + `tls_min`/`risk_max`-filtered record pool. User
+//! pagination (`limit`/`offset`) is applied **after** cache retrieval
+//! by the handler so that every paginated view into the same filter
+//! set hits the same cache slot.
+//!
+//! `CachedOpportunitiesResponse` lives in this module (not in
+//! [`crate::usecase::get_opportunities`]) because the cache owns the
+//! shape of the values it stores. The usecase module re-exports it via
+//! `pub use` for ergonomics.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,30 +26,35 @@ use crate::domain::entity::Opportunity;
 use crate::domain::scoring::tls::WeightPreset;
 use crate::domain::value_object::RiskLevel;
 
-/// Placeholder shape for the cached opportunities response.
+/// TLS-enriched + filtered opportunities pool for a single cache slot.
 ///
-/// Defined here in F2 so the cache can be written before the usecase.
-/// F5 replaces this with a `pub use` of the real type from
-/// [`crate::usecase::get_opportunities`]. The fields are kept in sync
-/// with the F5 definition so dependent code (handler/response,
-/// OpportunitiesCache) compiles against either version.
+/// Pagination (`limit`/`offset`) is intentionally **not** represented
+/// here — the handler applies it after retrieving this value from the
+/// cache, so a single cached pool serves every page of the same filter
+/// set.
+///
+/// The `total` field reflects the number of records that survived TLS
+/// enrichment + `tls_min`/`risk_max` post-filtering, not the raw DB
+/// row count.
 #[derive(Debug, Clone, Default)]
 pub struct CachedOpportunitiesResponse {
     pub items: Vec<Opportunity>,
     pub total: usize,
-    pub truncated: bool,
 }
 
-/// Fingerprint of a validated opportunities request.
+/// Fingerprint of a validated opportunities request, excluding the
+/// pagination parameters.
 ///
-/// Floats are quantized to micro-degrees so that requests with
-/// equivalent bounding boxes (up to floating-point noise) share a cache
-/// slot.
+/// - `bbox_microdeg` quantizes the float bounding box to micro-degrees
+///   so sub-pixel jitter maps to the same cache slot.
+/// - `zones` is stored sorted + deduped (canonicalized by
+///   [`crate::usecase::get_opportunities::GetOpportunitiesUsecase::build_cache_key`])
+///   so that `zones=A,B` and `zones=B,A,A` hit the same slot.
+/// - `limit`/`offset` are absent by design — they are applied after
+///   cache retrieval.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OpportunitiesCacheKey {
     pub bbox_microdeg: (i64, i64, i64, i64),
-    pub limit: u32,
-    pub offset: u32,
     pub tls_min: Option<u8>,
     pub risk_max: Option<RiskLevel>,
     pub zones: Vec<String>,
