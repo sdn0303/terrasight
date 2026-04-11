@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::extract::FromRef;
 use mlit_client::jshis::JshisClient;
 use sqlx::PgPool;
 
@@ -29,6 +30,11 @@ const JSHIS_TIMEOUT_SECS: u64 = 30;
 ///
 /// All dependency injection happens here. Each usecase is wrapped in `Arc`
 /// for shared ownership across Axum handler tasks.
+///
+/// `AppState` is `Clone` (every field is `Arc<…>`) so axum's `FromRef`
+/// machinery can produce a per-handler `State<Arc<FooUsecase>>` slice
+/// from a single `.with_state(AppState::new(…))` call on the router.
+#[derive(Clone)]
 pub struct AppState {
     pub health: Arc<CheckHealthUsecase>,
     pub area_data: Arc<GetAreaDataUsecase>,
@@ -100,5 +106,66 @@ impl AppState {
             trend: Arc::new(GetTrendUsecase::new(Arc::new(PgTrendRepository::new(pool)))),
             reinfolib,
         }
+    }
+}
+
+// ── FromRef impls ────────────────────────────────────────────────────────────
+//
+// Each per-handler `State<Arc<FooUsecase>>` extractor is derived from the
+// single shared `AppState` via `FromRef`. The implementations are trivial
+// clones of the matching `Arc` field because every usecase is already wrapped
+// in `Arc<…>` for shared ownership across tasks.
+
+impl FromRef<AppState> for Arc<CheckHealthUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.health)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetAreaDataUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.area_data)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetAreaStatsUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.area_stats)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetLandPricesUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.land_prices)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetLandPricesByYearRangeUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.land_prices_by_year_range)
+    }
+}
+
+impl FromRef<AppState> for Arc<ComputeTlsUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.score)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetStatsUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.stats)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetTrendUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.trend)
+    }
+}
+
+impl FromRef<AppState> for Arc<dyn ReinfolibDataSource> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.reinfolib)
     }
 }
