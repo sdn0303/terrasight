@@ -1,16 +1,81 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import type { MouseEvent } from "react";
 import { RiskPill } from "@/components/ui/risk-pill";
 import { ScoreChip } from "@/components/ui/score-chip";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { Opportunity, OpportunityRiskLevel, Signal } from "@/lib/schemas";
+import { useUIStore } from "@/stores/ui-store";
+
+/**
+ * Multi-select checkbox cell that toggles membership in
+ * `ui-store.comparePoints`. Capped at 3 selections (store invariant).
+ * Stops click propagation so ticking the box does not also trigger the
+ * row's onRowClick (which would open the insight drawer for that row).
+ */
+function SelectCell({ row }: { row: { original: Opportunity } }) {
+  const comparePoints = useUIStore((s) => s.comparePoints);
+  const addComparePoint = useUIStore((s) => s.addComparePoint);
+  const removeComparePoint = useUIStore((s) => s.removeComparePoint);
+
+  const existingIndex = comparePoints.findIndex(
+    (p) => p.lat === row.original.lat && p.lng === row.original.lng,
+  );
+  const checked = existingIndex >= 0;
+  const atCapacity = !checked && comparePoints.length >= 3;
+
+  const toggle = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (checked) {
+      removeComparePoint(existingIndex);
+    } else if (!atCapacity) {
+      addComparePoint({
+        lat: row.original.lat,
+        lng: row.original.lng,
+        address: row.original.address,
+      });
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={`Compare ${row.original.address}`}
+      onClick={toggle}
+      disabled={atCapacity}
+      className="h-4 w-4 rounded"
+      style={{
+        background: checked ? "var(--brand-indigo)" : "var(--neutral-100)",
+        border: checked ? "none" : "1px solid var(--neutral-200)",
+        color: "#fff",
+        fontSize: 10,
+        lineHeight: "16px",
+        textAlign: "center",
+        opacity: atCapacity ? 0.4 : 1,
+        cursor: atCapacity ? "not-allowed" : "pointer",
+      }}
+    >
+      {checked ? "✓" : ""}
+    </button>
+  );
+}
 
 /**
  * TanStack Table column defs for the Opportunities dense table.
  * Keeps cell renderers thin so the composition layer stays readable.
+ * The leading `select` column drives `ui-store.comparePoints` for the
+ * Compare drawer tab (Phase 6).
  */
 export const propertyColumns: ColumnDef<Opportunity>[] = [
+  {
+    id: "select",
+    header: "",
+    cell: ({ row }) => <SelectCell row={row} />,
+    size: 32,
+  },
   {
     accessorKey: "address",
     header: "Address",
