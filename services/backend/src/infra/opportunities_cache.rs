@@ -16,14 +16,23 @@ use std::time::Duration;
 use moka::future::Cache;
 
 use crate::domain::constants::{OPPORTUNITY_CACHE_MAX_ENTRIES, OPPORTUNITY_CACHE_TTL_SECS};
+use crate::domain::entity::Opportunity;
 use crate::domain::scoring::tls::WeightPreset;
 use crate::domain::value_object::RiskLevel;
 
-/// Placeholder for the cached response shape.
+/// Placeholder shape for the cached opportunities response.
 ///
-/// Replaced in F5 with `pub use crate::usecase::get_opportunities::CachedOpportunitiesResponse;`.
+/// Defined here in F2 so the cache can be written before the usecase.
+/// F5 replaces this with a `pub use` of the real type from
+/// [`crate::usecase::get_opportunities`]. The fields are kept in sync
+/// with the F5 definition so dependent code (handler/response,
+/// OpportunitiesCache) compiles against either version.
 #[derive(Debug, Clone, Default)]
-pub struct CachedOpportunitiesResponse;
+pub struct CachedOpportunitiesResponse {
+    pub items: Vec<Opportunity>,
+    pub total: usize,
+    pub truncated: bool,
+}
 
 /// Fingerprint of a validated opportunities request.
 ///

@@ -9,6 +9,7 @@ pub mod area_data;
 pub mod area_stats;
 pub mod health;
 pub mod layer;
+pub mod opportunities;
 pub mod stats;
 pub mod tls;
 pub mod trend;
@@ -20,6 +21,7 @@ pub use layer::{
     FeatureCollectionDto, FeatureDto, LayerResponseDto, geo_feature_to_dto,
     point_feature_to_polygon_owned,
 };
+pub use opportunities::{OpportunitiesResponseDto, OpportunityDto, OpportunityStationDto};
 pub use stats::{FacilityStatsDto, LandPriceStatsDto, RiskStatsDto, StatsResponse};
 pub use tls::{
     AxesDto, AxisDto, CrossAnalysisDto, LocationDto, SubScoreDto, TlsMetadataDto, TlsResponse,
