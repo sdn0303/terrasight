@@ -123,3 +123,6 @@ pub trait TlsRepository: Send + Sync {
     /// Count of land price records within 500m from the latest available year.
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError>;
 }
+
+#[cfg(test)]
+pub mod mock;
