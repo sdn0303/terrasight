@@ -50,6 +50,7 @@ impl ComputeTlsUsecase {
     /// PostGIS queries and J-SHIS API calls execute in parallel.
     /// J-SHIS failures degrade gracefully — the affected sub-scores fall back
     /// to the unavailable-default (100) without failing the overall request.
+    #[tracing::instrument(skip(self), fields(usecase = "compute_tls", preset = ?preset))]
     pub async fn execute(
         &self,
         coord: &Coord,

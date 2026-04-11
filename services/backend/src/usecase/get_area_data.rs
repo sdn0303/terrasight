@@ -19,6 +19,7 @@ impl GetAreaDataUsecase {
     ///
     /// Layers are queried in parallel via `futures::future::try_join_all` so
     /// that the total latency is `max(layer_latency)` rather than `sum`.
+    #[tracing::instrument(skip(self), fields(usecase = "get_area_data", layer_count = layers.len()))]
     pub async fn execute(
         &self,
         bbox: &BBox,
@@ -34,21 +35,24 @@ impl GetAreaDataUsecase {
             let bbox = *bbox;
             let layer = *layer;
             async move {
-                let result = repo.find_layer(layer, &bbox, zoom).await.inspect(|r| {
-                    tracing::debug!(
-                        layer = layer.as_str(),
-                        row_count = r.features.len(),
-                        truncated = r.truncated,
-                        limit = r.limit,
-                        "layer rows fetched"
-                    )
-                })?;
-                Ok::<_, DomainError>((layer, result))
+                repo.find_layer(layer, &bbox, zoom)
+                    .await
+                    .inspect(|r| {
+                        tracing::debug!(
+                            layer = layer.as_str(),
+                            row_count = r.features.len(),
+                            truncated = r.truncated,
+                            limit = r.limit,
+                            "layer rows fetched"
+                        )
+                    })
+                    .map(|result| (layer, result))
             }
         });
 
-        let results = futures::future::try_join_all(futures).await?;
-        Ok(results.into_iter().collect())
+        futures::future::try_join_all(futures)
+            .await
+            .map(|results| results.into_iter().collect())
     }
 }
 

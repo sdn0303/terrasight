@@ -16,8 +16,15 @@ impl GetAreaStatsUsecase {
     }
 
     /// Execute the area-stats query for the given administrative area code.
+    #[tracing::instrument(skip(self), fields(usecase = "get_area_stats"))]
     pub async fn execute(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError> {
-        self.repo.get_area_stats(code).await
+        self.repo.get_area_stats(code).await.inspect(|stats| {
+            tracing::debug!(
+                code = %stats.code,
+                land_price_count = stats.land_price.count,
+                "area-stats query complete"
+            )
+        })
     }
 }
 

@@ -24,6 +24,7 @@ impl GetLandPricesUsecase {
     /// # Errors
     ///
     /// Propagates [`DomainError`] from the repository (typically a database error).
+    #[tracing::instrument(skip(self), fields(usecase = "get_land_prices"))]
     pub async fn execute(
         &self,
         year: Year,

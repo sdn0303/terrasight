@@ -20,46 +20,57 @@ impl GetTrendUsecase {
     ///
     /// Business logic (CAGR calculation, direction determination) lives here
     /// rather than in the handler layer (P1 review fix).
+    #[tracing::instrument(skip(self), fields(usecase = "get_trend"))]
     pub async fn execute(
         &self,
         coord: Coord,
         years: YearsLookback,
     ) -> Result<TrendAnalysis, DomainError> {
-        let result = self.trend_repo.find_trend(coord, years).await?;
+        self.trend_repo
+            .find_trend(coord, years)
+            .await?
+            .ok_or(DomainError::NotFound)
+            .and_then(|(location, data)| {
+                if data.is_empty() {
+                    tracing::debug!("no trend data found");
+                    return Err(DomainError::NotFound);
+                }
+                Ok(build_trend_analysis(location, data))
+            })
+            .inspect(|analysis| {
+                tracing::debug!(
+                    address = %analysis.location.address,
+                    distance_m = analysis.location.distance_m,
+                    data_points = analysis.data.len(),
+                    cagr = analysis.cagr,
+                    "trend analysis computed"
+                )
+            })
+    }
+}
 
-        let (location, data) = result.ok_or(DomainError::NotFound)?;
+/// Compute CAGR, round, and pick direction to assemble the final analysis.
+fn build_trend_analysis(
+    location: crate::domain::entity::TrendLocation,
+    data: Vec<crate::domain::entity::TrendPoint>,
+) -> TrendAnalysis {
+    let first_price = data[0].price_per_sqm as f64;
+    let last_price = data[data.len() - 1].price_per_sqm as f64;
+    let n_years = (data[data.len() - 1].year - data[0].year).max(1) as u32;
 
-        if data.is_empty() {
-            tracing::debug!("no trend data found");
-            return Err(DomainError::NotFound);
-        }
+    let cagr = compute_cagr(first_price, last_price, n_years);
+    let cagr_rounded = round_dp(cagr, PRECISION_RATIO);
+    let direction = if cagr > 0.0 {
+        TrendDirection::Up
+    } else {
+        TrendDirection::Down
+    };
 
-        let distance_m_fmt = format!("{:.1}", location.distance_m); // PRECISION_DISTANCE
-        tracing::debug!(
-            address = %location.address,
-            distance_m = %distance_m_fmt,
-            data_points = data.len(),
-            "trend data found"
-        );
-
-        let first_price = data[0].price_per_sqm as f64;
-        let last_price = data[data.len() - 1].price_per_sqm as f64;
-        let n_years = (data[data.len() - 1].year - data[0].year).max(1) as u32;
-
-        let cagr = compute_cagr(first_price, last_price, n_years);
-        let cagr_rounded = round_dp(cagr, PRECISION_RATIO);
-        let direction = if cagr > 0.0 {
-            TrendDirection::Up
-        } else {
-            TrendDirection::Down
-        };
-
-        Ok(TrendAnalysis {
-            location,
-            data,
-            cagr: cagr_rounded,
-            direction,
-        })
+    TrendAnalysis {
+        location,
+        data,
+        cagr: cagr_rounded,
+        direction,
     }
 }
 

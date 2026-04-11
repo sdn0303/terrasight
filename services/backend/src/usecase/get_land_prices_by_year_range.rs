@@ -25,6 +25,7 @@ impl GetLandPricesByYearRangeUsecase {
     /// # Errors
     ///
     /// Propagates [`DomainError`] from the repository.
+    #[tracing::instrument(skip(self), fields(usecase = "get_land_prices_by_year_range"))]
     pub async fn execute(
         &self,
         from_year: Year,

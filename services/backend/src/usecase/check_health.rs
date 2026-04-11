@@ -17,6 +17,7 @@ impl CheckHealthUsecase {
         }
     }
 
+    #[tracing::instrument(skip(self), fields(usecase = "check_health"))]
     pub async fn execute(&self) -> HealthStatus {
         let db_connected = self.health_repo.check_connection().await;
 
