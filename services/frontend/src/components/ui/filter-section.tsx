@@ -10,7 +10,7 @@ interface FilterSectionProps {
 
 /**
  * Generic section header + children used in Finder and Layers panels.
- * Header is a uppercase label with brand color and optional "Required" tag.
+ * Header is an uppercase label with brand color and optional "Required" tag.
  */
 export function FilterSection({
   title,

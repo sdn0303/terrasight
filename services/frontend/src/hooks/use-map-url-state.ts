@@ -10,11 +10,26 @@ import {
 } from "nuqs";
 import { useEffect, useRef } from "react";
 import { MAP_CONFIG } from "@/lib/constants";
+import {
+  clampInt,
+  PRICE_RANGE,
+  STATION_MAX_RANGE,
+  TLS_MIN_RANGE,
+  TOKYO_23_WARDS,
+  ZONE_OPTIONS,
+} from "@/lib/filter-constants";
 import type { ThemeId } from "@/lib/themes";
 import { THEMES } from "@/lib/themes";
-import { useFilterStore } from "@/stores/filter-store";
+import {
+  type RiskLevel,
+  useFilterStore,
+  type WeightPreset,
+} from "@/stores/filter-store";
 import { useMapStore } from "@/stores/map-store";
 import { type DrawerTab, useUIStore } from "@/stores/ui-store";
+
+const ALLOWED_ZONES: ReadonlySet<string> = new Set(ZONE_OPTIONS);
+const ALLOWED_WARDS: ReadonlySet<string> = new Set(TOKYO_23_WARDS);
 
 const DRAWER_TABS = [
   "intel",
@@ -75,6 +90,95 @@ export function isValidCoordinate(
     Math.abs(lat) <= 90 &&
     Math.abs(lng) <= 180
   );
+}
+
+export interface RawFilterUrlParams {
+  tlsMin: number | null;
+  riskMax: RiskLevel | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  zones: string[] | null;
+  stationMax: number | null;
+  preset: WeightPreset | null;
+  cities: string[] | null;
+}
+
+export interface NormalizedFilterUrlParams {
+  criteria?: {
+    tlsMin: number;
+    riskMax: RiskLevel;
+    priceRange: [number, number];
+  };
+  zones?: string[];
+  stationMax?: number;
+  preset?: WeightPreset;
+  cities?: string[];
+}
+
+/**
+ * Normalize filter URL params into a store-ready shape.
+ *
+ * URL values are untrusted: users can hand-craft any integer, type unknown
+ * zone/ward strings, or invert the price range. This helper clamps numeric
+ * ranges to supported bounds, swaps `priceMin`/`priceMax` if inverted,
+ * filters zones/cities against allow-lists, and drops entire sections when
+ * all inputs are null or unknown so the caller does not touch the store for
+ * empty sections.
+ *
+ * Pure (no store mutation) so it can be unit-tested in isolation.
+ */
+export function normalizeFilterUrlParams(
+  params: RawFilterUrlParams,
+): NormalizedFilterUrlParams {
+  const result: NormalizedFilterUrlParams = {};
+
+  // Criteria are grouped because the store setter takes one merged payload.
+  if (
+    params.tlsMin !== null ||
+    params.riskMax !== null ||
+    params.priceMin !== null ||
+    params.priceMax !== null
+  ) {
+    const tlsMin =
+      params.tlsMin !== null
+        ? clampInt(params.tlsMin, TLS_MIN_RANGE.min, TLS_MIN_RANGE.max)
+        : TLS_MIN_RANGE.min;
+    const riskMax: RiskLevel = params.riskMax ?? "high";
+    const rawMin =
+      params.priceMin !== null
+        ? clampInt(params.priceMin, PRICE_RANGE.min, PRICE_RANGE.max)
+        : PRICE_RANGE.min;
+    const rawMax =
+      params.priceMax !== null
+        ? clampInt(params.priceMax, PRICE_RANGE.min, PRICE_RANGE.max)
+        : PRICE_RANGE.max;
+    // Swap if inverted so the store invariant priceRange[0] <= priceRange[1] holds.
+    const priceRange: [number, number] =
+      rawMin <= rawMax ? [rawMin, rawMax] : [rawMax, rawMin];
+    result.criteria = { tlsMin, riskMax, priceRange };
+  }
+
+  if (params.zones !== null) {
+    const filtered = params.zones.filter((z) => ALLOWED_ZONES.has(z));
+    if (filtered.length > 0) result.zones = filtered;
+  }
+
+  if (params.stationMax !== null) {
+    result.stationMax = clampInt(
+      params.stationMax,
+      STATION_MAX_RANGE.min,
+      STATION_MAX_RANGE.max,
+    );
+  }
+
+  if (params.preset !== null) result.preset = params.preset;
+
+  if (params.cities !== null) {
+    const filtered = params.cities.filter((c) => ALLOWED_WARDS.has(c));
+    if (filtered.length > 0) result.cities = filtered;
+  }
+
+  return result;
 }
 
 /**
@@ -189,32 +293,27 @@ export function useMapUrlState() {
       useUIStore.getState().addComparePoint(pt);
     }
 
-    // Restore filter state from URL (Phase 3)
+    // Restore filter state from URL (Phase 3). Normalize first so that
+    // out-of-bounds, NaN, inverted, or unknown values are clamped/dropped
+    // before we touch the store.
+    const normalized = normalizeFilterUrlParams({
+      tlsMin: params.tlsMin,
+      riskMax: params.riskMax,
+      priceMin: params.priceMin,
+      priceMax: params.priceMax,
+      zones: params.zones,
+      stationMax: params.stationMax,
+      preset: params.preset,
+      cities: params.cities,
+    });
     const filterStore = useFilterStore.getState();
-    if (
-      params.tlsMin !== null ||
-      params.riskMax !== null ||
-      params.priceMin !== null ||
-      params.priceMax !== null
-    ) {
-      filterStore.setCriteria({
-        tlsMin: params.tlsMin ?? 0,
-        riskMax: params.riskMax ?? "high",
-        priceRange: [params.priceMin ?? 0, params.priceMax ?? 10_000_000],
-      });
+    if (normalized.criteria) filterStore.setCriteria(normalized.criteria);
+    if (normalized.zones) filterStore.setZoning({ zones: normalized.zones });
+    if (normalized.stationMax !== undefined) {
+      filterStore.setZoning({ stationMaxDistanceM: normalized.stationMax });
     }
-    if (params.zones !== null && params.zones.length > 0) {
-      filterStore.setZoning({ zones: params.zones });
-    }
-    if (params.stationMax !== null) {
-      filterStore.setZoning({ stationMaxDistanceM: params.stationMax });
-    }
-    if (params.preset !== null) {
-      filterStore.setPreset(params.preset);
-    }
-    if (params.cities !== null && params.cities.length > 0) {
-      filterStore.setArea({ cities: params.cities });
-    }
+    if (normalized.preset) filterStore.setPreset(normalized.preset);
+    if (normalized.cities) filterStore.setArea({ cities: normalized.cities });
     if (params.panel !== null) {
       useUIStore.getState().setLeftPanel(params.panel);
     }

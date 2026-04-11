@@ -1,9 +1,8 @@
 "use client";
 
+import { ZONE_OPTIONS } from "@/lib/filter-constants";
 import { GLOW_SHADOW, GRADIENT } from "@/lib/theme-tokens";
 import { useFilterStore } from "@/stores/filter-store";
-
-const ZONES = ["商業", "近商", "住居", "工業"] as const;
 
 export function ZoneChips() {
   const zones = useFilterStore((s) => s.zoning.zones);
@@ -18,7 +17,7 @@ export function ZoneChips() {
 
   return (
     <div className="flex flex-wrap gap-1.5">
-      {ZONES.map((zone) => {
+      {ZONE_OPTIONS.map((zone) => {
         const active = zones.includes(zone);
         return (
           <button
