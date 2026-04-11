@@ -71,6 +71,261 @@ opt-level = 3  # Optimize dependencies in dev
 
 ---
 
+## 0. Project Conventions (PRECEDENCE OVER SECTIONS BELOW)
+
+The following rules are authoritative for this repository. When any rule below
+the "Project Conventions" section conflicts with a rule in sections 1–14,
+**this section wins**. Reference-manual sections 1–14 remain as background
+guidance but must not be cited to justify a pattern that contradicts these
+conventions.
+
+### proj-no-mod-rs
+
+> **Eliminate `mod.rs`. Use Rust 2018 file-as-module format for every crate.**
+
+**Why**: Visual noise, conflicting file names across modules, and weaker IDE
+navigation. Rust 2018 edition's `foo.rs` + `foo/` layout makes each module
+unambiguous.
+
+**Bad**:
+
+```text
+src/
+├── domain/
+│   ├── mod.rs          ❌ prohibited
+│   └── value_object.rs
+```
+
+**Good**:
+
+```text
+src/
+├── domain.rs           ✅ declares `pub mod value_object; ...`
+└── domain/
+    └── value_object.rs
+```
+
+- No file named `mod.rs` may be created or retained.
+- Every directory module has a sibling `<name>.rs` that contains its
+  `pub mod ...` declarations (and nothing else unless the module is trivial).
+- Nested sub-modules follow the same pattern recursively.
+
+### proj-telemetry-conventions
+
+> **Reuse `realestate-telemetry` for logging, metrics, and HTTP tracing.
+> Do not add ad-hoc `println!`, `eprintln!`, or direct `env_logger` calls.**
+
+- Library crates call `tracing::{debug,info,warn,error}!` directly; the
+  subscriber is initialised once in the binary via
+  `realestate_telemetry::log::init_global_logger`.
+- HTTP spans come from `realestate_telemetry::http::trace_layer()`.
+- Metrics counters/histograms go through `realestate_telemetry::metrics`.
+- Log messages use structured key-value fields (`tracing::info!(user_id, "…")`)
+  rather than string formatting.
+
+### proj-trace-with-inspect
+
+> **For step-by-step tracing inside a Result/Option chain, use `.inspect()`
+> and `.inspect_err()` instead of breaking the chain with intermediate `let`
+> bindings.**
+
+**Why**: Preserves the method-chain style, keeps the happy path readable, and
+ties each trace event to the value it observes.
+
+**Bad**:
+
+```rust
+let rows = repo.find_all(&bbox).await;
+match &rows {
+    Ok(r) => tracing::debug!(count = r.len(), "rows fetched"),
+    Err(e) => tracing::warn!(error = %e, "fetch failed"),
+}
+let rows = rows?;
+```
+
+**Good**:
+
+```rust
+let rows = repo
+    .find_all(&bbox)
+    .await
+    .inspect(|r| tracing::debug!(count = r.len(), "rows fetched"))
+    .inspect_err(|e| tracing::warn!(error = %e, "fetch failed"))?;
+```
+
+- Use `#[tracing::instrument]` on handler/usecase entry points for span
+  creation; use `.inspect*` for intermediate observations inside chains.
+- `.inspect_err` replaces `.map_err(|e| { tracing::warn!(…); e })`.
+
+### proj-propagate-errors
+
+> **Propagate errors with `?` all the way to the outermost caller. Only the
+> outermost call (HTTP handler, job entry point, `main`) may convert errors
+> into a user-facing representation.**
+
+- Domain and usecase layers return `Result<T, DomainError>`.
+- Handler layer converts `DomainError → AppError` via `ErrorMapping`.
+- Intermediate layers must not `match` on errors to log or rewrap unless
+  they add meaningful context; use `.inspect_err` for observation instead.
+- `.unwrap()` / `.expect()` are forbidden outside `#[cfg(test)]`, `const`
+  initialisation of compile-time-known values, and documented invariants
+  with a `SAFETY:` or `INVARIANT:` comment.
+
+### proj-types-over-literals
+
+> **Define domain types around values. Reject raw strings, ints, and
+> floats at module boundaries.**
+
+- Coordinates, ids, enumerated statuses, monetary amounts, zoom levels,
+  year ranges, etc. must have newtypes or enums with validated constructors
+  (see `type-newtype-validated`, `api-parse-dont-validate`).
+- Serde boundaries (`Deserialize` / `Serialize` on query structs and DTOs)
+  convert literals to domain types inside an `into_domain` / `into_filters`
+  method; downstream layers never see raw `String`/`i64`/`f64`.
+- `String` for a classification value is a code smell; use an enum with
+  `FromStr` / `Display` round-trips.
+
+### proj-method-chains-over-nesting
+
+> **Prefer method chains and early returns over nested blocks.**
+
+- Collection transformations use iterator chains
+  (`iter().filter(...).map(...).collect()`), not imperative `for` loops with
+  accumulators, unless a benchmark proves the loop is faster.
+- Option/Result chains use `.map`, `.and_then`, `.ok_or`, `.inspect`,
+  `.inspect_err`, `?` — not nested `match` or `if let Some(x) = ...`.
+- Maximum indentation depth is four levels inside any function body; deeper
+  nesting is a signal to extract a helper.
+
+### proj-match-for-complex-conditions
+
+> **Use `match` for any conditional with more than one predicate, boolean
+> combination, or tuple of inputs.**
+
+**Bad**:
+
+```rust
+if cache.is_some() && ttl > 0 && !stale {
+    ...
+} else if cache.is_none() && retries < 3 {
+    ...
+} else {
+    ...
+}
+```
+
+**Good**:
+
+```rust
+match (cache.as_ref(), ttl > 0, stale, retries) {
+    (Some(value), true, false, _) => return Ok(value.clone()),
+    (None, _, _, r) if r < 3 => refresh(retries + 1).await?,
+    _ => fallback(),
+}
+```
+
+- Enum dispatch always uses `match`; avoid `if let` chains across multiple
+  variants.
+- Use tuple patterns to make the decision matrix explicit.
+
+### proj-tests-colocated
+
+> **Place unit tests in the same file as the code under test inside
+> `#[cfg(test)] mod tests { ... }`.**
+
+- Integration tests (crossing the HTTP boundary) live in `tests/` directly;
+  no shared `tests/common/` helper modules — inline the harness where
+  needed.
+- Unit tests of private functions import via `use super::*;` — this is the
+  reason to colocate.
+- Workspace-wide test helpers live in a dedicated dev-dependency crate
+  only when genuinely shared by three or more integration tests.
+
+### proj-clean-architecture
+
+> **Respect the four-layer Clean Architecture boundary. Dependencies point
+> inward only.**
+
+```
+handler  →  usecase  →  domain
+                       ▲
+                       │
+                     infra
+```
+
+- `domain` depends on **nothing** except `std`, `serde`, `thiserror`,
+  `chrono`, `async-trait`. No `axum`, no `sqlx`, no `reqwest`, no `tokio`
+  types in public signatures.
+- `infra` implements traits declared in `domain::repository`; it must not
+  leak `sqlx::Error` or `reqwest::Error` across the trait boundary.
+- `usecase` orchestrates domain logic and calls repository traits; it
+  knows about `tokio::join!` / `tokio::try_join!` but nothing
+  framework-specific.
+- `handler` is the only layer allowed to reference `axum`, `http`, or
+  `ApiError`. It adapts `DomainError → AppError` and nothing else.
+- Common types shared across layers go in `domain::entity` /
+  `domain::value_object`; cross-cutting helpers go in a lib crate.
+
+### proj-shared-code-granularity
+
+> **Avoid premature extraction. Only lift code into a shared helper or lib
+> crate when there are three concrete call sites, or when the layering rule
+> requires it.**
+
+- Two copies of the same parse logic is tolerated; on the third copy,
+  extract to a typed helper in the innermost layer that owns the concept.
+- A helper that is consumed by only one module stays in that module.
+- Lib crates in `lib/` are reserved for reusable infrastructure (telemetry,
+  db pool, GeoJSON DTOs). Feature logic never lives in a lib crate.
+
+### proj-lib-crate-encapsulation
+
+> **Each lib crate is a black box. Consumers must never need to know the
+> internal module layout.**
+
+- Re-export every public symbol from `lib.rs` at a stable path.
+  Internal module paths (`realestate_telemetry::log::logger::LogFormat`)
+  must not appear in consumer code.
+- `pub(crate)` everything that is not part of the advertised API.
+- Breaking changes to the re-exported surface require bumping the crate
+  version and updating all consumers in the same PR.
+- Library documentation lives in `lib.rs` as a `//!` module comment and
+  must include a Quick Start example, feature flag table, and module
+  map. See `realestate-telemetry/lib.rs` for the reference format.
+
+### proj-rust-idiom-naming
+
+> **Follow Rust idiomatic naming. Imperative names for actions, noun
+> phrases for data, no Hungarian notation, no framework prefixes on
+> domain types.**
+
+- Usecases: `GetXUsecase` / `ComputeXUsecase` — `Get` for read-only
+  retrieval, `Compute` for derived values, `Create`/`Update`/`Delete` for
+  writes. One usecase per business action.
+- Repository traits: `XRepository`. Methods follow `find_…`, `get_…`,
+  `calc_…`, `count_…`, `save_…`, `delete_…`. No `do_` or `handle_` prefixes.
+- Domain types: `LandPrice`, `Coord`, `Year` — plain nouns, no `Entity` or
+  `Dto` suffix in the domain layer. DTOs at the handler boundary carry the
+  `Dto` suffix (`TlsResponseDto`).
+- Modules are `snake_case`, types are `UpperCamelCase`, constants are
+  `SCREAMING_SNAKE_CASE`. No acronyms kept upper-case in type names —
+  `HttpClient`, not `HTTPClient`.
+
+### proj-no-over-abstraction
+
+> **Ship the concrete version first. Introduce generics, traits, or
+> lifetimes only to satisfy a real dependency-inversion need.**
+
+- A trait with exactly one implementation is a code smell unless the
+  implementation is injected for tests or crosses a layer boundary.
+- `Arc<dyn Trait>` is reserved for layer seams (usecase ← infra). Within
+  a single layer, pass concrete types.
+- Generic type parameters require a second call site before they are added.
+  See `anti-over-abstraction`.
+- Macros are a last resort; prefer a function or trait method.
+
+---
+
 ## 1. Ownership & Borrowing (CRITICAL)
 
 # own-borrow-over-clone
