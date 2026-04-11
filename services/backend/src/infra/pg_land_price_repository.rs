@@ -91,15 +91,16 @@ impl LandPriceRepository for PgLandPriceRepository {
                 .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Database("land_price query timed out".into()))?
-        .map_err(map_db_err)?;
-
-        tracing::debug!(
-            row_count = rows.len(),
-            year = year.value(),
-            limit,
-            "land_prices fetched"
-        );
+        .map_err(|_| DomainError::Timeout("land_price query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| {
+            tracing::debug!(
+                row_count = rows.len(),
+                year = year.value(),
+                limit,
+                "land_prices fetched"
+            )
+        })?;
 
         let mut features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
@@ -152,16 +153,17 @@ impl LandPriceRepository for PgLandPriceRepository {
                 .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Database("land_price all-years query timed out".into()))?
-        .map_err(map_db_err)?;
-
-        tracing::debug!(
-            row_count = rows.len(),
-            from_year = from_year.value(),
-            to_year = to_year.value(),
-            limit,
-            "land_prices all-years fetched"
-        );
+        .map_err(|_| DomainError::Timeout("land_price all-years query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| {
+            tracing::debug!(
+                row_count = rows.len(),
+                from_year = from_year.value(),
+                to_year = to_year.value(),
+                limit,
+                "land_prices all-years fetched"
+            )
+        })?;
 
         let mut features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 

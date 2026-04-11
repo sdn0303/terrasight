@@ -1,14 +1,20 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
 use realestate_geo_math::spatial::{bbox_area_deg2, compute_feature_limit};
 use serde_json::json;
 use sqlx::{FromRow, PgPool};
+use tokio::time::timeout;
 
 use super::map_db_err;
 use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
 use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
+
+/// Maximum time to wait for any single layer query before returning an error.
+const LAYER_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, FromRow)]
 struct LandPriceLayerRow {
@@ -195,12 +201,16 @@ impl PgAreaRepository {
             LIMIT $5
             "#,
         );
-        let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-            .bind(limit + 1)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), limit, "land_prices fetched");
+        let rows = timeout(
+            LAYER_QUERY_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("land_prices layer query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "land_prices fetched"))?;
 
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
@@ -219,12 +229,16 @@ impl PgAreaRepository {
             LIMIT $5
             "#,
         );
-        let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-            .bind(limit + 1)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), limit, "zoning fetched");
+        let rows = timeout(
+            LAYER_QUERY_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("zoning layer query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "zoning fetched"))?;
 
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
@@ -243,12 +257,16 @@ impl PgAreaRepository {
             LIMIT $5
             "#,
         );
-        let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-            .bind(limit + 1)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), limit, "flood_risk fetched");
+        let rows = timeout(
+            LAYER_QUERY_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("flood_risk layer query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "flood_risk fetched"))?;
 
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
@@ -267,12 +285,16 @@ impl PgAreaRepository {
             LIMIT $5
             "#,
         );
-        let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-            .bind(limit + 1)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), limit, "steep_slope fetched");
+        let rows = timeout(
+            LAYER_QUERY_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("steep_slope layer query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "steep_slope fetched"))?;
 
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
@@ -291,12 +313,16 @@ impl PgAreaRepository {
             LIMIT $5
             "#,
         );
-        let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-            .bind(limit + 1)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), limit, "schools fetched");
+        let rows = timeout(
+            LAYER_QUERY_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("schools layer query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "schools fetched"))?;
 
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
@@ -315,12 +341,18 @@ impl PgAreaRepository {
             LIMIT $5
             "#,
         );
-        let rows = bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-            .bind(limit + 1)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), limit, "medical_facilities fetched");
+        let rows = timeout(
+            LAYER_QUERY_TIMEOUT,
+            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(limit + 1)
+                .fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("medical_facilities layer query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| {
+            tracing::debug!(row_count = rows.len(), limit, "medical_facilities fetched")
+        })?;
 
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 

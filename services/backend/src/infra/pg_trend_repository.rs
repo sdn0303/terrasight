@@ -1,12 +1,18 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use realestate_db::spatial::bind_coord;
 use sqlx::{FromRow, PgPool};
+use tokio::time::timeout;
 
 use super::map_db_err;
 use crate::domain::entity::{TrendLocation, TrendPoint};
 use crate::domain::error::DomainError;
 use crate::domain::repository::TrendRepository;
 use crate::domain::value_object::{Coord, YearsLookback};
+
+/// Maximum time to wait for a single trend query.
+const TREND_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, FromRow)]
 struct NearestLocationRow {
@@ -59,11 +65,14 @@ impl TrendRepository for PgTrendRepository {
             LIMIT 1
             "#,
         );
-        let nearest = bind_coord(nearest_query, coord.lng(), coord.lat())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(found = nearest.is_some(), "nearest_trend_point lookup");
+        let nearest = timeout(
+            TREND_QUERY_TIMEOUT,
+            bind_coord(nearest_query, coord.lng(), coord.lat()).fetch_optional(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("nearest_trend_point query".into()))?
+        .map_err(map_db_err)
+        .inspect(|n| tracing::debug!(found = n.is_some(), "nearest_trend_point lookup"))?;
 
         let Some(NearestLocationRow {
             address,
@@ -73,28 +82,35 @@ impl TrendRepository for PgTrendRepository {
             return Ok(None);
         };
 
-        let max_year_row: (i32,) =
+        let max_year_row: (i32,) = timeout(
+            TREND_QUERY_TIMEOUT,
             sqlx::query_as("SELECT COALESCE(MAX(year), 0) FROM land_prices WHERE address = $1")
                 .bind(&address)
-                .fetch_one(&self.pool)
-                .await
-                .map_err(map_db_err)?;
+                .fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("trend_max_year query".into()))?
+        .map_err(map_db_err)?;
         let min_year = max_year_row.0 - years + 1;
 
-        let data = sqlx::query_as::<_, TrendDataRow>(
-            r#"
+        let data = timeout(
+            TREND_QUERY_TIMEOUT,
+            sqlx::query_as::<_, TrendDataRow>(
+                r#"
             SELECT year, price_per_sqm
             FROM land_prices
             WHERE address = $1 AND year >= $2
             ORDER BY year
             "#,
+            )
+            .bind(&address)
+            .bind(min_year)
+            .fetch_all(&self.pool),
         )
-        .bind(&address)
-        .bind(min_year)
-        .fetch_all(&self.pool)
         .await
-        .map_err(map_db_err)?;
-        tracing::debug!(row_count = data.len(), "trend_data fetched");
+        .map_err(|_| DomainError::Timeout("trend_data query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), "trend_data fetched"))?;
 
         let points: Vec<TrendPoint> = data.into_iter().map(TrendPoint::from).collect();
 

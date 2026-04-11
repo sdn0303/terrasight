@@ -1,12 +1,18 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use realestate_db::spatial::bind_coord;
 use sqlx::{FromRow, PgPool};
+use tokio::time::timeout;
 
 use super::map_db_err;
 use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::TlsRepository;
 use crate::domain::value_object::Coord;
+
+/// Maximum time to wait for a single TLS sub-query.
+const TLS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, FromRow)]
 struct NearestPriceRow {
@@ -110,11 +116,14 @@ impl TlsRepository for PgTlsRepository {
             ORDER BY lp.year
             "#,
         );
-        let rows = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_all(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(row_count = rows.len(), "tls nearest_prices fetched");
+        let rows = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_all(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls nearest_prices query".into()))?
+        .map_err(map_db_err)
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), "tls nearest_prices fetched"))?;
 
         Ok(rows.into_iter().map(PriceRecord::from).collect())
     }
@@ -130,10 +139,13 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls flood_depth_rank query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.0.map(|v| v as i32))
     }
@@ -148,10 +160,13 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls steep_slope_nearby query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.0 > 0)
     }
@@ -168,16 +183,21 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 800)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(
-            count = row.count,
-            has_primary = row.has_primary,
-            has_junior_high = row.has_junior_high,
-            "schools_nearby fetched"
-        );
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls schools_nearby query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| {
+            tracing::debug!(
+                count = row.count,
+                has_primary = row.has_primary,
+                has_junior_high = row.has_junior_high,
+                "schools_nearby fetched"
+            )
+        })?;
 
         Ok(row.into())
     }
@@ -194,16 +214,21 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(
-            hospitals = row.hospital_count,
-            clinics = row.clinic_count,
-            beds = row.total_beds,
-            "medical_nearby fetched"
-        );
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls medical_nearby query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| {
+            tracing::debug!(
+                hospitals = row.hospital_count,
+                clinics = row.clinic_count,
+                beds = row.total_beds,
+                "medical_nearby fetched"
+            )
+        })?;
 
         Ok(row.into())
     }
@@ -219,10 +244,13 @@ impl TlsRepository for PgTlsRepository {
             LIMIT 1
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_optional(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls zoning_far query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.and_then(|(far,)| far))
     }
@@ -259,11 +287,21 @@ impl TlsRepository for PgTlsRepository {
             LEFT JOIN zone_stats zs ON true
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
-        tracing::debug!(z_score = row.z_score, zone_type = %row.zone_type, sample_count = row.sample_count, "price_z_score computed");
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls price_z_score query".into()))?
+        .map_err(map_db_err)
+        .inspect(|row| {
+            tracing::debug!(
+                z_score = row.z_score,
+                zone_type = %row.zone_type,
+                sample_count = row.sample_count,
+                "price_z_score computed"
+            )
+        })?;
 
         Ok(row.into())
     }
@@ -280,10 +318,13 @@ impl TlsRepository for PgTlsRepository {
               AND year >= (SELECT MAX(year) - 1 FROM land_prices)
             "#,
         );
-        let row = bind_coord(query, coord.lng(), coord.lat())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(map_db_err)?;
+        let row = timeout(
+            TLS_QUERY_TIMEOUT,
+            bind_coord(query, coord.lng(), coord.lat()).fetch_one(&self.pool),
+        )
+        .await
+        .map_err(|_| DomainError::Timeout("tls recent_transactions query".into()))?
+        .map_err(map_db_err)?;
 
         Ok(row.0)
     }
