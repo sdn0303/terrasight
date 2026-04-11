@@ -1,4 +1,5 @@
 pub mod map_db_err;
+pub mod opportunities_cache;
 pub mod pg_admin_area_stats_repository;
 pub mod pg_area_repository;
 pub mod pg_health_repository;
