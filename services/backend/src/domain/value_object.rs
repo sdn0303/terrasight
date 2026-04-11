@@ -7,7 +7,7 @@ use crate::domain::error::DomainError;
 /// - Latitude ∈ [-90, 90], Longitude ∈ [-180, 180]
 ///
 /// Fields are private; only the validated constructor can create instances.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BBox {
     south: f64,
     west: f64,
@@ -64,7 +64,7 @@ impl BBox {
 
 /// Geographic coordinate with enforced invariants:
 /// - Latitude ∈ [-90, 90], Longitude ∈ [-180, 180]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Coord {
     lat: f64,
     lng: f64,

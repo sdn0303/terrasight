@@ -38,7 +38,7 @@ impl GetAreaDataUsecase {
             .iter()
             .map(|layer| {
                 let repo = Arc::clone(&self.area_repo);
-                let bbox = bbox.clone();
+                let bbox = *bbox;
                 let layer = *layer;
                 async move {
                     let result = match layer {
