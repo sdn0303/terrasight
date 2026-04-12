@@ -36,11 +36,16 @@ __pycache__/
 # Data (large files — seed via scripts, not git)
 data/raw/**
 data/processed/**
-data/fgb/
-data/geojson/
 data/estat/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+
+# Data pipeline
+data/raw/*.zip
+data/geojson/**/*.geojson
+data/fgb/**/*.fgb
+data/fgb/manifest.json
+data/catalog/convert_log.json
 
 # IDE
 .vscode/
