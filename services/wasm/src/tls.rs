@@ -248,6 +248,49 @@ mod tests {
     }
 
     #[test]
+    fn all_presets_produce_valid_scores() {
+        let stats = sample_stats();
+        for preset in [
+            WeightPreset::Balance,
+            WeightPreset::Investment,
+            WeightPreset::Residential,
+            WeightPreset::Disaster,
+        ] {
+            let result = compute_tls(&stats, preset, &NormalizationParams::TOKYO);
+            assert!(
+                (0.0..=1.0).contains(&result.total_score),
+                "preset {preset:?} out of range"
+            );
+        }
+    }
+
+    #[test]
+    fn extreme_price_normalization() {
+        let mut stats = sample_stats();
+        // Very low price → high score
+        stats.land_price.avg_per_sqm = 100_000.0;
+        let low = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
+
+        // Very high price → low score
+        stats.land_price.avg_per_sqm = 5_000_000.0;
+        let high = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
+
+        assert!(low.sub_scores.price_score > high.sub_scores.price_score);
+    }
+
+    #[test]
+    fn high_risk_reduces_score() {
+        let mut stats = sample_stats();
+        stats.risk.composite_risk = 0.0;
+        let safe = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
+
+        stats.risk.composite_risk = 1.0;
+        let risky = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
+
+        assert!(safe.total_score > risky.total_score);
+    }
+
+    #[test]
     fn zero_stats_does_not_panic() {
         let stats = AreaStats {
             land_price: LandPriceStats {

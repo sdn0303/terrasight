@@ -816,6 +816,40 @@ mod tests {
     }
 
     #[test]
+    fn load_geojson_layer_replaces_existing() {
+        let mut engine = SpatialEngine::new();
+        let geojson = r#"{"type":"FeatureCollection","features":[
+            {"type":"Feature","geometry":{"type":"Point","coordinates":[139.7,35.68]},"properties":{"name":"a"}}
+        ]}"#;
+        engine.load_geojson_layer_inner("test", geojson).unwrap();
+        assert_eq!(engine.feature_count("test"), 1);
+
+        // Reload with same layer_id → replaced
+        let geojson2 = r#"{"type":"FeatureCollection","features":[
+            {"type":"Feature","geometry":{"type":"Point","coordinates":[139.7,35.68]},"properties":{"name":"b"}},
+            {"type":"Feature","geometry":{"type":"Point","coordinates":[139.8,35.69]},"properties":{"name":"c"}}
+        ]}"#;
+        engine.load_geojson_layer_inner("test", geojson2).unwrap();
+        assert_eq!(engine.feature_count("test"), 2);
+    }
+
+    #[test]
+    fn geojson_layer_participates_in_query() {
+        let mut engine = SpatialEngine::new();
+        let geojson = r#"{"type":"FeatureCollection","features":[
+            {"type":"Feature","geometry":{"type":"Point","coordinates":[139.75,35.68]},"properties":{}}
+        ]}"#;
+        engine
+            .load_geojson_layer_inner("test-layer", geojson)
+            .unwrap();
+
+        let bbox = BBox::new(35.6, 139.7, 35.7, 139.8).unwrap();
+        let result = engine.query_inner(&bbox, "test-layer").unwrap();
+        assert!(result.contains("FeatureCollection"));
+        assert!(result.contains("139.75"));
+    }
+
+    #[test]
     fn test_compute_stats_schools_layer_counts_hits() {
         let mut engine = SpatialEngine::new();
         // Load geology as "schools" — geology has features in Tokyo bbox,

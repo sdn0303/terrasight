@@ -88,4 +88,24 @@ mod tests {
         assert!(BBox::new(0.0, -181.0, 1.0, 0.0).is_err());
         assert!(BBox::new(0.0, 0.0, 1.0, 181.0).is_err());
     }
+
+    #[test]
+    fn bbox_accessors_return_correct_values() {
+        let bbox = BBox::new(35.5, 139.5, 35.8, 139.9).unwrap();
+        assert!((bbox.south() - 35.5).abs() < f64::EPSILON);
+        assert!((bbox.west() - 139.5).abs() < f64::EPSILON);
+        assert!((bbox.north() - 35.8).abs() < f64::EPSILON);
+        assert!((bbox.east() - 139.9).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn bbox_boundary_values_accepted() {
+        assert!(BBox::new(-90.0, -180.0, 90.0, 180.0).is_ok());
+        assert!(BBox::new(0.0, 0.0, 0.001, 0.001).is_ok());
+    }
+
+    #[test]
+    fn bbox_equal_south_north_rejected() {
+        assert!(BBox::new(35.5, 139.5, 35.5, 139.9).is_err());
+    }
 }

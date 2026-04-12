@@ -19,3 +19,24 @@ pub enum WasmError {
     #[error("invalid bbox: {0}")]
     InvalidBBox(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wasm_error_display_messages() {
+        let e = WasmError::LayerNotFound("test".into());
+        assert_eq!(e.to_string(), "layer not found: test");
+
+        let e = WasmError::InvalidBBox("bad".into());
+        assert_eq!(e.to_string(), "invalid bbox: bad");
+    }
+
+    #[test]
+    fn json_error_from_conversion() {
+        let json_err = serde_json::from_str::<serde_json::Value>("not json").unwrap_err();
+        let wasm_err = WasmError::from(json_err);
+        assert!(matches!(wasm_err, WasmError::Json(_)));
+    }
+}

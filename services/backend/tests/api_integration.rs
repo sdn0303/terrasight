@@ -618,3 +618,198 @@ async fn opportunities_ignores_cities_with_warning() {
     let body: Value = resp.json();
     assert!(body["items"].is_array());
 }
+
+// ============================================================
+// /api/v1/transactions/summary — transaction summary aggregates
+// ============================================================
+
+#[tokio::test]
+async fn transactions_summary_returns_data_for_tokyo() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/transactions/summary")
+        .add_query_param("pref_code", "13")
+        .await;
+
+    resp.assert_status_ok();
+
+    let items = resp.json::<Value>();
+    let items = items.as_array().expect("response should be a JSON array");
+    assert!(
+        !items.is_empty(),
+        "expected transaction summary rows for pref_code=13"
+    );
+
+    // Verify required fields on the first element
+    let first = &items[0];
+    assert!(first["city_code"].is_string(), "city_code must be a string");
+    assert!(
+        first["transaction_year"].is_number(),
+        "transaction_year must be a number"
+    );
+    assert!(
+        first["property_type"].is_string(),
+        "property_type must be a string"
+    );
+    assert!(first["tx_count"].is_number(), "tx_count must be a number");
+}
+
+// ============================================================
+// /api/v1/transactions — transaction detail records
+// ============================================================
+
+#[tokio::test]
+async fn transactions_returns_detail_for_chiyoda() {
+    require_db!(server);
+
+    // city_code=13101 is Chiyoda ward (千代田区)
+    let resp = server
+        .get("/api/v1/transactions")
+        .add_query_param("city_code", "13101")
+        .await;
+
+    resp.assert_status_ok();
+
+    let items = resp.json::<Value>();
+    let items = items.as_array().expect("response should be a JSON array");
+
+    // Verify required fields when records are present
+    if let Some(first) = items.first() {
+        assert!(first["city_code"].is_string(), "city_code must be a string");
+        assert!(first["city_name"].is_string(), "city_name must be a string");
+        assert!(
+            first["total_price"].is_number(),
+            "total_price must be a number"
+        );
+        assert!(
+            first["transaction_quarter"].is_string(),
+            "transaction_quarter must be a string"
+        );
+    }
+}
+
+// ============================================================
+// /api/v1/appraisals — land appraisal records
+// ============================================================
+
+#[tokio::test]
+async fn appraisals_returns_data_for_tokyo() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/appraisals")
+        .add_query_param("pref_code", "13")
+        .await;
+
+    resp.assert_status_ok();
+
+    let items = resp.json::<Value>();
+    let items = items.as_array().expect("response should be a JSON array");
+    assert!(
+        !items.is_empty(),
+        "expected appraisal rows for pref_code=13"
+    );
+
+    // AppraisalDetailResponse uses #[serde(rename_all = "camelCase")]
+    let first = &items[0];
+    assert!(first["cityCode"].is_string(), "cityCode must be a string");
+    assert!(
+        first["pricePerSqm"].is_number(),
+        "pricePerSqm must be a number"
+    );
+    assert!(
+        first["appraisalPrice"].is_number(),
+        "appraisalPrice must be a number"
+    );
+}
+
+// ============================================================
+// /api/v1/municipalities — municipality list
+// ============================================================
+
+#[tokio::test]
+async fn municipalities_returns_list_for_tokyo() {
+    require_db!(server);
+
+    let resp = server
+        .get("/api/v1/municipalities")
+        .add_query_param("pref_code", "13")
+        .await;
+
+    resp.assert_status_ok();
+
+    let items = resp.json::<Value>();
+    let items = items.as_array().expect("response should be a JSON array");
+    assert!(
+        !items.is_empty(),
+        "expected municipalities for pref_code=13 (Tokyo has 62)"
+    );
+
+    // MunicipalityResponse uses #[serde(rename_all = "camelCase")]
+    let first = &items[0];
+    assert!(first["cityCode"].is_string(), "cityCode must be a string");
+    assert!(first["cityName"].is_string(), "cityName must be a string");
+    assert!(first["prefCode"].is_string(), "prefCode must be a string");
+
+    // Every city_code must start with "13" (Tokyo prefecture)
+    for item in items {
+        let city_code = item["cityCode"]
+            .as_str()
+            .expect("cityCode must be a string");
+        assert!(
+            city_code.starts_with("13"),
+            "cityCode {city_code} should start with '13' for Tokyo"
+        );
+    }
+}
+
+// ============================================================
+// Validation error tests
+// ============================================================
+
+#[tokio::test]
+async fn transactions_summary_rejects_invalid_pref_code() {
+    require_db!(server);
+
+    // pref_code=99 is out of the valid 01–47 range
+    let resp = server
+        .get("/api/v1/transactions/summary")
+        .add_query_param("pref_code", "99")
+        .await;
+
+    assert_eq!(
+        resp.status_code().as_u16(),
+        400,
+        "pref_code=99 must return 400 INVALID_PARAMS"
+    );
+
+    let body: Value = resp.json();
+    assert_eq!(
+        body["error"]["code"], "INVALID_PARAMS",
+        "error.code must be INVALID_PARAMS"
+    );
+}
+
+#[tokio::test]
+async fn transactions_rejects_invalid_city_code() {
+    require_db!(server);
+
+    // city_code=123 is only 3 digits; CityCode requires exactly 5
+    let resp = server
+        .get("/api/v1/transactions")
+        .add_query_param("city_code", "123")
+        .await;
+
+    assert_eq!(
+        resp.status_code().as_u16(),
+        400,
+        "city_code=123 must return 400 INVALID_PARAMS"
+    );
+
+    let body: Value = resp.json();
+    assert_eq!(
+        body["error"]["code"], "INVALID_PARAMS",
+        "error.code must be INVALID_PARAMS"
+    );
+}
