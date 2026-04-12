@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{BBox, Year, ZoomLevel};
+use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 
 /// Fetch land price GeoJSON features across a `[from_year..=to_year]` range
 /// for the time machine animation endpoint.
@@ -32,9 +32,10 @@ impl GetLandPricesByYearRangeUsecase {
         to_year: Year,
         bbox: BBox,
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         self.land_price_repo
-            .find_all_years_by_bbox(from_year, to_year, &bbox, zoom, None)
+            .find_all_years_by_bbox(from_year, to_year, &bbox, zoom, pref_code)
             .await
             .inspect(|result| {
                 tracing::debug!(
@@ -79,6 +80,7 @@ mod tests {
                 Year::new(2024).unwrap(),
                 sample_bbox(),
                 ZoomLevel::clamped(14),
+                None,
             )
             .await
             .unwrap();
@@ -100,6 +102,7 @@ mod tests {
                 Year::new(2024).unwrap(),
                 sample_bbox(),
                 ZoomLevel::clamped(14),
+                None,
             )
             .await
             .unwrap_err();

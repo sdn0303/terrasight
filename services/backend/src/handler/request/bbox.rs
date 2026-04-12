@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::domain::error::DomainError;
 use crate::domain::scoring::tls::WeightPreset;
-use crate::domain::value_object::{BBox, Coord};
+use crate::domain::value_object::{BBox, Coord, PrefCode};
 
 /// Bounding box query parameters for `/api/area-data` and `/api/stats`.
 ///
@@ -17,12 +17,17 @@ pub struct BBoxQuery {
     pub west: f64,
     pub north: f64,
     pub east: f64,
+    /// Optional prefecture code filter (e.g. `"13"` for Tokyo).
+    #[serde(default)]
+    pub pref_code: Option<String>,
 }
 
 impl BBoxQuery {
     /// Convert to domain value object (validation happens inside `BBox::new`).
-    pub fn into_domain(self) -> Result<BBox, DomainError> {
-        BBox::new(self.south, self.west, self.north, self.east)
+    pub fn into_domain(self) -> Result<(BBox, Option<PrefCode>), DomainError> {
+        let bbox = BBox::new(self.south, self.west, self.north, self.east)?;
+        let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
+        Ok((bbox, pref_code))
     }
 }
 
@@ -69,6 +74,7 @@ mod tests {
             west: 139.70,
             north: 35.70,
             east: 139.80,
+            pref_code: None,
         };
         assert!(q.into_domain().is_ok());
     }
@@ -80,6 +86,7 @@ mod tests {
             west: 0.0,
             north: 92.0,
             east: 1.0,
+            pref_code: None,
         };
         assert!(q.into_domain().is_err());
     }

@@ -20,7 +20,7 @@ pub async fn get_area_data(
     State(usecase): State<Arc<GetAreaDataUsecase>>,
     Query(params): Query<AreaDataQuery>,
 ) -> Result<Json<AreaDataResponseDto>, AppError> {
-    let (bbox, layers, zoom) = params.into_domain().inspect(|(b, l, z)| {
+    let (bbox, layers, zoom, pref_code) = params.into_domain().inspect(|(b, l, z, _)| {
         tracing::debug!(
             south = b.south(),
             west = b.west(),
@@ -33,7 +33,7 @@ pub async fn get_area_data(
     })?;
 
     usecase
-        .execute(&bbox, &layers, zoom)
+        .execute(&bbox, &layers, zoom, pref_code.as_ref())
         .await
         .inspect(|result| {
             tracing::info!(

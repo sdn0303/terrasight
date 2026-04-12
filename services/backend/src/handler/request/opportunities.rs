@@ -14,7 +14,9 @@ use crate::domain::constants::DEFAULT_OPPORTUNITY_LIMIT;
 use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
 use crate::domain::scoring::tls::WeightPreset;
-use crate::domain::value_object::{BBox, OpportunityLimit, OpportunityOffset, RiskLevel, TlsScore};
+use crate::domain::value_object::{
+    BBox, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel, TlsScore,
+};
 
 /// Raw query string parameters for `GET /api/v1/opportunities`.
 ///
@@ -44,6 +46,9 @@ pub struct OpportunitiesQuery {
     pub preset: String,
     #[serde(default)]
     pub cities: Option<String>,
+    /// Optional prefecture code filter (e.g. `"13"` for Tokyo).
+    #[serde(default)]
+    pub pref_code: Option<String>,
 }
 
 const fn default_limit() -> u32 {
@@ -67,6 +72,8 @@ pub struct OpportunitiesFilters {
     pub station_max: Option<Meters>,
     pub price_range: Option<(PricePerSqm, PricePerSqm)>,
     pub preset: WeightPreset,
+    pub pref_code: Option<PrefCode>,
+    pub cities: Vec<String>,
 }
 
 impl OpportunitiesQuery {
@@ -94,6 +101,18 @@ impl OpportunitiesQuery {
         let station_max = self.station_max.map(Meters::new);
         let price_range = parse_price_range(self.price_min, self.price_max)?;
         let preset = parse_preset(&self.preset);
+        let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
+        let cities = self
+            .cities
+            .as_deref()
+            .map(|csv| {
+                csv.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(String::from)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
         self.warn_unsupported();
 
@@ -107,18 +126,14 @@ impl OpportunitiesQuery {
             station_max,
             price_range,
             preset,
+            pref_code,
+            cities,
         })
     }
 
     /// Emit warn-level tracing for query parameters that Phase 4 does not
     /// yet implement. These filters do not fail the request.
     fn warn_unsupported(&self) {
-        if self.cities.is_some() {
-            tracing::warn!(
-                cities = ?self.cities,
-                "opportunities: `cities` filter not implemented in Phase 4",
-            );
-        }
         if self.station_max.is_some() {
             tracing::warn!(
                 station_max = ?self.station_max,
@@ -215,6 +230,7 @@ mod tests {
             price_max: None,
             preset: "balance".to_string(),
             cities: None,
+            pref_code: None,
         }
     }
 

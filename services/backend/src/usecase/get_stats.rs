@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::domain::entity::AreaStats;
 use crate::domain::error::DomainError;
 use crate::domain::repository::StatsRepository;
-use crate::domain::value_object::BBox;
+use crate::domain::value_object::{BBox, PrefCode};
 
 pub struct GetStatsUsecase {
     stats_repo: Arc<dyn StatsRepository>,
@@ -18,12 +18,16 @@ impl GetStatsUsecase {
     ///
     /// All 4 stats queries execute in parallel.
     #[tracing::instrument(skip(self), fields(usecase = "get_stats"))]
-    pub async fn execute(&self, bbox: &BBox) -> Result<AreaStats, DomainError> {
+    pub async fn execute(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<AreaStats, DomainError> {
         tokio::try_join!(
-            self.stats_repo.calc_land_price_stats(bbox, None),
-            self.stats_repo.calc_risk_stats(bbox, None),
-            self.stats_repo.count_facilities(bbox, None),
-            self.stats_repo.calc_zoning_distribution(bbox, None),
+            self.stats_repo.calc_land_price_stats(bbox, pref_code),
+            self.stats_repo.calc_risk_stats(bbox, pref_code),
+            self.stats_repo.count_facilities(bbox, pref_code),
+            self.stats_repo.calc_zoning_distribution(bbox, pref_code),
         )
         .map(
             |(land_price, risk, facilities, zoning_distribution)| AreaStats {
@@ -102,7 +106,7 @@ mod tests {
         );
         let usecase = GetStatsUsecase::new(repo);
 
-        let result = usecase.execute(&sample_bbox()).await.unwrap();
+        let result = usecase.execute(&sample_bbox(), None).await.unwrap();
 
         assert_eq!(result.land_price.count, 10);
         assert_eq!(result.facilities.schools, 10);
@@ -121,7 +125,7 @@ mod tests {
         );
         let usecase = GetStatsUsecase::new(repo);
 
-        let err = usecase.execute(&sample_bbox()).await.unwrap_err();
+        let err = usecase.execute(&sample_bbox(), None).await.unwrap_err();
         assert!(matches!(err, DomainError::Database(_)));
     }
 }

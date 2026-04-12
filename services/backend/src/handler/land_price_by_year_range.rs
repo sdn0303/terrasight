@@ -32,21 +32,22 @@ pub async fn get_land_prices_by_year_range(
     State(usecase): State<Arc<GetLandPricesByYearRangeUsecase>>,
     Query(params): Query<LandPriceByYearRangeQuery>,
 ) -> Result<Json<LayerResponseDto>, AppError> {
-    let (from_year, to_year, bbox, zoom) = params.into_domain().inspect(|(f, t, b, z)| {
-        tracing::debug!(
-            from_year = f.value(),
-            to_year = t.value(),
-            south = b.south(),
-            west = b.west(),
-            north = b.north(),
-            east = b.east(),
-            zoom = z.get(),
-            "land-prices/by-year-range request parsed"
-        )
-    })?;
+    let (from_year, to_year, bbox, zoom, pref_code) =
+        params.into_domain().inspect(|(f, t, b, z, _)| {
+            tracing::debug!(
+                from_year = f.value(),
+                to_year = t.value(),
+                south = b.south(),
+                west = b.west(),
+                north = b.north(),
+                east = b.east(),
+                zoom = z.get(),
+                "land-prices/by-year-range request parsed"
+            )
+        })?;
 
     usecase
-        .execute(from_year, to_year, bbox, zoom)
+        .execute(from_year, to_year, bbox, zoom, pref_code.as_ref())
         .await
         .inspect(|lr| {
             tracing::info!(
