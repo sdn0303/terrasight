@@ -1,6 +1,6 @@
 # Real Estate Investment Data Visualizer
 
-不動産投資データ可視化プラットフォーム（東京23区）。MLIT API → Rust Axum → GeoJSON → MapLibre GL 3D Map。
+不動産投資データ可視化プラットフォーム（47都道府県対応）。MLIT API → Rust Axum → GeoJSON → MapLibre GL 3D Map。
 
 ## Tech Stack
 
@@ -46,7 +46,9 @@ cd services/wasm && cargo test
 ## Key Conventions
 
 - **Layer IDs**: UI uses `underscore_case`, WASM/FGB uses `hyphen-case`. Use `canonicalLayerId()` at boundaries
-- **Static data**: FlatGeobuf in `data/fgb/`, served via symlink `public/data/fgb/`
+- **Static data**: FlatGeobuf in `data/fgb/{pref_code}/`, served via symlink `public/data/fgb/`
+- **Dataset catalog**: `data/catalog/dataset_catalog.json` drives all pipeline stages
+- **Prefecture scope**: All tables have `pref_code` column; API endpoints accept optional `?pref_code=13`
 - **WASM stats**: Disabled in Phase 1. Backend `/api/stats` is canonical
 - **Design tokens**: `globals.css` `:root` variables, Tailwind `@theme` with `ds-*` prefix
 
@@ -55,8 +57,10 @@ cd services/wasm && cargo test
 ```bash
 ./scripts/commands/db-full-reset.sh          # DB reset + seed + import
 ./scripts/commands/db-import-all.sh          # Data import only
-uv run scripts/tools/convert_geodata.py      # RAW → GeoJSON
-uv run scripts/tools/build_static_data.py    # GeoJSON → FlatGeobuf
+./scripts/commands/pipeline.sh 13 P0         # Pipeline v2: convert + build + import + validate
+uv run scripts/tools/pipeline_v2/convert.py --pref 13 --priority P0   # RAW → GeoJSON
+uv run scripts/tools/pipeline_v2/build_fgb.py --pref 13               # GeoJSON → FlatGeobuf + manifest
+uv run scripts/tools/pipeline_v2/import_db.py --pref 13 --priority P0 # GeoJSON → PostGIS
 docker compose up -d --build                 # Dev environment
 rm -f .git/index.lock                        # Fix git lock
 ```
