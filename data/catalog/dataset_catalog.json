@@ -105,7 +105,8 @@
       "output_fgb": "data/fgb/{pref_code}/railway.fgb",
       "db_table": "railways",
       "static_layer": true,
-      "priority": "P0"
+      "priority": "P0",
+      "geojson_hint": "RailroadSection"
     },
     {
       "id": "flood-history",

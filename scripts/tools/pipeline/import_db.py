@@ -16,7 +16,7 @@ from pathlib import Path
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
-from shapely.geometry import shape
+from shapely.geometry import MultiLineString, shape
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -125,7 +125,14 @@ def import_geojson_to_table(
         geom = feat.get("geometry")
         if geom is None:
             continue
-        geom_wkt = shape(geom).wkt
+        geom_shape = shape(geom)
+        # Stations table expects Point — convert LineString to centroid
+        if table_name == "stations" and geom_shape.geom_type != "Point":
+            geom_shape = geom_shape.centroid
+        # Railways table expects MultiLineString
+        if table_name == "railways" and geom_shape.geom_type == "LineString":
+            geom_shape = MultiLineString([geom_shape])
+        geom_wkt = geom_shape.wkt
         row = _build_row(table_name, props, geom_wkt, pref_code)
         if row is not None:
             rows.append(row)
@@ -165,11 +172,11 @@ def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> t
     if table_name == "land_prices":
         return (
             pref_code,
-            _prop(props, "address", "L01_025", "L01_008", default=""),
-            _prop(props, "price_per_sqm", "L01_006", default=0),
-            _prop(props, "land_use", "L01_009"),
-            _prop(props, "zone_type", "L01_010"),
-            _prop(props, "survey_year", "L01_007", default=2024),
+            _prop(props, "address", default=""),
+            _prop(props, "price_per_sqm", default=0),
+            _prop(props, "land_use"),
+            _prop(props, "zone_type"),
+            _prop(props, "survey_year", default=2024),
             geom_wkt,
         )
     if table_name == "zoning":
@@ -206,19 +213,19 @@ def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> t
         return (
             pref_code,
             _prop(props, "facility_name", "name", "P04_002", default=""),
-            _prop(props, "facility_type", "P04_003", default=""),
-            _prop(props, "beds", "bed_count", "P04_004"),
-            _prop(props, "address", "P04_005"),
+            _prop(props, "facility_type", "P04_004", default=""),
+            _prop(props, "beds", "bed_count", "P04_008"),
+            _prop(props, "address", "P04_003"),
             geom_wkt,
         )
     if table_name == "stations":
         return (
             pref_code,
             _prop(props, "station_name", "S12_001", default=""),
-            _prop(props, "station_code", "S12_002"),
+            _prop(props, "station_code", "S12_001c"),
             _prop(props, "line_name", "S12_003"),
-            _prop(props, "operator_name", "S12_004"),
-            _prop(props, "passenger_count", "S12_005"),
+            _prop(props, "operator_name", "S12_002"),
+            _prop(props, "passenger_count", "S12_004"),
             geom_wkt,
         )
     if table_name == "railways":
