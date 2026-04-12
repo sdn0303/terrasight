@@ -24,6 +24,15 @@ else
     echo "  Schema applied"
 fi
 
+# Step 0b: Ensure REINFOLIB schema (additive — safe to re-run)
+if docker compose exec -T db psql -U app -d realestate -c "SELECT 1 FROM transaction_prices LIMIT 0" > /dev/null 2>&1; then
+    echo "  REINFOLIB schema already applied"
+else
+    echo "  Applying REINFOLIB migration..."
+    docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/00000000000002_reinfolib.sql" > /dev/null 2>&1
+    echo "  REINFOLIB schema applied"
+fi
+
 # Step 1: Convert raw -> GeoJSON
 echo "--- Step 1: Convert ---"
 uv run scripts/tools/pipeline/convert.py --pref "$PREF" --priority "$PRIORITY"
