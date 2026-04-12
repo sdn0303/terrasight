@@ -45,7 +45,7 @@ impl From<LandPriceLayerRow> for GeoFeature {
 struct ZoningLayerRow {
     id: i64,
     zone_type: String,
-    zone_code: Option<String>,
+    zone_code: String,
     floor_area_ratio: Option<f64>,
     building_coverage: Option<f64>,
     geometry: serde_json::Value,
@@ -107,7 +107,7 @@ impl From<SteepSlopeRow> for GeoFeature {
 struct SchoolRow {
     id: i64,
     school_name: String,
-    school_type: Option<String>,
+    school_type: String,
     geometry: serde_json::Value,
 }
 
@@ -124,7 +124,7 @@ impl From<SchoolRow> for GeoFeature {
 struct MedicalFacilityRow {
     id: i64,
     facility_name: String,
-    facility_type: Option<String>,
+    facility_type: String,
     beds: Option<i32>,
     geometry: serde_json::Value,
 }
