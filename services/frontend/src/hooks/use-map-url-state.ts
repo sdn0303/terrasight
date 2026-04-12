@@ -47,8 +47,8 @@ const mapParams = {
   layers: parseAsString.withDefault("land_price_ts,zoning"),
   theme: parseAsString.withDefault("safety"),
   year: parseAsInteger.withDefault(2024),
-  // Analysis context params
-  mode: parseAsString.withDefault("explore"),
+  // Analysis context params (legacy `mode` param dropped in Phase 6b —
+  // `?mode=compare` bookmarks are now silently ignored)
   alat: parseAsFloat,
   alng: parseAsFloat,
   cp: parseAsString.withDefault(""),
@@ -209,7 +209,6 @@ export function useMapUrlState() {
   const initialized = useRef(false);
   const { viewState, setViewState, visibleLayers, toggleLayer } = useMapStore();
   const activeThemes = useUIStore((s) => s.activeThemes);
-  const mode = useUIStore((s) => s.mode);
   const comparePoints = useUIStore((s) => s.comparePoints);
   const insight = useUIStore((s) => s.insight);
   const activeTab = useUIStore((s) => s.activeTab);
@@ -260,11 +259,6 @@ export function useMapUrlState() {
     }
     for (const themeId of themeIds) {
       useUIStore.getState().toggleTheme(themeId);
-    }
-
-    // Restore mode from URL
-    if (params.mode === "compare") {
-      useUIStore.getState().setMode("compare");
     }
 
     // Restore analysis point from URL (validate coordinates)
@@ -335,7 +329,6 @@ export function useMapUrlState() {
       bearing: Math.round(viewState.bearing),
       layers: [...visibleLayers].sort().join(","),
       theme: [...activeThemes].sort().join(","),
-      mode,
       // Phase 2a: alat/alng reflect the Insight drawer selection only, so
       // closing the drawer (setInsight(null)) clears them from the URL.
       // The legacy mapStore.analysisPoint is still updated by
@@ -348,7 +341,10 @@ export function useMapUrlState() {
         comparePoints.length > 0
           ? comparePoints.map((p) => `${p.lat},${p.lng},${p.address}`).join("|")
           : "",
-      tab: activeTab,
+      // The ephemeral "compare" tab (Phase 6) is not URL-persistable: it
+      // only exists while comparePoints has >= 2 entries, so restoring it
+      // from a bookmark would be meaningless. Fall back to "intel".
+      tab: activeTab === "compare" ? "intel" : activeTab,
       // Phase 3: filter params
       tlsMin:
         filterParams.tls_min !== undefined
@@ -387,7 +383,6 @@ export function useMapUrlState() {
     viewState,
     visibleLayers,
     activeThemes,
-    mode,
     comparePoints,
     insight,
     activeTab,

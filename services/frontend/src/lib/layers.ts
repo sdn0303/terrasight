@@ -21,7 +21,7 @@ export interface LayerConfig {
    * - 'timeseries' layers have their own dedicated TanStack Query hooks (e.g. useLandPrices)
    */
   source: "api" | "static" | "timeseries";
-  /** Fields displayed in the PopupCard on click-inspect */
+  /** Fields displayed in the insight drawer when a feature is clicked */
   popupFields?: PopupField[];
   /** MapLibre layer IDs that respond to click events (for interactiveLayerIds) */
   interactiveLayerIds?: string[];

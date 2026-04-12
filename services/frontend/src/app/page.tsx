@@ -1,7 +1,7 @@
 "use client";
 
-import { Popup } from "react-map-gl/maplibre";
 import { FinderPanel } from "@/components/finder/finder-panel";
+import { CompareTab } from "@/components/insight/compare-tab";
 import { InfraTab } from "@/components/insight/infra-tab";
 import { IntelTab } from "@/components/insight/intel-tab";
 import { RiskTab } from "@/components/insight/risk-tab";
@@ -13,12 +13,10 @@ import { MapCanvasFrame } from "@/components/layout/map-canvas-frame";
 import { SidebarRail } from "@/components/layout/sidebar-rail";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
-import { PopupCard } from "@/components/map/popup-card";
 import { OpportunitiesSheet } from "@/components/opportunities/opportunities-sheet";
 import { ThemesPanel } from "@/components/theme/themes-panel";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
-import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
@@ -33,6 +31,7 @@ export default function Home() {
   const setLeftPanel = useUIStore((s) => s.setLeftPanel);
   const bottomSheet = useUIStore((s) => s.bottomSheet);
   const setBottomSheet = useUIStore((s) => s.setBottomSheet);
+  const comparePoints = useUIStore((s) => s.comparePoints);
 
   const insightOpen = insight !== null;
   const insightLat = insight?.lat ?? null;
@@ -45,7 +44,7 @@ export default function Home() {
         ? insight.id
         : "";
 
-  const drawerTabs: DrawerTabDef[] =
+  const baseDrawerTabs: DrawerTabDef[] =
     insightLat !== null && insightLng !== null
       ? [
           {
@@ -71,6 +70,19 @@ export default function Home() {
         ]
       : [];
 
+  // Phase 6: the Compare tab is a conditional 5th drawer tab that only
+  // appears when the user has ticked at least 2 rows in the opportunities
+  // sheet. It is tied to `insight !== null` so the drawer still opens via
+  // a row click; opening the drawer from compare-only mode is deferred to
+  // a follow-up PR (see docs/designs/2026-04-12-known-issues-frontend.md).
+  const drawerTabs: DrawerTabDef[] =
+    baseDrawerTabs.length > 0 && comparePoints.length >= 2
+      ? [
+          ...baseDrawerTabs,
+          { id: "compare", label: "Compare", content: <CompareTab /> },
+        ]
+      : baseDrawerTabs;
+
   return (
     <MapCanvasFrame aria-label="Terrasight map canvas">
       <div className="absolute inset-0">
@@ -93,22 +105,6 @@ export default function Home() {
             setLandPriceYear={page.setLandPriceYear}
             landPriceFeatureCount={page.landPriceData.features.length}
           />
-          {page.selectedFeature && page.selectedLayerConfig?.popupFields && (
-            <Popup
-              longitude={page.selectedFeature.coordinates[0]}
-              latitude={page.selectedFeature.coordinates[1]}
-              anchor="bottom"
-              closeOnClick={false}
-              onClose={() => useMapStore.getState().selectFeature(null)}
-              className="spatial-popup"
-            >
-              <PopupCard
-                layerNameJa={page.selectedLayerConfig.nameJa}
-                fields={page.selectedLayerConfig.popupFields}
-                properties={page.selectedFeature.properties}
-              />
-            </Popup>
-          )}
         </MapView>
         {page.isZoomTooLow && (
           <div
@@ -162,23 +158,6 @@ export default function Home() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-
-      <style>{`
-        .spatial-popup .maplibregl-popup-content {
-          background: transparent;
-          padding: 0;
-          box-shadow: none;
-        }
-        .spatial-popup .maplibregl-popup-tip {
-          border-top-color: var(--bg-secondary);
-        }
-        .spatial-popup .maplibregl-popup-close-button {
-          color: var(--text-muted);
-          font-size: 16px;
-          right: 4px;
-          top: 2px;
-        }
-      `}</style>
     </MapCanvasFrame>
   );
 }

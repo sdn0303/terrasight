@@ -1,16 +1,80 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import type { ChangeEvent, MouseEvent } from "react";
 import { RiskPill } from "@/components/ui/risk-pill";
 import { ScoreChip } from "@/components/ui/score-chip";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { Opportunity, OpportunityRiskLevel, Signal } from "@/lib/schemas";
+import { useUIStore } from "@/stores/ui-store";
+
+/**
+ * Multi-select checkbox cell that toggles membership in
+ * `ui-store.comparePoints`. Capped at 3 selections (store invariant).
+ * Stops click propagation so ticking the box does not also trigger the
+ * row's onRowClick (which would open the insight drawer for that row).
+ */
+function SelectCell({ row }: { row: { original: Opportunity } }) {
+  const comparePoints = useUIStore((s) => s.comparePoints);
+  const addComparePoint = useUIStore((s) => s.addComparePoint);
+  const removeComparePoint = useUIStore((s) => s.removeComparePoint);
+
+  const existingIndex = comparePoints.findIndex(
+    (p) => p.lat === row.original.lat && p.lng === row.original.lng,
+  );
+  const checked = existingIndex >= 0;
+  const atCapacity = !checked && comparePoints.length >= 3;
+
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      if (!atCapacity) {
+        addComparePoint({
+          lat: row.original.lat,
+          lng: row.original.lng,
+          address: row.original.address,
+        });
+      }
+    } else if (existingIndex >= 0) {
+      removeComparePoint(existingIndex);
+    }
+  };
+
+  const stopClick = (e: MouseEvent<HTMLInputElement>) => {
+    // Prevent the click from bubbling to the row's onRowClick handler.
+    e.stopPropagation();
+  };
+
+  return (
+    <input
+      type="checkbox"
+      aria-label={`Compare ${row.original.address}`}
+      checked={checked}
+      disabled={atCapacity}
+      onClick={stopClick}
+      onChange={onChange}
+      className="h-4 w-4 cursor-pointer rounded"
+      style={{
+        accentColor: "var(--brand-indigo)",
+        opacity: atCapacity ? 0.4 : 1,
+        cursor: atCapacity ? "not-allowed" : "pointer",
+      }}
+    />
+  );
+}
 
 /**
  * TanStack Table column defs for the Opportunities dense table.
  * Keeps cell renderers thin so the composition layer stays readable.
+ * The leading `select` column drives `ui-store.comparePoints` for the
+ * Compare drawer tab (Phase 6).
  */
 export const propertyColumns: ColumnDef<Opportunity>[] = [
+  {
+    id: "select",
+    header: "",
+    cell: ({ row }) => <SelectCell row={row} />,
+    size: 32,
+  },
   {
     accessorKey: "address",
     header: "Address",
