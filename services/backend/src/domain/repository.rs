@@ -2,8 +2,11 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
+use crate::domain::appraisal::AppraisalDetail;
 use crate::domain::entity::{LayerResult, MedicalStats, SchoolStats, ZScoreResult, *};
 use crate::domain::error::DomainError;
+use crate::domain::municipality::Municipality;
+use crate::domain::transaction::{TransactionDetail, TransactionSummary};
 use crate::domain::value_object::*;
 
 // ─── Layer Data ──────────────────────────────────────
@@ -145,6 +148,59 @@ pub trait TlsRepository: Send + Sync {
 
     /// Count of land price records within 500m from the latest available year.
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError>;
+}
+
+// ─── Transaction ─────────────────────────────────────
+
+#[async_trait]
+pub trait TransactionRepository: Send + Sync {
+    /// Fetch aggregated transaction summaries per city/year/property_type.
+    ///
+    /// `year_from` optionally restricts results to records on or after that year.
+    /// `property_type` optionally restricts to a single property type string.
+    async fn find_transaction_summary(
+        &self,
+        pref_code: &PrefCode,
+        year_from: Option<&Year>,
+        property_type: Option<&str>,
+    ) -> Result<Vec<TransactionSummary>, DomainError>;
+
+    /// Fetch individual transaction records for a given city code.
+    ///
+    /// `city_code` is a raw 5-digit JIS X 0402 string; replace with `&CityCode`
+    /// once that value object is introduced.
+    async fn find_transactions(
+        &self,
+        city_code: &str,
+        year_from: Option<&Year>,
+        limit: u32,
+    ) -> Result<Vec<TransactionDetail>, DomainError>;
+}
+
+// ─── Appraisal ───────────────────────────────────────
+
+#[async_trait]
+pub trait AppraisalRepository: Send + Sync {
+    /// Fetch appraisal records for a prefecture, optionally filtered by city code.
+    ///
+    /// `city_code` is a raw 5-digit JIS X 0402 string; replace with `&CityCode`
+    /// once that value object is introduced.
+    async fn find_appraisals(
+        &self,
+        pref_code: &PrefCode,
+        city_code: Option<&str>,
+    ) -> Result<Vec<AppraisalDetail>, DomainError>;
+}
+
+// ─── Municipality ────────────────────────────────────
+
+#[async_trait]
+pub trait MunicipalityRepository: Send + Sync {
+    /// Fetch all municipalities for the given prefecture.
+    async fn find_municipalities(
+        &self,
+        pref_code: &PrefCode,
+    ) -> Result<Vec<Municipality>, DomainError>;
 }
 
 #[cfg(test)]

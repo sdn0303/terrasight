@@ -1,4 +1,7 @@
-use crate::domain::constants::{BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX, YEAR_MAX, YEAR_MIN};
+use crate::domain::constants::{
+    BBOX_MAX_SIDE_DEG, CITY_CODE_LEN, LAT_MAX, LNG_MAX, PREF_CODE_LEN, PREF_CODE_MAX,
+    PREF_CODE_MIN, YEAR_MAX, YEAR_MIN,
+};
 use crate::domain::error::DomainError;
 
 /// Bounding box with enforced invariants:
@@ -333,7 +336,9 @@ impl AreaCode {
     /// Returns [`DomainError::Validation`] when the input is not a
     /// 2- or 5-digit string of ASCII digits.
     pub fn parse(s: &str) -> Result<Self, DomainError> {
-        if !matches!(s.len(), 2 | 5) || !s.chars().all(|c| c.is_ascii_digit()) {
+        if !matches!(s.len(), PREF_CODE_LEN | CITY_CODE_LEN)
+            || !s.chars().all(|c| c.is_ascii_digit())
+        {
             return Err(DomainError::Validation(format!(
                 "area code must be 2 or 5 ASCII digits, got {s:?}"
             )));
@@ -344,8 +349,8 @@ impl AreaCode {
     /// Return the granularity of this area code.
     pub fn level(&self) -> AreaCodeLevel {
         match self.0.len() {
-            2 => AreaCodeLevel::Prefecture,
-            5 => AreaCodeLevel::Municipality,
+            PREF_CODE_LEN => AreaCodeLevel::Prefecture,
+            CITY_CODE_LEN => AreaCodeLevel::Municipality,
             // SAFETY: `parse` enforces the length invariant.
             _ => unreachable!("AreaCode length invariant violated"),
         }
@@ -367,11 +372,11 @@ pub struct PrefCode(String);
 impl PrefCode {
     pub fn new(code: &str) -> Result<Self, DomainError> {
         let code = code.trim();
-        if code.len() == 2 && code.chars().all(|c| c.is_ascii_digit()) {
+        if code.len() == PREF_CODE_LEN && code.chars().all(|c| c.is_ascii_digit()) {
             let num: u8 = code
                 .parse()
                 .map_err(|_| DomainError::InvalidPrefCode(code.to_string()))?;
-            if (1..=47).contains(&num) {
+            if (PREF_CODE_MIN..=PREF_CODE_MAX).contains(&num) {
                 return Ok(Self(code.to_string()));
             }
         }
@@ -380,6 +385,39 @@ impl PrefCode {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+/// JIS X 0402 市区町村コード（5桁）。
+///
+/// Invariants:
+/// - 5桁の ASCII 数字
+/// - 上位2桁は有効な都道府県コード (01–47)
+#[derive(Debug, Clone)]
+pub struct CityCode(String);
+
+impl CityCode {
+    pub fn new(code: &str) -> Result<Self, DomainError> {
+        let code = code.trim();
+        if code.len() != CITY_CODE_LEN || !code.chars().all(|c| c.is_ascii_digit()) {
+            return Err(DomainError::InvalidCityCode(code.to_string()));
+        }
+        let pref: u8 = code[..2]
+            .parse()
+            .map_err(|_| DomainError::InvalidCityCode(code.to_string()))?;
+        if !(PREF_CODE_MIN..=PREF_CODE_MAX).contains(&pref) {
+            return Err(DomainError::InvalidCityCode(code.to_string()));
+        }
+        Ok(Self(code.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// 上位2桁の都道府県コードを返す。
+    pub fn pref_code(&self) -> &str {
+        &self.0[..2]
     }
 }
 
@@ -695,6 +733,25 @@ mod tests {
     #[test]
     fn pref_code_trims_whitespace() {
         assert_eq!(PrefCode::new(" 13 ").unwrap().as_str(), "13");
+    }
+
+    #[test]
+    fn city_code_valid() {
+        assert!(CityCode::new("13101").is_ok());
+        assert_eq!(CityCode::new("13101").unwrap().pref_code(), "13");
+    }
+
+    #[test]
+    fn city_code_invalid_length() {
+        assert!(CityCode::new("1310").is_err());
+        assert!(CityCode::new("131010").is_err());
+    }
+
+    #[test]
+    fn city_code_invalid_pref() {
+        assert!(CityCode::new("00101").is_err());
+        assert!(CityCode::new("48101").is_err());
+        assert!(CityCode::new("99999").is_err());
     }
 
     #[test]

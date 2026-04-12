@@ -5,15 +5,19 @@
 //! `handler::response::{StatsResponse, LayerResponseDto, …}` import
 //! paths working unchanged.
 
+pub mod appraisal;
 pub mod area_data;
 pub mod area_stats;
 pub mod health;
 pub mod layer;
+pub mod municipality;
 pub mod opportunities;
 pub mod stats;
 pub mod tls;
+pub mod transaction;
 pub mod trend;
 
+pub use appraisal::AppraisalDetailResponse;
 pub use area_data::AreaDataResponseDto;
 pub use area_stats::{AreaFacilitiesDto, AreaLandPriceDto, AreaRiskDto, AreaStatsResponse};
 pub use health::HealthResponse;
@@ -21,6 +25,7 @@ pub use layer::{
     FeatureCollectionDto, FeatureDto, LayerResponseDto, geo_feature_to_dto,
     point_feature_to_polygon_owned,
 };
+pub use municipality::MunicipalityResponse;
 pub use opportunities::{OpportunitiesResponseDto, OpportunityDto, OpportunityStationDto};
 pub use stats::{FacilityStatsDto, LandPriceStatsDto, RiskStatsDto, StatsResponse};
 pub use tls::{

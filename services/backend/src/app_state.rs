@@ -8,21 +8,28 @@ use crate::config::Config;
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::infra::pg_admin_area_stats_repository::PgAdminAreaStatsRepository;
+use crate::infra::pg_appraisal_repository::PgAppraisalRepository;
 use crate::infra::pg_area_repository::PgAreaRepository;
 use crate::infra::pg_health_repository::PgHealthRepository;
 use crate::infra::pg_land_price_repository::PgLandPriceRepository;
+use crate::infra::pg_municipality_repository::PgMunicipalityRepository;
 use crate::infra::pg_stats_repository::PgStatsRepository;
 use crate::infra::pg_tls_repository::PgTlsRepository;
+use crate::infra::pg_transaction_repository::PgTransactionRepository;
 use crate::infra::pg_trend_repository::PgTrendRepository;
 use crate::infra::reinfolib_mock::create_reinfolib_source;
 use crate::usecase::check_health::CheckHealthUsecase;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
+use crate::usecase::get_appraisals::GetAppraisalsUsecase;
 use crate::usecase::get_area_data::GetAreaDataUsecase;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 use crate::usecase::get_land_prices::GetLandPricesUsecase;
 use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
+use crate::usecase::get_municipalities::GetMunicipalitiesUsecase;
 use crate::usecase::get_opportunities::GetOpportunitiesUsecase;
 use crate::usecase::get_stats::GetStatsUsecase;
+use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
+use crate::usecase::get_transactions::GetTransactionsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
 
 /// Timeout (seconds) for J-SHIS API requests.
@@ -38,14 +45,18 @@ const JSHIS_TIMEOUT_SECS: u64 = 30;
 /// from a single `.with_state(AppState::new(…))` call on the router.
 #[derive(Clone)]
 pub struct AppState {
+    pub appraisals: Arc<GetAppraisalsUsecase>,
     pub health: Arc<CheckHealthUsecase>,
     pub area_data: Arc<GetAreaDataUsecase>,
     pub area_stats: Arc<GetAreaStatsUsecase>,
     pub land_prices: Arc<GetLandPricesUsecase>,
     pub land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
+    pub municipalities: Arc<GetMunicipalitiesUsecase>,
     pub opportunities: Arc<GetOpportunitiesUsecase>,
     pub score: Arc<ComputeTlsUsecase>,
     pub stats: Arc<GetStatsUsecase>,
+    pub transaction_summary: Arc<GetTransactionSummaryUsecase>,
+    pub transactions: Arc<GetTransactionsUsecase>,
     pub trend: Arc<GetTrendUsecase>,
     /// Reinfolib geospatial data source.
     ///
@@ -100,6 +111,9 @@ impl AppState {
         ));
 
         Self {
+            appraisals: Arc::new(GetAppraisalsUsecase::new(Arc::new(
+                PgAppraisalRepository::new(pool.clone()),
+            ))),
             health: Arc::new(CheckHealthUsecase::new(
                 Arc::new(PgHealthRepository::new(pool.clone())),
                 reinfolib_key_set,
@@ -114,11 +128,20 @@ impl AppState {
             land_prices_by_year_range: Arc::new(GetLandPricesByYearRangeUsecase::new(
                 land_price_repo,
             )),
+            municipalities: Arc::new(GetMunicipalitiesUsecase::new(Arc::new(
+                PgMunicipalityRepository::new(pool.clone()),
+            ))),
             opportunities,
             score,
             stats: Arc::new(GetStatsUsecase::new(Arc::new(PgStatsRepository::new(
                 pool.clone(),
             )))),
+            transaction_summary: Arc::new(GetTransactionSummaryUsecase::new(Arc::new(
+                PgTransactionRepository::new(pool.clone()),
+            ))),
+            transactions: Arc::new(GetTransactionsUsecase::new(Arc::new(
+                PgTransactionRepository::new(pool.clone()),
+            ))),
             trend: Arc::new(GetTrendUsecase::new(trend_repo)),
             reinfolib,
         }
@@ -189,5 +212,29 @@ impl FromRef<AppState> for Arc<GetTrendUsecase> {
 impl FromRef<AppState> for Arc<dyn ReinfolibDataSource> {
     fn from_ref(state: &AppState) -> Self {
         Arc::clone(&state.reinfolib)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetAppraisalsUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.appraisals)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetMunicipalitiesUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.municipalities)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetTransactionSummaryUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.transaction_summary)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetTransactionsUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.transactions)
     }
 }

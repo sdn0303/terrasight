@@ -30,4 +30,7 @@ pub enum DomainError {
 
     #[error("invalid prefecture code: {0}")]
     InvalidPrefCode(String),
+
+    #[error("invalid city code: {0}")]
+    InvalidCityCode(String),
 }
