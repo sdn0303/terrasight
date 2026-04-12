@@ -33,7 +33,7 @@ CREATE TABLE land_prices (
     id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     pref_code      text   NOT NULL,
     address        text   NOT NULL,
-    price_per_sqm  integer NOT NULL CHECK (price_per_sqm > 0),
+    price_per_sqm  integer NOT NULL CHECK (price_per_sqm >= 0),
     land_use       text,
     zone_type      text,
     survey_year    smallint NOT NULL CHECK (survey_year BETWEEN 2000 AND 2100),
