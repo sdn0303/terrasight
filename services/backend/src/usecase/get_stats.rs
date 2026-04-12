@@ -20,10 +20,10 @@ impl GetStatsUsecase {
     #[tracing::instrument(skip(self), fields(usecase = "get_stats"))]
     pub async fn execute(&self, bbox: &BBox) -> Result<AreaStats, DomainError> {
         tokio::try_join!(
-            self.stats_repo.calc_land_price_stats(bbox),
-            self.stats_repo.calc_risk_stats(bbox),
-            self.stats_repo.count_facilities(bbox),
-            self.stats_repo.calc_zoning_distribution(bbox),
+            self.stats_repo.calc_land_price_stats(bbox, None),
+            self.stats_repo.calc_risk_stats(bbox, None),
+            self.stats_repo.count_facilities(bbox, None),
+            self.stats_repo.calc_zoning_distribution(bbox, None),
         )
         .map(
             |(land_price, risk, facilities, zoning_distribution)| AreaStats {

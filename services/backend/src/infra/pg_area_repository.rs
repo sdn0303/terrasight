@@ -11,7 +11,7 @@ use super::map_db_err;
 use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
+use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
 /// Maximum time to wait for any single layer query before returning an error.
 const LAYER_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -22,7 +22,7 @@ struct LandPriceLayerRow {
     price_per_sqm: i32,
     address: String,
     land_use: Option<String>,
-    year: i32,
+    survey_year: i16,
     geometry: serde_json::Value,
 }
 
@@ -35,7 +35,7 @@ impl From<LandPriceLayerRow> for GeoFeature {
                 "price_per_sqm": row.price_per_sqm,
                 "address": row.address,
                 "land_use": row.land_use,
-                "year": row.year,
+                "survey_year": row.survey_year,
             }),
         )
     }
@@ -46,8 +46,8 @@ struct ZoningLayerRow {
     id: i64,
     zone_type: String,
     zone_code: Option<String>,
-    floor_area_ratio: Option<f32>,
-    building_coverage: Option<f32>,
+    floor_area_ratio: Option<f64>,
+    building_coverage: Option<f64>,
     geometry: serde_json::Value,
 }
 
@@ -69,7 +69,7 @@ impl From<ZoningLayerRow> for GeoFeature {
 #[derive(Debug, FromRow)]
 struct FloodRiskRow {
     id: i64,
-    depth_rank: Option<i16>,
+    depth_rank: Option<String>,
     river_name: Option<String>,
     geometry: serde_json::Value,
 }
@@ -106,7 +106,7 @@ impl From<SteepSlopeRow> for GeoFeature {
 #[derive(Debug, FromRow)]
 struct SchoolRow {
     id: i64,
-    name: String,
+    school_name: String,
     school_type: Option<String>,
     geometry: serde_json::Value,
 }
@@ -115,7 +115,7 @@ impl From<SchoolRow> for GeoFeature {
     fn from(row: SchoolRow) -> Self {
         to_geo_feature(
             row.geometry,
-            json!({ "id": row.id, "name": row.name, "school_type": row.school_type }),
+            json!({ "id": row.id, "school_name": row.school_name, "school_type": row.school_type }),
         )
     }
 }
@@ -123,9 +123,9 @@ impl From<SchoolRow> for GeoFeature {
 #[derive(Debug, FromRow)]
 struct MedicalFacilityRow {
     id: i64,
-    name: String,
+    facility_name: String,
     facility_type: Option<String>,
-    bed_count: Option<i32>,
+    beds: Option<i32>,
     geometry: serde_json::Value,
 }
 
@@ -135,9 +135,9 @@ impl From<MedicalFacilityRow> for GeoFeature {
             row.geometry,
             json!({
                 "id": row.id,
-                "name": row.name,
+                "facility_name": row.facility_name,
                 "facility_type": row.facility_type,
-                "bed_count": row.bed_count,
+                "beds": row.beds,
             }),
         )
     }
@@ -175,35 +175,43 @@ impl LayerRepository for PgAreaRepository {
         layer: LayerType,
         bbox: &BBox,
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let z = zoom.get();
         match layer {
-            LayerType::LandPrice => self.query_land_prices(bbox, z).await,
-            LayerType::Zoning => self.query_zoning(bbox, z).await,
-            LayerType::Flood => self.query_flood_risk(bbox, z).await,
-            LayerType::SteepSlope => self.query_steep_slope(bbox, z).await,
-            LayerType::Schools => self.query_schools(bbox, z).await,
-            LayerType::Medical => self.query_medical(bbox, z).await,
+            LayerType::LandPrice => self.query_land_prices(bbox, z, pref_code).await,
+            LayerType::Zoning => self.query_zoning(bbox, z, pref_code).await,
+            LayerType::Flood => self.query_flood_risk(bbox, z, pref_code).await,
+            LayerType::SteepSlope => self.query_steep_slope(bbox, z, pref_code).await,
+            LayerType::Schools => self.query_schools(bbox, z, pref_code).await,
+            LayerType::Medical => self.query_medical(bbox, z, pref_code).await,
         }
     }
 }
 
 impl PgAreaRepository {
-    async fn query_land_prices(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_land_prices(
+        &self,
+        bbox: &BBox,
+        zoom: u32,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("landprice", area, zoom);
         let query = sqlx::query_as::<_, LandPriceLayerRow>(
             r#"
-            SELECT id, price_per_sqm, address, land_use, year,
+            SELECT id, price_per_sqm, address, land_use, survey_year,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM land_prices
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-            LIMIT $5
+              AND ($5::text IS NULL OR pref_code = $5)
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAYER_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
@@ -217,7 +225,12 @@ impl PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    async fn query_zoning(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_zoning(
+        &self,
+        bbox: &BBox,
+        zoom: u32,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("zoning", area, zoom);
         let query = sqlx::query_as::<_, ZoningLayerRow>(
@@ -226,12 +239,14 @@ impl PgAreaRepository {
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM zoning
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-            LIMIT $5
+              AND ($5::text IS NULL OR pref_code = $5)
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAYER_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
@@ -245,7 +260,12 @@ impl PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    async fn query_flood_risk(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_flood_risk(
+        &self,
+        bbox: &BBox,
+        zoom: u32,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("flood", area, zoom);
         let query = sqlx::query_as::<_, FloodRiskRow>(
@@ -254,12 +274,14 @@ impl PgAreaRepository {
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM flood_risk
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-            LIMIT $5
+              AND ($5::text IS NULL OR pref_code = $5)
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAYER_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
@@ -273,7 +295,12 @@ impl PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    async fn query_steep_slope(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_steep_slope(
+        &self,
+        bbox: &BBox,
+        zoom: u32,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("steep_slope", area, zoom);
         let query = sqlx::query_as::<_, SteepSlopeRow>(
@@ -282,12 +309,14 @@ impl PgAreaRepository {
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM steep_slope
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-            LIMIT $5
+              AND ($5::text IS NULL OR pref_code = $5)
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAYER_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
@@ -301,21 +330,28 @@ impl PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    async fn query_schools(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_schools(
+        &self,
+        bbox: &BBox,
+        zoom: u32,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("schools", area, zoom);
         let query = sqlx::query_as::<_, SchoolRow>(
             r#"
-            SELECT id, name, school_type,
+            SELECT id, school_name, school_type,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM schools
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-            LIMIT $5
+              AND ($5::text IS NULL OR pref_code = $5)
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAYER_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
@@ -329,21 +365,28 @@ impl PgAreaRepository {
         Ok(apply_limit(features, limit))
     }
 
-    async fn query_medical(&self, bbox: &BBox, zoom: u32) -> Result<LayerResult, DomainError> {
+    async fn query_medical(
+        &self,
+        bbox: &BBox,
+        zoom: u32,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let limit = compute_feature_limit("medical", area, zoom);
         let query = sqlx::query_as::<_, MedicalFacilityRow>(
             r#"
-            SELECT id, name, facility_type, bed_count,
+            SELECT id, facility_name, facility_type, beds,
                    ST_AsGeoJSON(geom)::jsonb AS geometry
             FROM medical_facilities
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-            LIMIT $5
+              AND ($5::text IS NULL OR pref_code = $5)
+            LIMIT $6
             "#,
         );
         let rows = timeout(
             LAYER_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .bind(limit + 1)
                 .fetch_all(&self.pool),
         )
@@ -361,9 +404,6 @@ impl PgAreaRepository {
 }
 
 /// Parse PostGIS `ST_AsGeoJSON` output into domain [`GeoFeature`].
-///
-/// Delegates geometry parsing to [`realestate_db::geo::to_raw_geo_feature`] and
-/// then maps the domain-independent result to the application's domain type.
 fn to_geo_feature(geojson: serde_json::Value, properties: serde_json::Value) -> GeoFeature {
     let raw = realestate_db::geo::to_raw_geo_feature(geojson, properties);
     GeoFeature {

@@ -34,7 +34,7 @@ impl GetLandPricesByYearRangeUsecase {
         zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
         self.land_price_repo
-            .find_all_years_by_bbox(from_year, to_year, &bbox, zoom)
+            .find_all_years_by_bbox(from_year, to_year, &bbox, zoom, None)
             .await
             .inspect(|result| {
                 tracing::debug!(

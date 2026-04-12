@@ -22,14 +22,14 @@ struct NearestLocationRow {
 
 #[derive(Debug, FromRow)]
 struct TrendDataRow {
-    year: i32,
+    survey_year: i32,
     price_per_sqm: i32,
 }
 
 impl From<TrendDataRow> for TrendPoint {
     fn from(row: TrendDataRow) -> Self {
         TrendPoint {
-            year: row.year,
+            year: row.survey_year,
             price_per_sqm: row.price_per_sqm as i64,
         }
     }
@@ -84,9 +84,11 @@ impl TrendRepository for PgTrendRepository {
 
         let max_year_row: (i32,) = timeout(
             TREND_QUERY_TIMEOUT,
-            sqlx::query_as("SELECT COALESCE(MAX(year), 0) FROM land_prices WHERE address = $1")
-                .bind(&address)
-                .fetch_one(&self.pool),
+            sqlx::query_as(
+                "SELECT COALESCE(MAX(survey_year), 0) FROM land_prices WHERE address = $1",
+            )
+            .bind(&address)
+            .fetch_one(&self.pool),
         )
         .await
         .map_err(|_| DomainError::Timeout("trend_max_year query".into()))?
@@ -97,10 +99,10 @@ impl TrendRepository for PgTrendRepository {
             TREND_QUERY_TIMEOUT,
             sqlx::query_as::<_, TrendDataRow>(
                 r#"
-            SELECT year, price_per_sqm
+            SELECT survey_year, price_per_sqm
             FROM land_prices
-            WHERE address = $1 AND year >= $2
-            ORDER BY year
+            WHERE address = $1 AND survey_year >= $2
+            ORDER BY survey_year
             "#,
             )
             .bind(&address)

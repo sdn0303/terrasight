@@ -357,6 +357,32 @@ impl AreaCode {
     }
 }
 
+/// Prefecture code: 2-digit zero-padded string ("01"–"47").
+///
+/// Validated at construction to guarantee the code represents one of
+/// Japan's 47 prefectures.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PrefCode(String);
+
+impl PrefCode {
+    pub fn new(code: &str) -> Result<Self, DomainError> {
+        let code = code.trim();
+        if code.len() == 2 && code.chars().all(|c| c.is_ascii_digit()) {
+            let num: u8 = code
+                .parse()
+                .map_err(|_| DomainError::InvalidPrefCode(code.to_string()))?;
+            if (1..=47).contains(&num) {
+                return Ok(Self(code.to_string()));
+            }
+        }
+        Err(DomainError::InvalidPrefCode(code.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Clamped page-size parameter for the opportunities endpoint.
 ///
 /// Enforces `1 <= value <= MAX_OPPORTUNITY_LIMIT` by clamping; construction is
@@ -647,6 +673,28 @@ mod tests {
         assert!(AreaCode::parse("abc").is_err());
         assert!(AreaCode::parse("13a04").is_err());
         assert!(AreaCode::parse("").is_err());
+    }
+
+    #[test]
+    fn pref_code_accepts_valid() {
+        assert_eq!(PrefCode::new("01").unwrap().as_str(), "01");
+        assert_eq!(PrefCode::new("13").unwrap().as_str(), "13");
+        assert_eq!(PrefCode::new("47").unwrap().as_str(), "47");
+    }
+
+    #[test]
+    fn pref_code_rejects_invalid() {
+        assert!(PrefCode::new("00").is_err());
+        assert!(PrefCode::new("48").is_err());
+        assert!(PrefCode::new("1").is_err());
+        assert!(PrefCode::new("abc").is_err());
+        assert!(PrefCode::new("").is_err());
+        assert!(PrefCode::new("001").is_err());
+    }
+
+    #[test]
+    fn pref_code_trims_whitespace() {
+        assert_eq!(PrefCode::new(" 13 ").unwrap().as_str(), "13");
     }
 
     #[test]

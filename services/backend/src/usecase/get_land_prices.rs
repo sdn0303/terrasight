@@ -32,7 +32,7 @@ impl GetLandPricesUsecase {
         zoom: ZoomLevel,
     ) -> Result<LayerResult, DomainError> {
         self.land_price_repo
-            .find_by_year_and_bbox(year, &bbox, zoom)
+            .find_by_year_and_bbox(year, &bbox, zoom, None)
             .await
             .inspect(|result| {
                 tracing::debug!(

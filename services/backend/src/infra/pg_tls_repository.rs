@@ -109,11 +109,11 @@ impl TlsRepository for PgTlsRepository {
                 ORDER BY dist
                 LIMIT 1
             )
-            SELECT lp.year, lp.price_per_sqm, lp.address,
+            SELECT lp.survey_year AS year, lp.price_per_sqm, lp.address,
                    ST_Distance(lp.geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS distance_m
             FROM land_prices lp
             INNER JOIN nearest n ON lp.address = n.address
-            ORDER BY lp.year
+            ORDER BY lp.survey_year
             "#,
         );
         let rows = timeout(
@@ -274,7 +274,7 @@ impl TlsRepository for PgTlsRepository {
                        COUNT(*)::bigint AS sample_count
                 FROM land_prices lp, nearest n
                 WHERE lp.zone_type = n.zone_type
-                  AND lp.year = (SELECT MAX(year) FROM land_prices)
+                  AND lp.survey_year = (SELECT MAX(survey_year) FROM land_prices)
             )
             SELECT
                 COALESCE(
@@ -315,7 +315,7 @@ impl TlsRepository for PgTlsRepository {
             SELECT COUNT(*)
             FROM land_prices
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
-              AND year >= (SELECT MAX(year) - 1 FROM land_prices)
+              AND survey_year >= (SELECT MAX(survey_year) - 1 FROM land_prices)
             "#,
         );
         let row = timeout(

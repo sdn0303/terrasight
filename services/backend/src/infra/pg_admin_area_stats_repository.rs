@@ -71,7 +71,7 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
                 MAX(price_per_sqm)::int8 AS max_price,
                 COUNT(*) AS count
             FROM land_prices
-            WHERE year = (SELECT MAX(year) FROM land_prices)
+            WHERE survey_year = (SELECT MAX(survey_year) FROM land_prices)
             "#,
             )
             .fetch_one(&self.pool),

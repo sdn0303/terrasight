@@ -35,7 +35,7 @@ impl GetAreaDataUsecase {
             let bbox = *bbox;
             let layer = *layer;
             async move {
-                repo.find_layer(layer, &bbox, zoom)
+                repo.find_layer(layer, &bbox, zoom, None)
                     .await
                     .inspect(|r| {
                         tracing::debug!(

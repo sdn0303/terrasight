@@ -95,6 +95,7 @@ impl GetOpportunitiesUsecase {
                 0,
                 filters.price_range,
                 &filters.zones,
+                None,
             )
             .await
             .inspect_err(|e| tracing::warn!(error = %e, "opportunities fetch failed"))?;
