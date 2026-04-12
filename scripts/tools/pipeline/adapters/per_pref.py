@@ -10,7 +10,7 @@ from pathlib import Path
 from shapely.geometry import mapping, shape
 
 from .base import BaseAdapter, ConvertResult, DatasetEntry
-from .zip_utils import open_zip_shapefile
+from .zip_utils import read_features_from_zip
 
 logger = logging.getLogger(__name__)
 
@@ -92,28 +92,28 @@ class PerPrefArchiveAdapter(BaseAdapter):
 
 def _read_features(raw_path: Path, entry: DatasetEntry, pref_code: str) -> list[dict]:
     """Read features from a single archive."""
+    raw_features = read_features_from_zip(raw_path)
+    if not raw_features:
+        return []
+
     features = []
-    try:
-        src = open_zip_shapefile(raw_path)
-        if src is None:
-            return features
-        with src:
-            for feat in src:
-                geom = shape(feat["geometry"])
-                if geom.is_empty or not geom.is_valid:
-                    continue
-                props = dict(feat["properties"])
-                for old_key, new_key in entry.column_renames.items():
-                    if old_key in props:
-                        props[new_key] = props.pop(old_key)
-                props["pref_code"] = pref_code
-                features.append({
-                    "type": "Feature",
-                    "geometry": mapping(geom),
-                    "properties": props,
-                })
-    except Exception:
-        logger.exception(f"Failed to read {raw_path} for {entry.id}")
+    for feat in raw_features:
+        geom_data = feat.get("geometry")
+        if geom_data is None:
+            continue
+        geom = shape(geom_data)
+        if geom.is_empty or not geom.is_valid:
+            continue
+        props = dict(feat.get("properties", {}))
+        for old_key, new_key in entry.column_renames.items():
+            if old_key in props:
+                props[new_key] = props.pop(old_key)
+        props["pref_code"] = pref_code
+        features.append({
+            "type": "Feature",
+            "geometry": mapping(geom),
+            "properties": props,
+        })
     return features
 
 

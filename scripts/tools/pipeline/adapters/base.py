@@ -23,6 +23,7 @@ class DatasetEntry:
     column_renames: dict[str, str] = field(default_factory=dict)
     ksj_code: str | None = None
     update_frequency: str | None = None
+    geojson_hint: str | None = None
 
 
 @dataclass

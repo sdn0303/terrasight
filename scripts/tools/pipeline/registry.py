@@ -46,6 +46,7 @@ def load_catalog(catalog_path: Path | None = None) -> list[DatasetEntry]:
             column_renames=d.get("column_renames", {}),
             ksj_code=d.get("ksj_code"),
             update_frequency=d.get("update_frequency"),
+            geojson_hint=d.get("geojson_hint"),
         ))
     return entries
 
