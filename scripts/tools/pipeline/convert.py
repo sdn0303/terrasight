@@ -2,8 +2,8 @@
 """Convert raw geodata to canonical GeoJSON.
 
 Usage:
-    uv run scripts/tools/pipeline_v2/convert.py --pref 13 --priority P0
-    uv run scripts/tools/pipeline_v2/convert.py --dataset admin-boundary --pref 13
+    uv run scripts/tools/pipeline/convert.py --pref 13 --priority P0
+    uv run scripts/tools/pipeline/convert.py --dataset admin-boundary --pref 13
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from scripts.tools.pipeline_v2.registry import get_adapter, load_catalog
+from scripts.tools.pipeline.registry import get_adapter, load_catalog
 
 logging.basicConfig(
     level=logging.INFO,

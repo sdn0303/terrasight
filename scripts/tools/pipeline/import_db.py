@@ -2,7 +2,7 @@
 """Import GeoJSON data into PostGIS database.
 
 Usage:
-    uv run scripts/tools/pipeline_v2/import_db.py --pref 13 --priority P0
+    uv run scripts/tools/pipeline/import_db.py --pref 13 --priority P0
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from shapely.geometry import shape
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from scripts.tools.pipeline_v2.registry import load_catalog
+from scripts.tools.pipeline.registry import load_catalog
 
 logging.basicConfig(
     level=logging.INFO,

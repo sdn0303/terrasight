@@ -58,9 +58,9 @@ cd services/wasm && cargo test
 ./scripts/commands/db-full-reset.sh          # DB reset + seed + import
 ./scripts/commands/db-import-all.sh          # Data import only
 ./scripts/commands/pipeline.sh 13 P0         # Pipeline v2: convert + build + import + validate
-uv run scripts/tools/pipeline_v2/convert.py --pref 13 --priority P0   # RAW → GeoJSON
-uv run scripts/tools/pipeline_v2/build_fgb.py --pref 13               # GeoJSON → FlatGeobuf + manifest
-uv run scripts/tools/pipeline_v2/import_db.py --pref 13 --priority P0 # GeoJSON → PostGIS
+uv run scripts/tools/pipeline/convert.py --pref 13 --priority P0   # RAW → GeoJSON
+uv run scripts/tools/pipeline/build_fgb.py --pref 13               # GeoJSON → FlatGeobuf + manifest
+uv run scripts/tools/pipeline/import_db.py --pref 13 --priority P0 # GeoJSON → PostGIS
 docker compose up -d --build                 # Dev environment
 rm -f .git/index.lock                        # Fix git lock
 ```

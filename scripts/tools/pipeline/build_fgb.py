@@ -2,7 +2,7 @@
 """Build FlatGeobuf files from GeoJSON + generate manifest.
 
 Usage:
-    uv run scripts/tools/pipeline_v2/build_fgb.py --pref 13
+    uv run scripts/tools/pipeline/build_fgb.py --pref 13
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from scripts.tools.pipeline_v2.registry import load_catalog
+from scripts.tools.pipeline.registry import load_catalog
 
 logging.basicConfig(
     level=logging.INFO,
