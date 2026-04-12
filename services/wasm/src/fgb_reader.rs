@@ -6,6 +6,9 @@
 
 use std::io::Cursor;
 
+use crate::constants;
+use crate::error::WasmError;
+
 use flatgeobuf::{FallibleStreamingIterator, FgbReader};
 use geo::{Coord, LineString, MultiPolygon, Point, Polygon};
 use geozero::FeatureAccess;
@@ -14,21 +17,21 @@ use geozero::geojson::GeoJsonWriter;
 /// A single feature extracted from a FlatGeobuf file.
 ///
 /// Coordinates follow RFC 7946: `[longitude, latitude]`.
-pub struct ParsedFeature {
+pub(crate) struct ParsedFeature {
     /// Western boundary (minimum longitude).
-    pub min_x: f64,
+    pub(crate) min_x: f64,
     /// Southern boundary (minimum latitude).
-    pub min_y: f64,
+    pub(crate) min_y: f64,
     /// Eastern boundary (maximum longitude).
-    pub max_x: f64,
+    pub(crate) max_x: f64,
     /// Northern boundary (maximum latitude).
-    pub max_y: f64,
+    pub(crate) max_y: f64,
     /// Complete GeoJSON `Feature` string, e.g. `{"type":"Feature","geometry":{...},"properties":{...}}`.
-    pub geojson: String,
+    pub(crate) geojson: String,
     /// Parsed `geo` geometry for spatial computations. `None` if parsing fails.
-    pub geometry_geo: Option<geo::Geometry<f64>>,
+    pub(crate) geometry_geo: Option<geo::Geometry<f64>>,
     /// Feature properties extracted from the GeoJSON. `None` if parsing fails.
-    pub properties: Option<serde_json::Map<String, serde_json::Value>>,
+    pub(crate) properties: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// Parse raw FlatGeobuf bytes into a vector of [`ParsedFeature`] records.
@@ -41,21 +44,21 @@ pub struct ParsedFeature {
 ///
 /// # Errors
 ///
-/// Returns `Err(String)` if the FGB header cannot be read, the feature stream
+/// Returns `Err(WasmError)` if the FGB header cannot be read, the feature stream
 /// fails mid-way, or a feature cannot be serialised to GeoJSON.
-pub fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, String> {
+pub(crate) fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, WasmError> {
     let mut cursor = Cursor::new(bytes);
-    let reader = FgbReader::open(&mut cursor).map_err(|e| format!("FGB open error: {e}"))?;
+    let reader = FgbReader::open(&mut cursor).map_err(|e| WasmError::FgbOpen(e.to_string()))?;
 
     let mut feature_iter = reader
         .select_all_seq()
-        .map_err(|e| format!("FGB select_all_seq error: {e}"))?;
+        .map_err(|e| WasmError::FgbIteration(e.to_string()))?;
 
     let mut features: Vec<ParsedFeature> = Vec::new();
 
     while let Some(feature) = feature_iter
         .next()
-        .map_err(|e| format!("FGB iteration error: {e}"))?
+        .map_err(|e| WasmError::FgbIteration(e.to_string()))?
     {
         let mut buf: Vec<u8> = Vec::new();
         let mut writer = GeoJsonWriter::new(&mut buf);
@@ -64,10 +67,9 @@ pub fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, String> {
         // the writer must not prepend a comma separator (which it does for idx > 0).
         feature
             .process(&mut writer, 0)
-            .map_err(|e| format!("GeoJSON serialisation error: {e}"))?;
+            .map_err(|e| WasmError::GeoJsonSerialise(e.to_string()))?;
 
-        let geojson =
-            String::from_utf8(buf).map_err(|e| format!("UTF-8 conversion error: {e}"))?;
+        let geojson = String::from_utf8(buf).map_err(|e| WasmError::Utf8(e.to_string()))?;
 
         let (min_x, min_y, max_x, max_y) = extract_bbox(&geojson)?;
 
@@ -104,11 +106,11 @@ fn extract_geo_and_properties(
     };
 
     let properties = value
-        .get("properties")
+        .get(constants::GEOJSON_KEY_PROPERTIES)
         .and_then(|p| p.as_object())
         .cloned();
 
-    let geometry = value.get("geometry");
+    let geometry = value.get(constants::GEOJSON_KEY_GEOMETRY);
     let geo_geom = geometry.and_then(json_to_geo_geometry);
 
     (geo_geom, properties)
@@ -119,33 +121,30 @@ fn extract_geo_and_properties(
 /// Supports Point, LineString, Polygon, MultiPolygon. Returns `None` for
 /// unsupported types or malformed input.
 fn json_to_geo_geometry(geom: &serde_json::Value) -> Option<geo::Geometry<f64>> {
-    let geom_type = geom.get("type")?.as_str()?;
-    let coords = geom.get("coordinates")?;
+    let geom_type = geom.get(constants::GEOJSON_KEY_TYPE)?.as_str()?;
+    let coords = geom.get(constants::GEOJSON_KEY_COORDINATES)?;
 
     match geom_type {
-        "Point" => {
+        constants::GEOJSON_TYPE_POINT => {
             let arr = coords.as_array()?;
-            if arr.len() < 2 {
+            if arr.len() < constants::MIN_COORD_PAIR_LEN {
                 return None;
             }
             let x = arr[0].as_f64()?;
             let y = arr[1].as_f64()?;
             Some(geo::Geometry::Point(Point::new(x, y)))
         }
-        "LineString" => {
+        constants::GEOJSON_TYPE_LINE_STRING => {
             let ring = json_to_coord_vec(coords)?;
             Some(geo::Geometry::LineString(LineString::new(ring)))
         }
-        "Polygon" => {
+        constants::GEOJSON_TYPE_POLYGON => {
             let polygon = json_to_polygon(coords)?;
             Some(geo::Geometry::Polygon(polygon))
         }
-        "MultiPolygon" => {
+        constants::GEOJSON_TYPE_MULTI_POLYGON => {
             let polys_arr = coords.as_array()?;
-            let polys: Vec<Polygon<f64>> = polys_arr
-                .iter()
-                .filter_map(json_to_polygon)
-                .collect();
+            let polys: Vec<Polygon<f64>> = polys_arr.iter().filter_map(json_to_polygon).collect();
             if polys.is_empty() {
                 return None;
             }
@@ -200,11 +199,10 @@ fn json_to_coord_vec(arr: &serde_json::Value) -> Option<Vec<Coord<f64>>> {
 ///
 /// # Errors
 ///
-/// Returns `Err(String)` if the string cannot be parsed as JSON or contains no
+/// Returns `Err(WasmError)` if the string cannot be parsed as JSON or contains no
 /// coordinate pairs.
-fn extract_bbox(geojson: &str) -> Result<(f64, f64, f64, f64), String> {
-    let value: serde_json::Value =
-        serde_json::from_str(geojson).map_err(|e| format!("JSON parse error: {e}"))?;
+fn extract_bbox(geojson: &str) -> Result<(f64, f64, f64, f64), WasmError> {
+    let value: serde_json::Value = serde_json::from_str(geojson)?;
 
     let mut min_x = f64::MAX;
     let mut min_y = f64::MAX;
@@ -212,13 +210,19 @@ fn extract_bbox(geojson: &str) -> Result<(f64, f64, f64, f64), String> {
     let mut max_y = f64::MIN;
     let mut found = false;
 
-    let geometry = value.get("geometry").ok_or("missing 'geometry' key")?;
-    collect_coords(geometry, &mut min_x, &mut min_y, &mut max_x, &mut max_y, &mut found);
+    let geometry = value
+        .get(constants::GEOJSON_KEY_GEOMETRY)
+        .ok_or_else(|| WasmError::GeoJsonParse("missing 'geometry' key".into()))?;
+    collect_coords(
+        geometry, &mut min_x, &mut min_y, &mut max_x, &mut max_y, &mut found,
+    );
 
     if found {
         Ok((min_x, min_y, max_x, max_y))
     } else {
-        Err("no coordinate pairs found in geometry".to_string())
+        Err(WasmError::GeoJsonParse(
+            "no coordinate pairs found in geometry".into(),
+        ))
     }
 }
 
@@ -234,7 +238,7 @@ fn collect_coords(
     match node {
         serde_json::Value::Object(map) => {
             // GeometryCollection: iterate `"geometries"` array
-            if let Some(geoms) = map.get("geometries") {
+            if let Some(geoms) = map.get(constants::GEOJSON_KEY_GEOMETRIES) {
                 if let Some(arr) = geoms.as_array() {
                     for g in arr {
                         collect_coords(g, min_x, min_y, max_x, max_y, found);
@@ -243,13 +247,13 @@ fn collect_coords(
                 return;
             }
             // Normal geometry: descend into `"coordinates"`
-            if let Some(coords) = map.get("coordinates") {
+            if let Some(coords) = map.get(constants::GEOJSON_KEY_COORDINATES) {
                 collect_coords(coords, min_x, min_y, max_x, max_y, found);
             }
         }
         serde_json::Value::Array(arr) => {
             // Detect a coordinate pair/triple: first two elements must be numbers
-            if arr.len() >= 2
+            if arr.len() >= constants::MIN_COORD_PAIR_LEN
                 && let (Some(x), Some(y)) = (arr[0].as_f64(), arr[1].as_f64())
             {
                 if x < *min_x {
@@ -275,6 +279,36 @@ fn collect_coords(
         // Numbers, strings, booleans, null: ignore
         _ => {}
     }
+}
+
+/// Parse a GeoJSON FeatureCollection string into [`ParsedFeature`] items.
+///
+/// Used for API-fetched layers that need to participate in stats
+/// computation but are not served as FlatGeobuf.
+pub(crate) fn parse_geojson_feature_collection(
+    geojson: &str,
+) -> Result<Vec<ParsedFeature>, WasmError> {
+    let value: serde_json::Value = serde_json::from_str(geojson)?;
+    let features = value["features"]
+        .as_array()
+        .ok_or_else(|| WasmError::GeoJsonParse("missing 'features' array".into()))?;
+
+    let mut parsed = Vec::with_capacity(features.len());
+    for feature in features {
+        let feature_str = serde_json::to_string(feature)?;
+        let (min_x, min_y, max_x, max_y) = extract_bbox(&feature_str)?;
+        let (geometry_geo, properties) = extract_geo_and_properties(&feature_str);
+        parsed.push(ParsedFeature {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            geojson: feature_str,
+            geometry_geo,
+            properties,
+        });
+    }
+    Ok(parsed)
 }
 
 #[cfg(test)]
@@ -353,8 +387,7 @@ mod tests {
 
     #[test]
     fn extract_bbox_point() {
-        let geojson =
-            r#"{"type":"Feature","geometry":{"type":"Point","coordinates":[139.75,35.68]},"properties":{}}"#;
+        let geojson = r#"{"type":"Feature","geometry":{"type":"Point","coordinates":[139.75,35.68]},"properties":{}}"#;
         let (min_x, min_y, max_x, max_y) = extract_bbox(geojson).unwrap();
         assert!((min_x - 139.75).abs() < 1e-9);
         assert!((min_y - 35.68).abs() < 1e-9);
@@ -378,13 +411,15 @@ mod tests {
         let features = parse_fgb(&bytes).expect("parse_fgb should succeed");
         // geology features should have properties extracted (even if empty map)
         let has_some = features.iter().any(|f| f.properties.is_some());
-        assert!(has_some, "at least some features should have extracted properties");
+        assert!(
+            has_some,
+            "at least some features should have extracted properties"
+        );
     }
 
     #[test]
     fn extract_geo_and_properties_point() {
-        let geojson =
-            r#"{"type":"Feature","geometry":{"type":"Point","coordinates":[139.75,35.68]},"properties":{"name":"test"}}"#;
+        let geojson = r#"{"type":"Feature","geometry":{"type":"Point","coordinates":[139.75,35.68]},"properties":{"name":"test"}}"#;
         let (geom, props) = extract_geo_and_properties(geojson);
         assert!(geom.is_some(), "point geometry should be extracted");
         assert!(props.is_some(), "properties should be extracted");

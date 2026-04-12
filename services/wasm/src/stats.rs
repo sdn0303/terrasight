@@ -8,19 +8,55 @@ use geo::{Area, BooleanOps, Coord, Polygon, Rect};
 use crate::spatial_index::LayerStatsData;
 
 /// Computed land price statistics for a queried area.
-pub struct LandPriceStats {
-    pub avg_per_sqm: f64,
-    pub median_per_sqm: f64,
-    pub min_per_sqm: f64,
-    pub max_per_sqm: f64,
-    pub count: u32,
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct LandPriceStats {
+    pub(crate) avg_per_sqm: f64,
+    pub(crate) median_per_sqm: f64,
+    pub(crate) min_per_sqm: f64,
+    pub(crate) max_per_sqm: f64,
+    pub(crate) count: u32,
+}
+
+/// Computed risk statistics for a queried area.
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct RiskStats {
+    pub(crate) flood_area_ratio: f64,
+    pub(crate) steep_slope_area_ratio: f64,
+    pub(crate) composite_risk: f64,
+}
+
+/// Facility counts for a queried area.
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct FacilityStats {
+    pub(crate) schools: u32,
+    pub(crate) medical: u32,
+    pub(crate) stations_nearby: u32,
+}
+
+/// A single entry in the zoning distribution.
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct ZoningEntry {
+    pub(crate) zone: String,
+    pub(crate) ratio: f64,
+}
+
+/// Aggregated area statistics returned by [`crate::SpatialEngine::compute_area_stats`].
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct AreaStats {
+    pub(crate) land_price: LandPriceStats,
+    pub(crate) risk: RiskStats,
+    pub(crate) facilities: FacilityStats,
+    pub(crate) zoning_distribution: Vec<ZoningEntry>,
 }
 
 /// Compute land price statistics from a `PricePoints` layer for the given indices.
 ///
 /// Filters out zero prices (features with missing `price_per_sqm`). Returns all
 /// zeros if no valid prices are found.
-pub fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) -> LandPriceStats {
+pub(crate) fn compute_land_price_stats(
+    stats_data: &LayerStatsData,
+    indices: &[u32],
+) -> LandPriceStats {
     let LayerStatsData::PricePoints(prices) = stats_data else {
         return LandPriceStats {
             avg_per_sqm: 0.0,
@@ -74,7 +110,7 @@ pub fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) ->
 ///
 /// Returns a value in `[0.0, 1.0]`. Returns `0.0` if `stats_data` is not
 /// `AreaPolygons` or if no geometries are present.
-pub fn compute_area_ratio(
+pub(crate) fn compute_area_ratio(
     bbox_rect: &Rect<f64>,
     stats_data: &LayerStatsData,
     indices: &[u32],
@@ -112,7 +148,7 @@ pub fn compute_area_ratio(
 /// where ratio is the fraction of the bbox area covered by that zone type.
 ///
 /// Returns an empty vector if `stats_data` is not `ZoningPolygons`.
-pub fn compute_zoning_distribution(
+pub(crate) fn compute_zoning_distribution(
     bbox_rect: &Rect<f64>,
     stats_data: &LayerStatsData,
     indices: &[u32],
@@ -129,8 +165,7 @@ pub fn compute_zoning_distribution(
     let bbox_polygon = rect_to_polygon(bbox_rect);
 
     // Accumulate intersection area per zone type.
-    let mut zone_areas: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
+    let mut zone_areas: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
 
     for &idx in indices {
         let Some((zone_type, maybe_geom)) = pairs.get(idx as usize) else {
@@ -181,9 +216,7 @@ fn rect_to_polygon(rect: &Rect<f64>) -> Polygon<f64> {
 /// Returns `0.0` if the geometry type is unsupported or the intersection is empty.
 fn geometry_intersection_area(geom: &geo::Geometry<f64>, bbox_polygon: &Polygon<f64>) -> f64 {
     match geom {
-        geo::Geometry::Polygon(poly) => {
-            poly.intersection(bbox_polygon).unsigned_area()
-        }
+        geo::Geometry::Polygon(poly) => poly.intersection(bbox_polygon).unsigned_area(),
         geo::Geometry::MultiPolygon(multi) => {
             multi.unsigned_area().min({
                 // Compute intersection for each sub-polygon and sum
@@ -207,10 +240,7 @@ mod tests {
     use crate::spatial_index::LayerStatsData;
 
     fn simple_bbox() -> Rect<f64> {
-        Rect::new(
-            Coord { x: 139.7, y: 35.6 },
-            Coord { x: 139.8, y: 35.7 },
-        )
+        Rect::new(Coord { x: 139.7, y: 35.6 }, Coord { x: 139.8, y: 35.7 })
     }
 
     // -----------------------------------------------------------------------
@@ -225,8 +255,14 @@ mod tests {
         let stats = compute_land_price_stats(&data, &indices);
 
         assert_eq!(stats.count, 5);
-        assert!((stats.avg_per_sqm - 300.0).abs() < 1e-9, "avg should be 300");
-        assert!((stats.median_per_sqm - 300.0).abs() < 1e-9, "median should be 300");
+        assert!(
+            (stats.avg_per_sqm - 300.0).abs() < 1e-9,
+            "avg should be 300"
+        );
+        assert!(
+            (stats.median_per_sqm - 300.0).abs() < 1e-9,
+            "median should be 300"
+        );
         assert!((stats.min_per_sqm - 100.0).abs() < 1e-9);
         assert!((stats.max_per_sqm - 500.0).abs() < 1e-9);
     }
@@ -240,7 +276,10 @@ mod tests {
 
         assert_eq!(stats.count, 4);
         // Median of [100, 200, 300, 400] = (200 + 300) / 2 = 250
-        assert!((stats.median_per_sqm - 250.0).abs() < 1e-9, "median should be 250");
+        assert!(
+            (stats.median_per_sqm - 250.0).abs() < 1e-9,
+            "median should be 250"
+        );
     }
 
     #[test]
@@ -321,7 +360,10 @@ mod tests {
 
         assert!(ratio <= 1.0, "ratio should be clamped to [0,1]");
         assert!(ratio >= 0.0);
-        assert!((ratio - 1.0).abs() < 0.01, "full coverage should give ratio ~1.0, got {ratio}");
+        assert!(
+            (ratio - 1.0).abs() < 0.01,
+            "full coverage should give ratio ~1.0, got {ratio}"
+        );
     }
 
     #[test]
@@ -341,7 +383,10 @@ mod tests {
 
         let data = LayerStatsData::AreaPolygons(vec![Some(geo::Geometry::Polygon(london_poly))]);
         let ratio = compute_area_ratio(&bbox, &data, &[0]);
-        assert!(ratio < 1e-9, "non-overlapping polygon should give ratio 0.0, got {ratio}");
+        assert!(
+            ratio < 1e-9,
+            "non-overlapping polygon should give ratio 0.0, got {ratio}"
+        );
     }
 
     #[test]
@@ -371,21 +416,51 @@ mod tests {
         // Two non-overlapping polygons each covering 30% of bbox
         let poly_a = Polygon::new(
             LineString::new(vec![
-                Coord { x: 139.70, y: 35.60 },
-                Coord { x: 139.73, y: 35.60 },
-                Coord { x: 139.73, y: 35.70 },
-                Coord { x: 139.70, y: 35.70 },
-                Coord { x: 139.70, y: 35.60 },
+                Coord {
+                    x: 139.70,
+                    y: 35.60,
+                },
+                Coord {
+                    x: 139.73,
+                    y: 35.60,
+                },
+                Coord {
+                    x: 139.73,
+                    y: 35.70,
+                },
+                Coord {
+                    x: 139.70,
+                    y: 35.70,
+                },
+                Coord {
+                    x: 139.70,
+                    y: 35.60,
+                },
             ]),
             vec![],
         );
         let poly_b = Polygon::new(
             LineString::new(vec![
-                Coord { x: 139.73, y: 35.60 },
-                Coord { x: 139.76, y: 35.60 },
-                Coord { x: 139.76, y: 35.70 },
-                Coord { x: 139.73, y: 35.70 },
-                Coord { x: 139.73, y: 35.60 },
+                Coord {
+                    x: 139.73,
+                    y: 35.60,
+                },
+                Coord {
+                    x: 139.76,
+                    y: 35.60,
+                },
+                Coord {
+                    x: 139.76,
+                    y: 35.70,
+                },
+                Coord {
+                    x: 139.73,
+                    y: 35.70,
+                },
+                Coord {
+                    x: 139.73,
+                    y: 35.60,
+                },
             ]),
             vec![],
         );
@@ -398,7 +473,10 @@ mod tests {
         let dist = compute_zoning_distribution(&bbox, &data, &[0, 1]);
 
         let total: f64 = dist.iter().map(|(_, r)| r).sum();
-        assert!(total <= 1.0 + 1e-9, "zoning ratios should sum to <= 1.0, got {total}");
+        assert!(
+            total <= 1.0 + 1e-9,
+            "zoning ratios should sum to <= 1.0, got {total}"
+        );
         assert!(dist.len() == 2, "should have 2 zone types");
     }
 
@@ -419,18 +497,39 @@ mod tests {
         );
         let poly_small = Polygon::new(
             LineString::new(vec![
-                Coord { x: 139.70, y: 35.60 },
-                Coord { x: 139.71, y: 35.60 },
-                Coord { x: 139.71, y: 35.61 },
-                Coord { x: 139.70, y: 35.61 },
-                Coord { x: 139.70, y: 35.60 },
+                Coord {
+                    x: 139.70,
+                    y: 35.60,
+                },
+                Coord {
+                    x: 139.71,
+                    y: 35.60,
+                },
+                Coord {
+                    x: 139.71,
+                    y: 35.61,
+                },
+                Coord {
+                    x: 139.70,
+                    y: 35.61,
+                },
+                Coord {
+                    x: 139.70,
+                    y: 35.60,
+                },
             ]),
             vec![],
         );
 
         let data = LayerStatsData::ZoningPolygons(vec![
-            ("小さいゾーン".to_string(), Some(geo::Geometry::Polygon(poly_small))),
-            ("大きいゾーン".to_string(), Some(geo::Geometry::Polygon(poly_large))),
+            (
+                "小さいゾーン".to_string(),
+                Some(geo::Geometry::Polygon(poly_small)),
+            ),
+            (
+                "大きいゾーン".to_string(),
+                Some(geo::Geometry::Polygon(poly_large)),
+            ),
         ]);
 
         let dist = compute_zoning_distribution(&bbox, &data, &[0, 1]);
