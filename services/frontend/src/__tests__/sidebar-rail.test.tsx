@@ -118,4 +118,21 @@ describe("SidebarRail", () => {
     const map = screen.getByRole("button", { name: /map/i });
     expect(map.getAttribute("aria-pressed")).toBe("true");
   });
+
+  it("allows keyboard navigation through tool buttons", async () => {
+    const user = userEvent.setup();
+    render(<SidebarRail />);
+    await user.tab(); // first focusable: Map button
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Map");
+    await user.tab();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Finder");
+    await user.tab();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Opportunities");
+    await user.tab();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Layers");
+    await user.tab();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Themes");
+    await user.tab();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Settings");
+  });
 });

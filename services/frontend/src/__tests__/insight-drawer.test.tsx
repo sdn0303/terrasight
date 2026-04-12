@@ -98,4 +98,17 @@ describe("InsightDrawer", () => {
     render(<InsightDrawer {...baseProps} />);
     expect(screen.getByText(/SELECTED/i)).toBeInTheDocument();
   });
+
+  it("closes on Esc key", async () => {
+    const onClose = vi.fn();
+    render(<InsightDrawer {...baseProps} onClose={onClose} />);
+    await userEvent.setup().keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("renders tabpanel with aria-labelledby referencing active tab", () => {
+    render(<InsightDrawer {...baseProps} activeTab="trend" />);
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.getAttribute("aria-labelledby")).toBe("tab-trend");
+  });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { FinderPanel } from "@/components/finder/finder-panel";
 import { CompareTab } from "@/components/insight/compare-tab";
 import { InfraTab } from "@/components/insight/infra-tab";
@@ -17,6 +18,7 @@ import { OpportunitiesSheet } from "@/components/opportunities/opportunities-she
 import { ThemesPanel } from "@/components/theme/themes-panel";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
@@ -32,6 +34,14 @@ export default function Home() {
   const bottomSheet = useUIStore((s) => s.bottomSheet);
   const setBottomSheet = useUIStore((s) => s.setBottomSheet);
   const comparePoints = useUIStore((s) => s.comparePoints);
+
+  const isNarrow = useMediaQuery("(max-width: 1279px)");
+
+  useEffect(() => {
+    if (isNarrow && useUIStore.getState().bottomSheetHeightPct > 60) {
+      useUIStore.getState().setBottomSheetHeightPct(60);
+    }
+  }, [isNarrow]);
 
   const insightOpen = insight !== null;
   const insightLat = insight?.lat ?? null;

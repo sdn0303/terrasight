@@ -1,7 +1,13 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { KeyboardEvent, ReactNode } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import {
   BOTTOM_SHEET_MAX_PCT,
   BOTTOM_SHEET_MIN_PCT,
@@ -24,11 +30,9 @@ interface BottomSheetProps {
 const STEP_PCT = 5;
 
 /**
- * Bottom-docked Layer 2 sheet with a keyboard-accessible drag handle.
- *
- * In Phase 1 the resize handle supports keyboard control only
- * (ArrowUp/ArrowDown ±5%). Pointer drag can be added in a later phase
- * without changing the prop contract.
+ * Bottom-docked Layer 2 sheet with a keyboard-accessible and pointer-draggable
+ * resize handle. ArrowUp/ArrowDown adjust height by 5%. Pointer drag uses
+ * setPointerCapture for reliable out-of-bounds tracking.
  */
 export function BottomSheet({
   open,
@@ -40,12 +44,45 @@ export function BottomSheet({
   actions,
   children,
 }: BottomSheetProps) {
-  if (!open) return null;
+  const [dragging, setDragging] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartPct = useRef(0);
 
   const clampedPct = Math.max(
     BOTTOM_SHEET_MIN_PCT,
     Math.min(BOTTOM_SHEET_MAX_PCT, heightPct),
   );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      setDragging(true);
+      dragStartY.current = e.clientY;
+      dragStartPct.current = clampedPct;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [clampedPct],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragging) return;
+      const deltaY = dragStartY.current - e.clientY;
+      const viewportH = window.innerHeight;
+      const deltaPct = (deltaY / viewportH) * 100;
+      const nextPct = Math.max(
+        BOTTOM_SHEET_MIN_PCT,
+        Math.min(BOTTOM_SHEET_MAX_PCT, dragStartPct.current + deltaPct),
+      );
+      onHeightChange(nextPct);
+    },
+    [dragging, onHeightChange],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setDragging(false);
+  }, []);
+
+  if (!open) return null;
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowUp") {
@@ -81,7 +118,10 @@ export function BottomSheet({
         aria-valuenow={clampedPct}
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        className="flex h-6 cursor-row-resize items-center justify-center"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className="flex h-6 cursor-row-resize items-center justify-center touch-none"
       >
         <div
           aria-hidden="true"
