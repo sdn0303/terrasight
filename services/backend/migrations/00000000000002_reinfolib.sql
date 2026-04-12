@@ -63,7 +63,7 @@ CREATE TABLE land_appraisals (
     city_name           text   NOT NULL,
     land_use_code       text   NOT NULL,
     sequence_no         smallint NOT NULL,
-    appraiser_no        smallint NOT NULL CHECK (appraiser_no IN (1, 2)),
+    appraiser_no        smallint NOT NULL,
     survey_year         smallint NOT NULL CHECK (survey_year BETWEEN 2000 AND 2100),
     appraisal_price     bigint NOT NULL CHECK (appraisal_price > 0),
     price_per_sqm       integer NOT NULL CHECK (price_per_sqm > 0),

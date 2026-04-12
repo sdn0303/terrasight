@@ -46,6 +46,10 @@ echo "--- Step 3: Import ---"
 export DATABASE_URL="postgresql://app:${DB_PASSWORD:-devpass}@localhost:5432/realestate"
 uv run scripts/tools/pipeline/import_db.py --pref "$PREF" --priority "$PRIORITY"
 
+# Step 3b: Import REINFOLIB data
+echo "--- Step 3b: Import REINFOLIB ---"
+uv run scripts/tools/pipeline/import_db.py --pref "$PREF" --reinfolib
+
 # Step 4: Validate
 echo "--- Step 4: Validate ---"
 uv run scripts/tools/pipeline/validate.py --pref "$PREF"

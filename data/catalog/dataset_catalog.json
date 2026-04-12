@@ -234,6 +234,30 @@
       "db_table": "steep_slope",
       "static_layer": false,
       "priority": "P2"
+    },
+    {
+      "id": "transaction-prices",
+      "ksj_code": null,
+      "name": "不動産取引価格",
+      "scope": "per_prefecture",
+      "source_type": "reinfolib_csv",
+      "adapter": "ReinfolibCsvAdapter",
+      "raw_pattern": "data/raw/不動産情報ライブラリ/不動産価格（取引価格・成約価格）情報/All_20053_20253.zip",
+      "db_table": "transaction_prices",
+      "static_layer": false,
+      "priority": "P0"
+    },
+    {
+      "id": "land-appraisal",
+      "ksj_code": null,
+      "name": "鑑定評価書",
+      "scope": "per_prefecture",
+      "source_type": "reinfolib_csv",
+      "adapter": "ReinfolibCsvAdapter",
+      "raw_pattern": "data/raw/不動産情報ライブラリ/鑑定評価書情報地価公示/hyokasyo-2026-*.zip",
+      "db_table": "land_appraisals",
+      "static_layer": false,
+      "priority": "P0"
     }
   ]
 }
