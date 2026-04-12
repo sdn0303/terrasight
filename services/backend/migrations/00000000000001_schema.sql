@@ -24,7 +24,7 @@ COMMENT ON COLUMN admin_boundaries.level IS 'prefecture or municipality';
 CREATE INDEX idx_admin_geom ON admin_boundaries USING gist (geom);
 CREATE INDEX idx_admin_pref ON admin_boundaries (pref_code);
 CREATE INDEX idx_admin_level_pref ON admin_boundaries (level, pref_code);
-CREATE UNIQUE INDEX idx_admin_code ON admin_boundaries (admin_code);
+CREATE INDEX idx_admin_code ON admin_boundaries (admin_code);
 
 -- ============================================================
 -- Land prices (L01 公示地価)
