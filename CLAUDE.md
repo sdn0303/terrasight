@@ -1,71 +1,37 @@
-# Real Estate Investment Data Visualizer
+# Claude Code Configuration
 
-不動産投資データ可視化プラットフォーム（47都道府県対応）。MLIT API → Rust Axum → GeoJSON → MapLibre GL 3D Map。
+@AGENTS.md
 
-## Tech Stack
+## Rules
 
-- **Backend**: Rust (Axum + Tokio + SQLx + PostGIS)
-- **Frontend**: Next.js 16 (App Router) + React 19 + MapLibre GL + shadcn/ui + Tailwind CSS v4
-- **WASM**: Rust → wasm-bindgen → Web Worker (R-tree spatial queries)
-- **Database**: PostgreSQL + PostGIS
-- **Infra**: Docker Compose
+Rules in `.claude/rules/` are scoped by `paths:` frontmatter — only loaded
+when editing matching files. Three rules are always loaded: `architecture.md`,
+`security.md`, `workflow.md`.
 
-## Project Structure
+## Skills (progressive disclosure)
 
-```
-services/
-├── backend/    # Rust Axum (Clean Architecture: handler/usecase/domain/infra)
-├── frontend/   # Next.js 16 (features/components/stores/hooks)
-└── wasm/       # Rust WASM spatial engine (R-tree, FlatGeobuf)
-```
+Each skill has a thin SKILL.md and reference files loaded on demand:
 
-## Build & Test
+- `rust-backend-rules` — 14 reference files (ownership, errors, async, API design, etc.)
+- `frontend-nextjs-rules` — 5 reference files (React patterns, data fetching, state, validation, UI)
+- `postgresql-patterns` — 3 reference files (schema design, query optimization, migrations)
+- `geospatial-dev` — MapLibre GL + PostGIS integration patterns
 
-```bash
-# Backend
-cd services/backend && cargo build && cargo test && cargo clippy -- -D warnings
+## Agents
 
-# Frontend
-cd services/frontend && pnpm install && pnpm tsc --noEmit && pnpm biome check . && pnpm vitest run
+| Agent | Model | Purpose |
+| ----- | ----- | ------- |
+| `rust-engineer` | sonnet | Axum/Tokio/SQLx backend implementation |
+| `frontend-developer` | sonnet | Next.js 16 / React 19 / MapLibre frontend |
+| `database-admin` | sonnet | PostgreSQL/PostGIS schema, queries, migrations |
+| `code-reviewer` | opus | Cross-stack code review (Rust + TypeScript) |
+| `security-auditor` | opus | Security audit (read-only) |
+| `test-automator` | sonnet | Unit, integration, and E2E tests |
 
-# WASM
-cd services/wasm && cargo test
-```
+## Workflow
 
-## Absolute Rules
+See `.claude/rules/workflow.md` for the full development flow including:
 
-- No secrets in code — API keys via env vars, `.env` in `.gitignore`
-- No `.unwrap()` in Rust non-test code — use `?` or `.expect("reason")`
-- No `any` in TypeScript — use `unknown` + narrowing
-- No `SELECT *` — specify columns explicitly
-- Validate at boundaries — Zod (frontend) + Axum extractors (backend)
-- Frontend Zod schema is API contract source of truth
-- GeoJSON coordinates: always `[longitude, latitude]` (RFC 7946)
-- Profile before optimizing — no WASM/Worker without measurement
-
-## Key Conventions
-
-- **Layer IDs**: UI uses `underscore_case`, WASM/FGB uses `hyphen-case`. Use `canonicalLayerId()` at boundaries
-- **Static data**: FlatGeobuf in `data/fgb/{pref_code}/`, served via symlink `public/data/fgb/`
-- **Dataset catalog**: `data/catalog/dataset_catalog.json` drives all pipeline stages
-- **Prefecture scope**: All tables have `pref_code` column; API endpoints accept optional `?pref_code=13`
-- **WASM stats**: Disabled in Phase 1. Backend `/api/stats` is canonical
-- **Design tokens**: `globals.css` `:root` variables, Tailwind `@theme` with `ds-*` prefix
-
-## Operations
-
-```bash
-./scripts/commands/db-full-reset.sh          # DB reset + seed + import
-./scripts/commands/db-import-all.sh          # Data import only
-./scripts/commands/pipeline.sh 13 P0         # Pipeline v2: convert + build + import + validate
-uv run scripts/tools/pipeline/convert.py --pref 13 --priority P0   # RAW → GeoJSON
-uv run scripts/tools/pipeline/build_fgb.py --pref 13               # GeoJSON → FlatGeobuf + manifest
-uv run scripts/tools/pipeline/import_db.py --pref 13 --priority P0 # GeoJSON → PostGIS
-docker compose up -d --build                 # Dev environment
-rm -f .git/index.lock                        # Fix git lock
-```
-
-## Detailed Rules
-
-See `.claude/rules/` for comprehensive guidelines:
-architecture, nextjs, typescript, rust, docker, postgresql, rest-api, security, github-actions, terraform, **workflow** (includes subagent anti-patterns)
+- Rust design doc requirement before implementation
+- Agent delegation rules with skill/rule references
+- Subagent anti-patterns and model selection
