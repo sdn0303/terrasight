@@ -115,29 +115,50 @@ def _find_original_name(zf: zipfile.ZipFile, normalized: str) -> str:
     return normalized
 
 
+def _normalize_props_encoding(props: dict) -> dict:
+    """Fix mojibake in Shapefile properties.
+
+    fiona reads Japanese Shapefiles without .cpg as Latin-1 raw bytes.
+    Re-encode Latin-1 → CP932 to recover correct Japanese text.
+    """
+    fixed = {}
+    for key, value in props.items():
+        if isinstance(value, str) and value:
+            try:
+                raw = value.encode("latin-1")
+                # Only attempt decode if there are high bytes (>0x7F)
+                if any(b > 0x7F for b in raw):
+                    value = raw.decode("cp932")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass  # Already valid UTF-8 or other encoding
+        fixed[key] = value
+    return fixed
+
+
+def _read_shp_features(src) -> list[dict]:
+    """Read all features from an open fiona source, fixing encoding."""
+    features = []
+    for feat in src:
+        features.append({
+            "type": "Feature",
+            "geometry": feat["geometry"],
+            "properties": _normalize_props_encoding(dict(feat["properties"])),
+        })
+    return features
+
+
 def _read_shp_from_zip(raw_path: Path, shp_path: str) -> list[dict] | None:
     """Read features from a Shapefile inside a ZIP via fiona."""
     vsi_path = f"zip://{raw_path}!{shp_path}"
     logger.debug(f"Opening Shapefile: {vsi_path}")
-    features = []
     try:
         with fiona.open(vsi_path) as src:
-            for feat in src:
-                features.append({
-                    "type": "Feature",
-                    "geometry": feat["geometry"],
-                    "properties": dict(feat["properties"]),
-                })
+            features = _read_shp_features(src)
     except Exception:
         # Try direct open (flat ZIPs)
         try:
             with fiona.open(f"zip://{raw_path}") as src:
-                for feat in src:
-                    features.append({
-                        "type": "Feature",
-                        "geometry": feat["geometry"],
-                        "properties": dict(feat["properties"]),
-                    })
+                features = _read_shp_features(src)
         except Exception:
             logger.exception(f"Failed to open shapefile in {raw_path}")
             return None
