@@ -3,8 +3,26 @@ set -euo pipefail
 
 PREF=${1:-13}
 PRIORITY=${2:-P0}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+MIGRATIONS="$ROOT/services/backend/migrations"
 
 echo "=== Pipeline v2: pref=$PREF priority=$PRIORITY ==="
+
+# Step 0: Ensure DB schema exists (idempotent — skips if tables already exist)
+echo "--- Step 0: Ensure DB schema ---"
+if docker compose exec -T db psql -U app -d realestate -c "SELECT 1 FROM admin_boundaries LIMIT 0" > /dev/null 2>&1; then
+    echo "  Schema already applied"
+else
+    echo "  Applying schema migration..."
+    docker compose exec -T db psql -U app -d realestate -c "
+        DROP SCHEMA IF EXISTS public CASCADE;
+        CREATE SCHEMA public;
+        GRANT ALL ON SCHEMA public TO app;
+    " > /dev/null 2>&1
+    docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/00000000000001_schema.sql" > /dev/null 2>&1
+    echo "  Schema applied"
+fi
 
 # Step 1: Convert raw -> GeoJSON
 echo "--- Step 1: Convert ---"
@@ -16,6 +34,7 @@ uv run scripts/tools/pipeline/build_fgb.py --pref "$PREF"
 
 # Step 3: Import to PostGIS
 echo "--- Step 3: Import ---"
+export DATABASE_URL="postgresql://app:${DB_PASSWORD:-devpass}@localhost:5432/realestate"
 uv run scripts/tools/pipeline/import_db.py --pref "$PREF" --priority "$PRIORITY"
 
 # Step 4: Validate

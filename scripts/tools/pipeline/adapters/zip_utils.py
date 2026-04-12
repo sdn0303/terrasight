@@ -32,7 +32,9 @@ def open_zip_shapefile(raw_path: Path, prefer_utf8: bool = True):
     # Strategy 2: inspect ZIP and find .shp files
     try:
         with zipfile.ZipFile(raw_path) as zf:
-            shp_files = [n for n in zf.namelist() if n.lower().endswith(".shp")]
+            # Normalize all paths to forward slashes for consistent matching
+            all_names = [n.replace("\\", "/") for n in zf.namelist()]
+            shp_files = [n for n in all_names if n.lower().endswith(".shp")]
 
             if not shp_files:
                 logger.warning(f"No .shp files found in {raw_path}")
@@ -44,8 +46,10 @@ def open_zip_shapefile(raw_path: Path, prefer_utf8: bool = True):
                 if utf8_shps:
                     shp_files = utf8_shps
 
-            # Use the first (or only) shapefile
-            shp_path = shp_files[0]
+            # Use the first (or only) shapefile.
+            # Normalize backslashes — KSJ ZIPs created on Windows use '\'
+            # but GDAL/fiona vsi paths require '/'.
+            shp_path = shp_files[0].replace("\\", "/")
             vsi_path = f"zip://{raw_path}!{shp_path}"
             logger.debug(f"Opening nested shapefile: {vsi_path}")
             return fiona.open(vsi_path)
