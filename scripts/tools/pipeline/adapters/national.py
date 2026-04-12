@@ -6,10 +6,10 @@ import json
 import logging
 from pathlib import Path
 
-import fiona
 from shapely.geometry import mapping, shape
 
 from .base import BaseAdapter, ConvertResult, DatasetEntry
+from .zip_utils import open_zip_shapefile
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,10 @@ class NationalArchiveAdapter(BaseAdapter):
 
         features = []
         try:
-            with fiona.open(f"zip://{raw_path}") as src:
+            src = open_zip_shapefile(raw_path)
+            if src is None:
+                return None
+            with src:
                 for feat in src:
                     geom = shape(feat["geometry"])
                     if geom.is_empty or not geom.is_valid:
