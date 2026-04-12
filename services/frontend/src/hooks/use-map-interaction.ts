@@ -9,33 +9,17 @@ export function useMapInteraction() {
   const selectFeature = useMapStore((s) => s.selectFeature);
   const selectArea = useMapStore((s) => s.selectArea);
   const setAnalysisPoint = useMapStore((s) => s.setAnalysisPoint);
-  const mode = useUIStore((s) => s.mode);
-  const addComparePoint = useUIStore((s) => s.addComparePoint);
   const setInsight = useUIStore((s) => s.setInsight);
 
   const handleFeatureClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0];
 
-      if (mode === "compare") {
-        const address =
-          feature?.properties != null &&
-          typeof feature.properties === "object" &&
-          "address" in feature.properties &&
-          typeof feature.properties.address === "string"
-            ? feature.properties.address
-            : `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`;
-        addComparePoint({
-          lat: e.lngLat.lat,
-          lng: e.lngLat.lng,
-          address,
-        });
-        return;
-      }
-
-      // Explore mode: progressive disclosure, no mode switch
+      // Progressive disclosure: click opens the insight drawer for the
+      // feature. Pre-Phase-6 this branched on an `explore` vs `compare`
+      // app mode; compare is now driven by the OpportunitiesSheet
+      // checkbox column, so map clicks always take the drawer path.
       if (feature) {
-        // Check if clicked an admin boundary feature
         const layerId = feature.layer.id;
         if (
           layerId === "admin-boundary-fill" ||
@@ -65,7 +49,6 @@ export function useMapInteraction() {
           lng: e.lngLat.lng,
           ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
-        // Open the Insight drawer for this point
         setInsight({
           kind: "point",
           lat: e.lngLat.lat,
@@ -75,14 +58,7 @@ export function useMapInteraction() {
         selectFeature(null);
       }
     },
-    [
-      mode,
-      selectArea,
-      selectFeature,
-      setAnalysisPoint,
-      addComparePoint,
-      setInsight,
-    ],
+    [selectArea, selectFeature, setAnalysisPoint, setInsight],
   );
 
   return { handleFeatureClick };

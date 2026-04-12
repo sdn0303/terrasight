@@ -4,55 +4,8 @@ import { useUIStore } from "@/stores/ui-store";
 describe("useUIStore", () => {
   beforeEach(() => {
     useUIStore.setState({
-      mode: "explore",
       comparePoints: [],
-      layerSettingsOpen: true,
     });
-  });
-
-  it("starts with explore mode", () => {
-    expect(useUIStore.getState().mode).toBe("explore");
-  });
-
-  it("starts with layer settings open", () => {
-    expect(useUIStore.getState().layerSettingsOpen).toBe(true);
-  });
-
-  it("enters compare mode via setMode and resets points", () => {
-    useUIStore.getState().addComparePoint({
-      lat: 35.681,
-      lng: 139.767,
-      address: "東京駅",
-    });
-    useUIStore.getState().resetCompare();
-    useUIStore.getState().setMode("compare");
-
-    const state = useUIStore.getState();
-    expect(state.mode).toBe("compare");
-    expect(state.comparePoints).toHaveLength(0);
-  });
-
-  it("exits compare mode by resetCompare + setMode explore", () => {
-    useUIStore.getState().setMode("compare");
-    useUIStore.getState().addComparePoint({
-      lat: 35.681,
-      lng: 139.767,
-      address: "東京駅",
-    });
-    useUIStore.getState().resetCompare();
-    useUIStore.getState().setMode("explore");
-
-    const state = useUIStore.getState();
-    expect(state.mode).toBe("explore");
-    expect(state.comparePoints).toHaveLength(0);
-  });
-
-  it("toggles layer settings", () => {
-    expect(useUIStore.getState().layerSettingsOpen).toBe(true);
-    useUIStore.getState().toggleLayerSettings();
-    expect(useUIStore.getState().layerSettingsOpen).toBe(false);
-    useUIStore.getState().toggleLayerSettings();
-    expect(useUIStore.getState().layerSettingsOpen).toBe(true);
   });
 
   describe("N-point compare", () => {
@@ -217,20 +170,5 @@ describe("ui-store overlay state (Phase 1)", () => {
     expect(useUIStore.getState().settingsOpen).toBe(true);
     setSettingsOpen(false);
     expect(useUIStore.getState().settingsOpen).toBe(false);
-  });
-
-  it("legacy mode field is still present and functional", () => {
-    const { setMode } = useUIStore.getState();
-    setMode("compare");
-    expect(useUIStore.getState().mode).toBe("compare");
-    setMode("explore");
-    expect(useUIStore.getState().mode).toBe("explore");
-  });
-
-  it("legacy layerSettingsOpen is still present and toggleable", () => {
-    const { toggleLayerSettings } = useUIStore.getState();
-    const before = useUIStore.getState().layerSettingsOpen;
-    toggleLayerSettings();
-    expect(useUIStore.getState().layerSettingsOpen).toBe(!before);
   });
 });
