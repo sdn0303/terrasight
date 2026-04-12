@@ -35,6 +35,7 @@ VALID_TABLES = frozenset({
     "admin_boundaries", "land_prices", "zoning", "flood_risk",
     "steep_slope", "schools", "medical_facilities", "stations",
     "railways", "seismic_hazard", "liquefaction",
+    "transaction_prices", "land_appraisals",
 })
 
 # Column specs per table: (column_names, value_template)
@@ -75,6 +76,30 @@ _TABLE_SPECS: dict[str, tuple[list[str], str]] = {
     "steep_slope": (
         ["pref_code", "area_name", "geom"],
         "(%s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "transaction_prices": (
+        [
+            "pref_code", "city_code", "city_name", "district_name",
+            "property_type", "price_category", "total_price", "price_per_sqm",
+            "area_sqm", "floor_plan", "building_year", "building_structure",
+            "current_use", "city_planning_zone", "building_coverage",
+            "floor_area_ratio", "nearest_station", "station_walk_min",
+            "front_road_width", "land_shape", "transaction_quarter",
+            "transaction_year", "transaction_q",
+        ],
+        "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+    ),
+    "land_appraisals": (
+        [
+            "pref_code", "city_code", "city_name", "land_use_code",
+            "sequence_no", "appraiser_no", "survey_year", "appraisal_price",
+            "price_per_sqm", "address", "display_address", "lot_area_sqm",
+            "current_use_code", "zone_code", "building_coverage",
+            "floor_area_ratio", "nearest_station", "station_distance_m",
+            "front_road_width", "fudosan_id", "comparable_price",
+            "yield_price", "cost_price",
+        ],
+        "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
     ),
 }
 
@@ -245,11 +270,87 @@ def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> t
     return None
 
 
+def import_reinfolib_data(conn, pref_code: str) -> None:
+    """Import 不動産情報ライブラリ data for a prefecture."""
+    from scripts.tools.pipeline.adapters.reinfolib_csv import (
+        read_appraisal_csv,
+        read_transaction_csv,
+    )
+
+    raw_dir = Path("data/raw/不動産情報ライブラリ")
+
+    # Transaction prices
+    tx_zip = raw_dir / "不動産価格（取引価格・成約価格）情報" / "All_20053_20253.zip"
+    if tx_zip.exists():
+        rows = read_transaction_csv(tx_zip, pref_code)
+        if rows:
+            _import_dict_rows(conn, "transaction_prices", rows, pref_code, on_conflict="ON CONFLICT DO NOTHING")
+
+    # Appraisals
+    appr_dir = raw_dir / "鑑定評価書情報地価公示"
+    if appr_dir.exists():
+        rows = read_appraisal_csv(appr_dir, pref_code)
+        if rows:
+            _import_dict_rows(conn, "land_appraisals", rows, pref_code, on_conflict="ON CONFLICT DO NOTHING")
+
+    # Refresh materialized views (requires autocommit for CONCURRENTLY)
+    conn.commit()
+    prev_autocommit = conn.autocommit
+    try:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_transaction_summary")
+            cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_appraisal_summary")
+    finally:
+        conn.autocommit = prev_autocommit
+    logger.info(f"Refreshed materialized views for pref={pref_code}")
+
+
+def _import_dict_rows(
+    conn,
+    table_name: str,
+    rows: list[dict],
+    pref_code: str,
+    on_conflict: str = "",
+) -> None:
+    """Bulk import dict rows into a table. Idempotent: DELETE + INSERT."""
+    if table_name not in VALID_TABLES:
+        raise ValueError(f"table_name '{table_name}' not in allowlist")
+
+    cur = conn.cursor()
+    cur.execute(
+        sql.SQL("DELETE FROM {} WHERE pref_code = %s").format(sql.Identifier(table_name)),
+        (pref_code,),
+    )
+    deleted = cur.rowcount
+    if deleted:
+        logger.info(f"Deleted {deleted} existing rows from {table_name} for pref={pref_code}")
+
+    cols, template = _TABLE_SPECS[table_name]
+    tuples = [tuple(row.get(c) for c in cols) for row in rows]
+
+    insert_sql = sql.SQL("INSERT INTO {} ({}) VALUES %s").format(
+        sql.Identifier(table_name),
+        sql.SQL(", ").join(sql.Identifier(c) for c in cols),
+    )
+    suffix = f" {on_conflict}" if on_conflict else ""
+    execute_values(
+        cur,
+        insert_sql.as_string(conn) + suffix,
+        tuples,
+        template=template,
+        page_size=5000,
+    )
+    conn.commit()
+    logger.info(f"Imported {len(tuples)} rows into {table_name} for pref={pref_code}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import GeoJSON to PostGIS")
     parser.add_argument("--pref", required=True, help="Prefecture code")
     parser.add_argument("--priority", default=None, help="Filter by priority")
     parser.add_argument("--dataset", default=None, help="Filter by dataset ID")
+    parser.add_argument("--reinfolib", action="store_true", help="Import REINFOLIB data")
     args = parser.parse_args()
 
     pref_code = args.pref.zfill(2)
@@ -265,15 +366,20 @@ def main() -> None:
 
     conn = psycopg2.connect(get_db_url())
     try:
-        for entry in entries:
-            if entry.output_geojson is None:
-                continue
-            geojson_rel = entry.output_geojson.replace("{pref_code}", pref_code)
-            geojson_path = Path(geojson_rel)
-            if not geojson_path.exists():
-                logger.debug(f"GeoJSON not found: {geojson_path}")
-                continue
-            import_geojson_to_table(conn, geojson_path, entry.db_table, pref_code)
+        # Skip GeoJSON catalog loop when running reinfolib-only import
+        if not (args.reinfolib and args.priority is None and args.dataset is None):
+            for entry in entries:
+                if entry.output_geojson is None:
+                    continue
+                geojson_rel = entry.output_geojson.replace("{pref_code}", pref_code)
+                geojson_path = Path(geojson_rel)
+                if not geojson_path.exists():
+                    logger.debug(f"GeoJSON not found: {geojson_path}")
+                    continue
+                import_geojson_to_table(conn, geojson_path, entry.db_table, pref_code)
+
+        if args.reinfolib:
+            import_reinfolib_data(conn, pref_code)
     finally:
         conn.close()
 
