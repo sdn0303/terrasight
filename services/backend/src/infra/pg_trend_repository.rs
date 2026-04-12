@@ -85,7 +85,7 @@ impl TrendRepository for PgTrendRepository {
         let max_year_row: (i32,) = timeout(
             TREND_QUERY_TIMEOUT,
             sqlx::query_as(
-                "SELECT COALESCE(MAX(survey_year), 0) FROM land_prices WHERE address = $1",
+                "SELECT COALESCE(MAX(survey_year::int), 0) FROM land_prices WHERE address = $1",
             )
             .bind(&address)
             .fetch_one(&self.pool),
@@ -99,7 +99,7 @@ impl TrendRepository for PgTrendRepository {
             TREND_QUERY_TIMEOUT,
             sqlx::query_as::<_, TrendDataRow>(
                 r#"
-            SELECT survey_year, price_per_sqm
+            SELECT survey_year::int, price_per_sqm
             FROM land_prices
             WHERE address = $1 AND survey_year >= $2
             ORDER BY survey_year

@@ -146,70 +146,87 @@ def import_geojson_to_table(
     return len(rows)
 
 
+def _prop(props: dict, *keys: str, default=None):
+    """Return the first present, non-empty property value from candidate keys."""
+    for key in keys:
+        if key in props:
+            value = props[key]
+            if value is not None and value != "":
+                return value
+    return default
+
+
 def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> tuple | None:
-    """Build a row tuple matching the column spec for the given table."""
+    """Build a row tuple matching the column spec for the given table.
+
+    Uses _prop() to fall back to KSJ-coded field names when canonical
+    names are not present (e.g. L01_006 for price_per_sqm).
+    """
     if table_name == "land_prices":
         return (
             pref_code,
-            props.get("address", ""),
-            props.get("price_per_sqm", 0),
-            props.get("land_use"),
-            props.get("zone_type"),
-            props.get("survey_year", 2024),
+            _prop(props, "address", "L01_025", "L01_008", default=""),
+            _prop(props, "price_per_sqm", "L01_006", default=0),
+            _prop(props, "land_use", "L01_009"),
+            _prop(props, "zone_type", "L01_010"),
+            _prop(props, "survey_year", "L01_007", default=2024),
             geom_wkt,
         )
     if table_name == "zoning":
         return (
             pref_code,
-            props.get("zone_code", ""),
-            props.get("zone_type", ""),
-            props.get("floor_area_ratio"),
-            props.get("building_coverage"),
+            _prop(props, "zone_code", "A29_004", default=""),
+            _prop(props, "zone_type", "A29_005", default=""),
+            _prop(props, "floor_area_ratio", "A29_006"),
+            _prop(props, "building_coverage", "A29_007"),
             geom_wkt,
         )
     if table_name == "admin_boundaries":
+        # Derive city_code from adminCode (5-digit JIS code → municipality)
+        admin_code = _prop(props, "adminCode", default="")
+        city_code = admin_code if len(admin_code) == 5 else None
         return (
             pref_code,
-            props.get("prefName", ""),
-            props.get("cityCode"),
-            props.get("cityName"),
-            props.get("adminCode", ""),
-            "municipality" if props.get("cityCode") else "prefecture",
+            _prop(props, "prefName", default=""),
+            city_code,
+            _prop(props, "cityName"),
+            admin_code,
+            "municipality" if city_code else "prefecture",
             geom_wkt,
         )
     if table_name == "schools":
         return (
             pref_code,
-            props.get("school_name", props.get("name", "")),
-            props.get("school_type", ""),
-            props.get("address"),
+            _prop(props, "school_name", "name", "P29_004", default=""),
+            _prop(props, "school_type", "P29_001", default=""),
+            _prop(props, "address", "P29_003"),
             geom_wkt,
         )
     if table_name == "medical_facilities":
         return (
             pref_code,
-            props.get("facility_name", props.get("name", "")),
-            props.get("facility_type", ""),
-            props.get("beds", props.get("bed_count")),
-            props.get("address"),
+            _prop(props, "facility_name", "name", "P04_002", default=""),
+            _prop(props, "facility_type", "P04_003", default=""),
+            _prop(props, "beds", "bed_count", "P04_004"),
+            _prop(props, "address", "P04_005"),
             geom_wkt,
         )
     if table_name == "stations":
         return (
             pref_code,
-            props.get("station_name", ""),
-            props.get("station_code"),
-            props.get("line_name"),
-            props.get("operator_name"),
-            props.get("passenger_count"),
+            _prop(props, "station_name", "S12_001", default=""),
+            _prop(props, "station_code", "S12_002"),
+            _prop(props, "line_name", "S12_003"),
+            _prop(props, "operator_name", "S12_004"),
+            _prop(props, "passenger_count", "S12_005"),
             geom_wkt,
         )
     if table_name == "railways":
         return (
             pref_code,
-            props.get("line_name", ""),
-            props.get("operator_name"),
-            props.get("railway_type"),
+            _prop(props, "line_name", "N02_003", default=""),
+            _prop(props, "operator_name", "N02_004"),
+            _prop(props, "railway_type", "N02_002"),
             geom_wkt,
         )
     if table_name == "flood_risk":

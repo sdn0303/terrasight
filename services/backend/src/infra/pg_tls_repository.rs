@@ -109,7 +109,7 @@ impl TlsRepository for PgTlsRepository {
                 ORDER BY dist
                 LIMIT 1
             )
-            SELECT lp.survey_year AS year, lp.price_per_sqm, lp.address,
+            SELECT lp.survey_year::int AS year, lp.price_per_sqm, lp.address,
                    ST_Distance(lp.geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS distance_m
             FROM land_prices lp
             INNER JOIN nearest n ON lp.address = n.address

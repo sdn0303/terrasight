@@ -65,7 +65,7 @@ impl StatsRepository for PgStatsRepository {
                 COUNT(*) AS count
             FROM land_prices
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND survey_year = (SELECT MAX(survey_year) FROM land_prices)
+              AND survey_year = (SELECT MAX(survey_year) FROM land_prices WHERE ($5::text IS NULL OR pref_code = $5))
               AND ($5::text IS NULL OR pref_code = $5)
             "#,
         );

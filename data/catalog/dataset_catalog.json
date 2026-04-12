@@ -44,7 +44,7 @@
       "scope": "per_prefecture",
       "source_type": "per_pref_archive",
       "adapter": "PerPrefArchiveAdapter",
-      "raw_pattern": "data/raw/L01-*_GML.zip",
+      "raw_pattern": "data/raw/L01-*_{pref_code}_GML.zip",
       "output_geojson": "data/geojson/{pref_code}/land-price-{year}.geojson",
       "output_fgb": null,
       "db_table": "land_prices",
