@@ -67,14 +67,30 @@ def _parse_walk_minutes(raw: str) -> int | None:
     return None
 
 
+_ERA_BASE: dict[str, int] = {
+    "明治": 1868, "大正": 1912, "昭和": 1926, "平成": 1989, "令和": 2019,
+}
+
+
 def _parse_building_year(raw: str) -> int | None:
     if not raw:
         return None
     raw = raw.strip()
     if raw == "戦前":
         return 1945
+    # Western year: '2015年' -> 2015
     m = re.search(r"(\d{4})", raw)
-    return int(m.group(1)) if m else None
+    if m:
+        return int(m.group(1))
+    # Japanese era: '昭和63年' -> 1988, '平成元年' -> 1989
+    for era, base in _ERA_BASE.items():
+        if era in raw:
+            m_era = re.search(rf"{era}(\d+)年", raw)
+            if m_era:
+                return base + int(m_era.group(1)) - 1
+            if "元年" in raw:
+                return base
+    return None
 
 
 def _parse_area(raw: str) -> int | None:
