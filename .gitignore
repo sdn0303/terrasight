@@ -68,6 +68,7 @@ tarpaulin-report.html
 .claire/
 .remember/
 .claude/worktree/**
+.claude/worktrees/**
 
 # Agent decision artifacts (per-session/per-task outputs, not long-lived specs)
 docs/sessions/

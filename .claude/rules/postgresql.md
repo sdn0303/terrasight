@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.sql"
+  - "**/migrations/**"
+  - "services/backend/src/infra/**"
+---
+
 # PostgreSQL Rules
 
 ## Design Principles

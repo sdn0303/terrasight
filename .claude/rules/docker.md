@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/Dockerfile*"
+  - "**/docker-compose*"
+  - "**/.dockerignore"
+---
+
 # Docker Rules
 
 ## Design Principles

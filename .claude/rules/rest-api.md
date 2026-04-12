@@ -1,3 +1,10 @@
+---
+paths:
+  - "services/backend/src/handler/**"
+  - "services/frontend/src/app/api/**"
+  - "services/frontend/src/features/*/api/**"
+---
+
 # REST API Design Rules
 
 ## Design Principles

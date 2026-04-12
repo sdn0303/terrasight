@@ -1,27 +1,26 @@
----
-name: tanstack-query-expert
-description: "Expert in TanStack Query (React Query) v5 — query key factories, mutations, optimistic updates, cache invalidation, and Next.js App Router SSR hydration. Use when implementing data fetching hooks."
-metadata:
-  version: "1.0.0"
-  filePattern:
-    - "src/features/*/api/**"
-    - "src/hooks/use*Query*"
-    - "src/hooks/use*Mutation*"
----
+# Data Fetching
 
-# TanStack Query Expert
+## Contents
 
-Production-grade TanStack Query v5 patterns for this project.
+- [Project Defaults](#project-defaults)
+- [Query Key Factory](#query-key-factory)
+- [Custom Hook Pattern](#custom-hook-pattern)
+- [Mutation with Cache Invalidation](#mutation-with-cache-invalidation)
+- [Optimistic Updates](#optimistic-updates)
+- [SSR Hydration](#ssr-hydration)
+- [Cache Policy](#cache-policy)
+- [Anti-patterns](#anti-patterns)
+
+---
 
 ## Project Defaults
 
 ```typescript
-// Global defaults (set in QueryClientProvider)
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,    // 1 minute
-      gcTime: 300_000,      // 5 minutes
+      staleTime: 60_000,
+      gcTime: 300_000,
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -29,7 +28,7 @@ const queryClient = new QueryClient({
 });
 ```
 
-## Query Key Factory (Required Pattern)
+## Query Key Factory
 
 Every feature module MUST define a query key factory:
 
@@ -43,9 +42,9 @@ export const transactionKeys = {
 };
 ```
 
-## Custom Hook Pattern (Required)
+## Custom Hook Pattern
 
-Always wrap useQuery in custom hooks:
+Always wrap `useQuery` in custom hooks:
 
 ```typescript
 export const useTransactions = (filters: TransactionFilters) => {
@@ -86,7 +85,12 @@ export const useUpdateTransaction = () => {
       return { previous };
     },
     onError: (_err, _updated, context) => {
-      queryClient.setQueryData(transactionKeys.detail(context?.previous?.id), context?.previous);
+      if (context?.previous) {
+        queryClient.setQueryData(
+          transactionKeys.detail(context.previous.id),
+          context.previous,
+        );
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
@@ -95,10 +99,9 @@ export const useUpdateTransaction = () => {
 };
 ```
 
-## Next.js App Router SSR Hydration
+## SSR Hydration
 
 ```typescript
-// Server Component (page.tsx)
 export default async function TransactionsPage() {
   const queryClient = new QueryClient();
   await queryClient.prefetchQuery({
@@ -113,9 +116,17 @@ export default async function TransactionsPage() {
 }
 ```
 
+## Cache Policy
+
+- `cacheLife('days')` for master data (area codes, categories)
+- `cacheLife('minutes')` for list queries
+- `tags` for detail views (invalidate on mutation)
+- `revalidate: 0` for real-time data
+
 ## Anti-patterns
 
-- Never use `useEffect` to fetch data when TanStack Query is available
-- Never sync query data into local state (`useEffect(() => setState(data), [data])`)
-- Never use inline `queryFn` without custom hook wrapper
-- Never omit `queryKey` factory — use the factory pattern above
+- `useEffect` to fetch data when TanStack Query is available
+- Syncing query data into local state: `useEffect(() => setState(data), [data])`
+- Inline `queryFn` without custom hook wrapper
+- Missing query key factory — always use the factory pattern
+- Debounce-less Zustand `viewState` -> query key (request flood)

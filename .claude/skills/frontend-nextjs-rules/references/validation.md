@@ -1,19 +1,21 @@
+# Validation (Zod)
+
+## Contents
+
+- [Validation (Zod)](#validation-zod)
+  - [Contents](#contents)
+  - [Core Pattern](#core-pattern)
+  - [API Response Validation](#api-response-validation)
+  - [React Hook Form Integration](#react-hook-form-integration)
+  - [Server Action Validation](#server-action-validation)
+  - [Environment Variables](#environment-variables)
+  - [Best Practices](#best-practices)
+
 ---
-name: zod-validation-expert
-description: "Expert in Zod schema validation — parsing, custom errors, refinements, type inference, integration with React Hook Form and Next.js Server Actions. Use when defining validation schemas."
-metadata:
-  version: "1.0.0"
-  filePattern:
-    - "src/features/*/schemas/**"
-    - "**/*.schema.ts"
-    - "**/schemas.ts"
----
 
-# Zod Validation Expert
+## Core Pattern
 
-## Core Principle
-
-Define schema once, derive TypeScript type with `z.infer`. Never maintain duplicate interfaces.
+Define schema once, derive TypeScript type. Never maintain duplicate interfaces.
 
 ```typescript
 const TransactionSchema = z.object({
@@ -33,7 +35,7 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 
 ## API Response Validation
 
-Always validate external data at boundaries:
+Always validate external data at boundaries with `safeParse`:
 
 ```typescript
 const GeoJSONResponseSchema = z.object({
@@ -48,7 +50,6 @@ const GeoJSONResponseSchema = z.object({
   })),
 });
 
-// Use safeParse, not parse (avoid try/catch)
 const result = GeoJSONResponseSchema.safeParse(apiResponse);
 if (!result.success) {
   console.error('Invalid GeoJSON:', result.error.flatten());
@@ -59,9 +60,6 @@ if (!result.success) {
 ## React Hook Form Integration
 
 ```typescript
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-
 const FilterSchema = z.object({
   areaCode: z.string().min(1, 'Area code is required'),
   priceMin: z.coerce.number().min(0).optional(),
@@ -91,7 +89,6 @@ export async function createFilter(prevState: unknown, formData: FormData) {
     return { errors: result.error.flatten().fieldErrors };
   }
 
-  // result.data is fully typed
   return { success: true, data: result.data };
 }
 ```
@@ -115,3 +112,5 @@ export const env = envSchema.parse(process.env);
 - Use `z.coerce` for FormData and URLSearchParams
 - Co-locate schemas with features (`src/features/*/schemas/`)
 - Use `.flatten()` or `.format()` for serializable error objects
+- `z.record()` rejects `null` — return `{}` not `null` from backend
+- Frontend Zod schema is the API contract source of truth

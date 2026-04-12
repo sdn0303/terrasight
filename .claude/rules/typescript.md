@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "services/frontend/**"
+---
+
 # TypeScript Rules
 
 ## Compiler Settings (tsconfig.json)
@@ -60,6 +67,8 @@
 - **Immutability**: `readonly` for shallow, `as const` for deep. `Readonly<T>`, `DeepReadonly<T>`
 - **Exhaustive Check**: `assertNever(value: never): never` in switch default -- compiler error on new case
 - **Widening Prevention**: `as const` for literal preservation, `satisfies` for type check + literal retention
+- **`satisfies` Operator**: Validate a value conforms to a type while preserving its narrower literal type: `const cfg = { ... } satisfies Config`
+- **`using` Declarations**: Deterministic resource cleanup via `Symbol.dispose`; prefer over manual `try/finally` for DB connections, file handles, timers
 - **Runtime Validation (Zod)**: Define schema, derive type with `z.infer<typeof Schema>`. `parse()` throws, `safeParse()` returns Result
 
 ## Naming Conventions

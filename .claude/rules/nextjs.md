@@ -1,3 +1,8 @@
+---
+paths:
+  - "services/frontend/**"
+---
+
 # Next.js Rules
 
 ## Tech Stack
@@ -45,8 +50,9 @@
 ## UI
 
 - **shadcn/ui**: Style `new-york`, RSC-compatible, import from `@/components/ui/`
-- **Tailwind CSS v4**: Use `@theme` for custom tokens, CSS variables for dark mode
+- **Tailwind CSS v4**: CSS-first config via `@theme` in CSS (no `tailwind.config.js`); use `@theme` for design tokens (`--color-*`, `--font-*`, `--spacing-*`); native cascade layers, `color-mix()`, `@property`
 - **Accessibility**: Semantic HTML, ARIA attributes, keyboard navigation
+- **React Compiler**: Auto-memoization enabled; remove manual `useMemo`/`useCallback` unless profiler shows need
 
 ## Forms & Validation
 

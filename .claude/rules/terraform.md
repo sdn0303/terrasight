@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.tf"
+  - "**/*.tfvars"
+  - "infra/**"
+---
+
 # Terraform Rules
 
 ## Design Principles
