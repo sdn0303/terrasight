@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { LAYERS } from "@/lib/layers";
+import { getBboxByCode } from "@/lib/prefecture";
 
 interface ViewState {
   latitude: number;
@@ -53,6 +54,7 @@ interface MapState {
   setAnalysisPoint: (point: AnalysisPoint | null) => void;
   setWeightPreset: (preset: WeightPreset) => void;
   setAnalysisRadius: (radius: number) => void;
+  flyToPrefecture: (prefCode: string) => void;
 }
 
 const defaultVisibleLayers = new Set(
@@ -118,6 +120,22 @@ export const useMapStore = create<MapState>()(
       setWeightPreset: (preset) => set({ weightPreset: preset }),
 
       setAnalysisRadius: (radius) => set({ analysisRadius: radius }),
+
+      flyToPrefecture: (prefCode) => {
+        const pref = getBboxByCode(prefCode);
+        if (!pref) return;
+        const latitude = (pref.south + pref.north) / 2;
+        const longitude = (pref.west + pref.east) / 2;
+        set({
+          viewState: {
+            latitude,
+            longitude,
+            zoom: 9,
+            pitch: 45,
+            bearing: 0,
+          },
+        });
+      },
 
       getBBox: () => {
         const { latitude, longitude, zoom } = get().viewState;

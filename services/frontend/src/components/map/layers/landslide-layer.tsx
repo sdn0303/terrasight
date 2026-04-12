@@ -17,7 +17,7 @@ interface Props {
  * - 土砂災害特別警戒区域 (red zone) → danger red
  */
 export function LandslideLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "landslide", visible && !propData);
+  const selfFetch = useStaticLayer("landslide", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

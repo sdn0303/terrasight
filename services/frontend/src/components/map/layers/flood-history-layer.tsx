@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function FloodHistoryLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "flood-history", visible && !propData);
+  const selfFetch = useStaticLayer("flood-history", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

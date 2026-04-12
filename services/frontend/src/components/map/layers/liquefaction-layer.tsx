@@ -20,7 +20,7 @@ interface Props {
  * Source: MLIT 液状化危険度評価結果 (point data)
  */
 export function LiquefactionLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "liquefaction", visible && !propData);
+  const selfFetch = useStaticLayer("liquefaction", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

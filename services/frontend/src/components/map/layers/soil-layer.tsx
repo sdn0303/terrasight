@@ -32,7 +32,7 @@ const SOIL_COLORS: [string, string][] = [
 ];
 
 export function SoilLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "soil", visible && !propData);
+  const selfFetch = useStaticLayer("soil", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
 

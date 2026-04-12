@@ -23,7 +23,7 @@ interface Props {
  */
 export function PopulationMeshLayer({ visible, selectedYear }: Props) {
   const yearKey = `pop${selectedYear}`;
-  const { data } = useStaticLayer("13", "population-mesh", visible);
+  const { data } = useStaticLayer("population-mesh", visible);
 
   const fillColor = useMemo(
     () =>

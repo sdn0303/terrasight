@@ -35,6 +35,10 @@ export interface FilterState {
 
 const DEFAULTS = {
   area: {
+    // TODO: prefecture is kept here for test compatibility. prefecture-store is
+    // the authoritative source of truth for the selected prefecture once
+    // multi-prefecture support is added. At that point, remove this field and
+    // update filter-store.test.ts assertions accordingly.
     prefecture: "東京都",
     cities: [] as string[],
     customPolygon: null as GeoJSON.Polygon | null,

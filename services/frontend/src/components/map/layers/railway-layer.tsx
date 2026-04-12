@@ -30,7 +30,7 @@ interface Props {
  *   other →          zinc
  */
 export function RailwayLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "railway", visible && !propData);
+  const selfFetch = useStaticLayer("railway", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

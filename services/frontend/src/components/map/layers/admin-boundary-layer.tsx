@@ -10,11 +10,7 @@ interface Props {
 }
 
 export function AdminBoundaryLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer(
-    "13",
-    "admin-boundary",
-    visible && !propData,
-  );
+  const selfFetch = useStaticLayer("admin-boundary", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

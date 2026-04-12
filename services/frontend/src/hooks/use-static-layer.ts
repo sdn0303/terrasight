@@ -8,13 +8,11 @@ import { layerUrl } from "@/lib/data-url";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useSpatialEngineReady } from "@/hooks/use-spatial-engine";
 import { useMapStore } from "@/stores/map-store";
+import { usePrefectureStore } from "@/stores/prefecture-store";
 
 /** @deprecated Use `useVisibleStaticLayers` for batched queries. This hook remains as fallback. */
-export function useStaticLayer(
-  prefCode: string,
-  layerId: string,
-  enabled: boolean,
-) {
+export function useStaticLayer(layerId: string, enabled: boolean) {
+  const selectedPrefCode = usePrefectureStore((s) => s.selectedPrefCode);
   const wasmReady = useSpatialEngineReady();
 
   // Select primitive viewState values to avoid re-creating a new object
@@ -53,9 +51,9 @@ export function useStaticLayer(
 
   // Fallback path: full FlatGeobuf load (no bbox filtering).
   const fallbackResult = useQuery<FeatureCollection>({
-    queryKey: ["static-layer-fallback", prefCode, layerId],
+    queryKey: ["static-layer-fallback", selectedPrefCode, layerId],
     queryFn: async ({ signal }) => {
-      const url = layerUrl(prefCode, layerId);
+      const url = layerUrl(selectedPrefCode, layerId);
       const response = await fetch(url, { signal });
       if (!response.ok) {
         throw new Error(`Failed to fetch ${url}: ${response.status}`);

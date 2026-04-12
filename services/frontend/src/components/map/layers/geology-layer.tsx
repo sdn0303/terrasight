@@ -22,7 +22,7 @@ const GEOLOGY_COLORS: [string, string][] = [
 ];
 
 export function GeologyLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "geology", visible && !propData);
+  const selfFetch = useStaticLayer("geology", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
 

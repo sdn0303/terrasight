@@ -5,7 +5,7 @@ import type { BBox } from "@/lib/api";
 // Derived from N03 administrative boundary data (MLIT)
 // ---------------------------------------------------------------------------
 
-interface PrefBBox {
+export interface PrefBBox {
   code: string;
   south: number;
   west: number;
@@ -73,6 +73,13 @@ function intersects(viewport: BBox, pref: PrefBBox): boolean {
   if (viewport.east < pref.west) return false;
   if (viewport.west > pref.east) return false;
   return true;
+}
+
+/**
+ * Returns the bounding box for a given prefecture code, or undefined if not found.
+ */
+export function getBboxByCode(code: string): PrefBBox | undefined {
+  return PREFECTURE_BBOXES.find((p) => p.code === code);
 }
 
 /**

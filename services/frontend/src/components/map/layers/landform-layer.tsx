@@ -20,7 +20,7 @@ const LANDFORM_COLORS: [string, string][] = [
 ];
 
 export function LandformLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "landform", visible && !propData);
+  const selfFetch = useStaticLayer("landform", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
 

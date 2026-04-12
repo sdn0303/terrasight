@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function FaultLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("national", "fault", visible && !propData);
+  const selfFetch = useStaticLayer("fault", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

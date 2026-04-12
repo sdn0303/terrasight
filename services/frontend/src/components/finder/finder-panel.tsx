@@ -25,7 +25,6 @@ export function FinderPanel({
   onSearch,
   matchCount,
 }: FinderPanelProps) {
-  const prefecture = useFilterStore((s) => s.area.prefecture);
   const cities = useFilterStore((s) => s.area.cities);
   const setArea = useFilterStore((s) => s.setArea);
   const formattedCount = matchCount.toLocaleString("en-US");
@@ -67,7 +66,7 @@ export function FinderPanel({
       }
     >
       <FilterSection title="● AREA" required>
-        <PrefDropdown value={prefecture} />
+        <PrefDropdown />
         <div className="h-1.5" />
         <CityMultiSelect
           selected={cities}
