@@ -5,16 +5,14 @@
 # Usage: ./scripts/commands/db-full-reset.sh
 #
 # This is the "do everything" script. It:
-#   1. Applies schema migration (destructive — drops all tables)
-#   2. Applies admin_boundaries migration
-#   3. Imports all GeoJSON datasets (9 datasets, ~700K rows)
-#   4. Imports L01 land prices (5 years, ~20K rows)
-#   5. Runs ANALYZE for query planner stats
-#   6. Shows final row counts
+#   1. Drops all tables and applies the canonical schema migration
+#   2. Optionally runs pipeline import for Tokyo (pref 13)
+#   3. Runs ANALYZE for query planner stats
+#   4. Shows final row counts
 #
 # Prerequisites:
 #   - Docker db container running: docker compose up -d db
-#   - GeoJSON files in data/geojson/ (run convert_geodata.py first)
+#   - GeoJSON files in data/geojson/ (run pipeline convert first)
 #   - uv installed for Python script execution
 # =============================================================================
 set -euo pipefail
@@ -29,33 +27,42 @@ echo " Full Database Reset"
 echo " Started: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "============================================================"
 
-# --- Step 1: Schema migration ---
+# --- Step 1: Drop all tables and re-create schema ---
 echo ""
-echo "--- Step 1: Apply schema migration (destructive) ---"
-docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/20260326000001_schema_redesign.sql" 2>&1 | grep -c "CREATE" | xargs -I{} echo "  {} CREATE statements executed"
+echo "--- Step 1: Drop existing tables + apply schema ---"
+docker compose exec -T db psql -U app -d realestate -c "
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO app;
+" 2>&1 | tail -1
 
-echo ""
-echo "--- Step 2: Apply admin_boundaries migration ---"
-docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/20260326000002_admin_boundaries.sql" 2>&1 | grep -cE "CREATE|already exists" | xargs -I{} echo "  {} statements executed"
+docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/00000000000001_schema.sql" 2>&1 | grep -c "CREATE" | xargs -I{} echo "  {} CREATE statements executed"
 
-# --- Step 3: Import GeoJSON ---
+# --- Step 2: Seed (if exists) ---
+if [ -f "$MIGRATIONS/00000000000002_seed.sql" ]; then
+    echo ""
+    echo "--- Step 2: Apply seed data ---"
+    docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/00000000000002_seed.sql" 2>&1 | tail -1
+fi
+
+# --- Step 3: Import via pipeline (if GeoJSON exists) ---
 echo ""
-echo "--- Step 3: Import GeoJSON datasets ---"
+echo "--- Step 3: Import data via pipeline ---"
 cd "$ROOT"
-uv run scripts/tools/import_geojson.py 2>&1 | grep -E "(Inserted|ERROR|Done)" || true
+if [ -d "data/geojson/13" ] && [ "$(ls -A data/geojson/13/ 2>/dev/null)" ]; then
+    uv run scripts/tools/pipeline/import_db.py --pref 13 2>&1 | grep -E "(Imported|Deleted|ERROR|complete)" || true
+else
+    echo "  No GeoJSON data found. Run pipeline convert first:"
+    echo "    uv run scripts/tools/pipeline/convert.py --pref 13 --priority P0"
+fi
 
-# --- Step 4: Import L01 ---
+# --- Step 4: ANALYZE ---
 echo ""
-echo "--- Step 4: Import L01 land prices ---"
-uv run scripts/tools/import_l01.py 2>&1 | grep -E "(Inserted|ERROR|Done)" || true
-
-# --- Step 5: ANALYZE ---
-echo ""
-echo "--- Step 5: ANALYZE ---"
+echo "--- Step 4: ANALYZE ---"
 docker compose exec -T db psql -U app -d realestate -c "ANALYZE;" > /dev/null 2>&1
 echo "  ANALYZE complete"
 
-# --- Step 6: Show results ---
+# --- Step 5: Show results ---
 echo ""
 echo "--- Final row counts ---"
 docker compose exec db psql -U app -d realestate -c "

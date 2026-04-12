@@ -7,10 +7,10 @@ import logging
 import re
 from pathlib import Path
 
-import fiona
 from shapely.geometry import mapping, shape
 
 from .base import BaseAdapter, ConvertResult, DatasetEntry
+from .zip_utils import open_zip_shapefile
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,10 @@ def _read_features(raw_path: Path, entry: DatasetEntry, pref_code: str) -> list[
     """Read features from a single archive."""
     features = []
     try:
-        with fiona.open(f"zip://{raw_path}") as src:
+        src = open_zip_shapefile(raw_path)
+        if src is None:
+            return features
+        with src:
             for feat in src:
                 geom = shape(feat["geometry"])
                 if geom.is_empty or not geom.is_valid:

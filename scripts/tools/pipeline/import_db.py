@@ -83,7 +83,7 @@ def get_db_url() -> str:
     """Get database URL from environment."""
     return os.environ.get(
         "DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/realestate",
+        f"postgresql://app:{os.environ.get('DB_PASSWORD', 'devpass')}@localhost:5432/realestate",
     )
 
 
