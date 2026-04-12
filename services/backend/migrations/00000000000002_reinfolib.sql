@@ -104,12 +104,12 @@ SELECT
     city_code,
     transaction_year,
     property_type,
-    count(*)::integer                                                AS tx_count,
-    avg(total_price)::bigint                                         AS avg_total_price,
-    percentile_cont(0.5) WITHIN GROUP (ORDER BY total_price)::bigint AS median_total_price,
-    avg(price_per_sqm)::integer                                      AS avg_price_sqm,
-    avg(area_sqm)::integer                                           AS avg_area_sqm,
-    avg(station_walk_min)::smallint                                   AS avg_walk_min
+    count(*)::integer                                                     AS tx_count,
+    round(avg(total_price))::bigint                                       AS avg_total_price,
+    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY total_price))::bigint AS median_total_price,
+    round(avg(price_per_sqm))::integer                                    AS avg_price_sqm,
+    round(avg(area_sqm))::integer                                         AS avg_area_sqm,
+    round(avg(station_walk_min))::smallint                                AS avg_walk_min
 FROM transaction_prices
 WHERE total_price > 0
 GROUP BY pref_code, city_code, transaction_year, property_type;
@@ -126,12 +126,12 @@ SELECT
     city_code,
     land_use_code,
     survey_year,
-    count(DISTINCT (sequence_no))::integer  AS parcel_count,
-    avg(price_per_sqm)::integer             AS avg_price_sqm,
-    avg(lot_area_sqm)::real                 AS avg_lot_area,
-    avg(comparable_price)::integer          AS avg_comparable,
-    avg(yield_price)::integer               AS avg_yield,
-    avg(cost_price)::integer                AS avg_cost
+    count(DISTINCT (sequence_no))::integer    AS parcel_count,
+    round(avg(price_per_sqm))::integer       AS avg_price_sqm,
+    round(avg(lot_area_sqm)::numeric, 1)::real AS avg_lot_area,
+    round(avg(comparable_price))::integer    AS avg_comparable,
+    round(avg(yield_price))::integer         AS avg_yield,
+    round(avg(cost_price))::integer          AS avg_cost
 FROM land_appraisals
 GROUP BY pref_code, city_code, land_use_code, survey_year;
 

@@ -293,11 +293,16 @@ def import_reinfolib_data(conn, pref_code: str) -> None:
         if rows:
             _import_dict_rows(conn, "land_appraisals", rows, pref_code, on_conflict="ON CONFLICT DO NOTHING")
 
-    # Refresh materialized views
-    cur = conn.cursor()
-    cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_transaction_summary")
-    cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_appraisal_summary")
+    # Refresh materialized views (requires autocommit for CONCURRENTLY)
     conn.commit()
+    prev_autocommit = conn.autocommit
+    try:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_transaction_summary")
+            cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_appraisal_summary")
+    finally:
+        conn.autocommit = prev_autocommit
     logger.info(f"Refreshed materialized views for pref={pref_code}")
 
 
