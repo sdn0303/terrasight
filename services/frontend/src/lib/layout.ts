@@ -13,6 +13,8 @@ export const GAP = 16;
 export const LEFT_PANEL_WIDTH = 360;
 export const DRAWER_WIDTH = 340;
 
+export const NARROW_BREAKPOINT = 1280;
+
 export const BOTTOM_SHEET_DEFAULT_PCT = 40;
 export const BOTTOM_SHEET_MIN_PCT = 20;
 export const BOTTOM_SHEET_MAX_PCT = 80;
