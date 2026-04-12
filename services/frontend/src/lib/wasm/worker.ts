@@ -29,7 +29,26 @@ interface ComputeStatsMsg {
   bbox: { south: number; west: number; north: number; east: number };
 }
 
-type IncomingMessage = InitMessage | QueryMessage | ComputeStatsMsg;
+interface LoadGeoJsonMsg {
+  type: "load-geojson";
+  id: number;
+  layerId: string;
+  geojson: string;
+}
+
+interface ComputeTlsMsg {
+  type: "compute-tls";
+  id: number;
+  bbox: { south: number; west: number; north: number; east: number };
+  preset: string;
+}
+
+type IncomingMessage =
+  | InitMessage
+  | QueryMessage
+  | ComputeStatsMsg
+  | LoadGeoJsonMsg
+  | ComputeTlsMsg;
 
 // ---------------------------------------------------------------------------
 // Outgoing message types (main thread receives these)
@@ -63,6 +82,10 @@ type OutgoingMessage =
   | { type: "query-error"; id: number; error: string }
   | StatsResultMsg
   | { type: "stats-error"; id: number; error: string }
+  | { type: "load-geojson-result"; id: number; count: number }
+  | { type: "load-geojson-error"; id: number; error: string }
+  | { type: "tls-result"; id: number; result: string }
+  | { type: "tls-error"; id: number; error: string }
   | ErrorMessage;
 
 // ---------------------------------------------------------------------------
@@ -195,6 +218,48 @@ self.onmessage = (event: MessageEvent<unknown>) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         send({ type: "stats-error", id: msg.id, error: `compute_stats failed: ${message}` });
+      }
+      break;
+    }
+
+    case "load-geojson": {
+      if (!engine) {
+        send({ type: "load-geojson-error", id: msg.id, error: "not initialized" });
+        break;
+      }
+      try {
+        const count = engine.load_geojson_layer(msg.layerId, msg.geojson);
+        send({ type: "load-geojson-result", id: msg.id, count });
+      } catch (err) {
+        send({
+          type: "load-geojson-error",
+          id: msg.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+      break;
+    }
+
+    case "compute-tls": {
+      if (!engine) {
+        send({ type: "tls-error", id: msg.id, error: "not initialized" });
+        break;
+      }
+      try {
+        const result = engine.compute_tls(
+          msg.bbox.south,
+          msg.bbox.west,
+          msg.bbox.north,
+          msg.bbox.east,
+          msg.preset,
+        );
+        send({ type: "tls-result", id: msg.id, result });
+      } catch (err) {
+        send({
+          type: "tls-error",
+          id: msg.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
       break;
     }
