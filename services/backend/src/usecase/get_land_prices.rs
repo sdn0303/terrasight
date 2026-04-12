@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{BBox, Year, ZoomLevel};
+use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 
 /// Fetch land price GeoJSON features for a given year, bounding box, and zoom level.
 pub struct GetLandPricesUsecase {
@@ -30,9 +30,10 @@ impl GetLandPricesUsecase {
         year: Year,
         bbox: BBox,
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         self.land_price_repo
-            .find_by_year_and_bbox(year, &bbox, zoom)
+            .find_by_year_and_bbox(year, &bbox, zoom, pref_code)
             .await
             .inspect(|result| {
                 tracing::debug!(
@@ -75,6 +76,7 @@ mod tests {
                 Year::new(2023).unwrap(),
                 sample_bbox(),
                 ZoomLevel::clamped(14),
+                None,
             )
             .await
             .unwrap();
@@ -96,6 +98,7 @@ mod tests {
                 Year::new(2023).unwrap(),
                 sample_bbox(),
                 ZoomLevel::clamped(14),
+                None,
             )
             .await
             .unwrap_err();

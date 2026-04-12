@@ -73,7 +73,7 @@ impl ReinfolibDataSource for PostgisFallback {
         // The PostGIS `land_prices` table stores all years; the `year` parameter
         // is ignored here. A future enhancement could add a WHERE year = $5 filter.
         self.layer_repo
-            .find_layer(LayerType::LandPrice, bbox, FALLBACK_ZOOM)
+            .find_layer(LayerType::LandPrice, bbox, FALLBACK_ZOOM, None)
             .await
             .map(|lr| lr.features)
     }
@@ -81,7 +81,7 @@ impl ReinfolibDataSource for PostgisFallback {
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_zoning(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
         self.layer_repo
-            .find_layer(LayerType::Zoning, bbox, FALLBACK_ZOOM)
+            .find_layer(LayerType::Zoning, bbox, FALLBACK_ZOOM, None)
             .await
             .map(|lr| lr.features)
     }
@@ -89,7 +89,7 @@ impl ReinfolibDataSource for PostgisFallback {
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_schools(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
         self.layer_repo
-            .find_layer(LayerType::Schools, bbox, FALLBACK_ZOOM)
+            .find_layer(LayerType::Schools, bbox, FALLBACK_ZOOM, None)
             .await
             .map(|lr| lr.features)
     }
@@ -97,7 +97,7 @@ impl ReinfolibDataSource for PostgisFallback {
     #[tracing::instrument(skip(self), fields(source = "postgis_fallback"))]
     async fn get_medical(&self, bbox: &BBox) -> Result<Vec<GeoFeature>, DomainError> {
         self.layer_repo
-            .find_layer(LayerType::Medical, bbox, FALLBACK_ZOOM)
+            .find_layer(LayerType::Medical, bbox, FALLBACK_ZOOM, None)
             .await
             .map(|lr| lr.features)
     }
@@ -107,9 +107,9 @@ impl ReinfolibDataSource for PostgisFallback {
         // Merge flood-risk and steep-slope results to approximate XKT016 coverage.
         let (flood, steep) = tokio::try_join!(
             self.layer_repo
-                .find_layer(LayerType::Flood, bbox, FALLBACK_ZOOM),
+                .find_layer(LayerType::Flood, bbox, FALLBACK_ZOOM, None),
             self.layer_repo
-                .find_layer(LayerType::SteepSlope, bbox, FALLBACK_ZOOM),
+                .find_layer(LayerType::SteepSlope, bbox, FALLBACK_ZOOM, None),
         )?;
         let mut merged = flood.features;
         merged.extend(steep.features);
@@ -265,7 +265,7 @@ mod tests {
     use crate::domain::error::DomainError;
     use crate::domain::reinfolib::ReinfolibDataSource;
     use crate::domain::repository::LayerRepository;
-    use crate::domain::value_object::{BBox, Coord, LayerType, ZoomLevel};
+    use crate::domain::value_object::{BBox, Coord, LayerType, PrefCode, ZoomLevel};
 
     // ── Stub LayerRepository ─────────────────────────────────────────────────
 
@@ -329,6 +329,7 @@ mod tests {
             layer: LayerType,
             _bbox: &BBox,
             _zoom: ZoomLevel,
+            _pref_code: Option<&PrefCode>,
         ) -> Result<LayerResult, DomainError> {
             use std::sync::atomic::Ordering::SeqCst;
             match layer {

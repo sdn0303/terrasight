@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
+use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
 pub struct GetAreaDataUsecase {
     layer_repo: Arc<dyn LayerRepository>,
@@ -25,17 +25,20 @@ impl GetAreaDataUsecase {
         bbox: &BBox,
         layers: &[LayerType],
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<HashMap<LayerType, LayerResult>, DomainError> {
         if layers.is_empty() {
             return Err(DomainError::MissingParameter("layers".into()));
         }
 
+        let pref_code = pref_code.cloned();
         let futures = layers.iter().map(|layer| {
             let repo = Arc::clone(&self.layer_repo);
             let bbox = *bbox;
             let layer = *layer;
+            let pref_code = pref_code.clone();
             async move {
-                repo.find_layer(layer, &bbox, zoom)
+                repo.find_layer(layer, &bbox, zoom, pref_code.as_ref())
                     .await
                     .inspect(|r| {
                         tracing::debug!(
@@ -87,7 +90,7 @@ mod tests {
         let layers = [LayerType::LandPrice, LayerType::Zoning, LayerType::Flood];
 
         let result = usecase
-            .execute(&sample_bbox(), &layers, ZoomLevel::clamped(14))
+            .execute(&sample_bbox(), &layers, ZoomLevel::clamped(14), None)
             .await
             .unwrap();
 
@@ -103,7 +106,7 @@ mod tests {
         let usecase = GetAreaDataUsecase::new(repo);
 
         let err = usecase
-            .execute(&sample_bbox(), &[], ZoomLevel::clamped(14))
+            .execute(&sample_bbox(), &[], ZoomLevel::clamped(14), None)
             .await
             .unwrap_err();
         assert!(matches!(err, DomainError::MissingParameter(_)));
@@ -121,6 +124,7 @@ mod tests {
                 &sample_bbox(),
                 &[LayerType::LandPrice],
                 ZoomLevel::clamped(14),
+                None,
             )
             .await
             .unwrap_err();

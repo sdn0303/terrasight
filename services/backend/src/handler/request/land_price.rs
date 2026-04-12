@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, Year, ZoomLevel};
+use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 use crate::handler::request::area_data::default_zoom;
 
 /// Land price query parameters for `GET /api/v1/land-prices`.
@@ -26,6 +26,9 @@ pub struct LandPriceQuery {
     /// Defaults to 14 (street level) when not provided.
     #[serde(default = "default_zoom")]
     pub zoom: u32,
+    /// Optional prefecture code filter (e.g. `"13"` for Tokyo).
+    #[serde(default)]
+    pub pref_code: Option<String>,
 }
 
 impl LandPriceQuery {
@@ -41,10 +44,11 @@ impl LandPriceQuery {
     /// parsed, and propagates [`DomainError::InvalidYear`] /
     /// [`DomainError::InvalidCoordinate`] / [`DomainError::BBoxTooLarge`] from
     /// the domain value object constructors.
-    pub fn into_domain(self) -> Result<(Year, BBox, ZoomLevel), DomainError> {
+    pub fn into_domain(self) -> Result<(Year, BBox, ZoomLevel, Option<PrefCode>), DomainError> {
         let year = Year::new(self.year)?;
         let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
-        Ok((year, bbox, ZoomLevel::clamped(self.zoom)))
+        let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
+        Ok((year, bbox, ZoomLevel::clamped(self.zoom), pref_code))
     }
 }
 
@@ -69,6 +73,9 @@ pub struct LandPriceByYearRangeQuery {
     pub to: i32,
     #[serde(default = "default_zoom")]
     pub zoom: u32,
+    /// Optional prefecture code filter (e.g. `"13"` for Tokyo).
+    #[serde(default)]
+    pub pref_code: Option<String>,
 }
 
 fn default_from_year() -> i32 {
@@ -89,7 +96,9 @@ impl LandPriceByYearRangeQuery {
     ///
     /// Returns [`DomainError::Validation`] when `from > to`, and propagates
     /// year/coordinate validation errors from the domain value objects.
-    pub fn into_domain(self) -> Result<(Year, Year, BBox, ZoomLevel), DomainError> {
+    pub fn into_domain(
+        self,
+    ) -> Result<(Year, Year, BBox, ZoomLevel, Option<PrefCode>), DomainError> {
         if self.from > self.to {
             return Err(DomainError::Validation(
                 "from year must be <= to year".into(),
@@ -99,8 +108,15 @@ impl LandPriceByYearRangeQuery {
         let from_year = Year::new(self.from)?;
         let to_year = Year::new(self.to)?;
         let bbox = BBox::parse_sw_ne_str(&self.bbox)?;
+        let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
 
-        Ok((from_year, to_year, bbox, ZoomLevel::clamped(self.zoom)))
+        Ok((
+            from_year,
+            to_year,
+            bbox,
+            ZoomLevel::clamped(self.zoom),
+            pref_code,
+        ))
     }
 }
 
@@ -114,8 +130,9 @@ mod tests {
             year: 2023,
             bbox: "139.70,35.65,139.80,35.70".into(),
             zoom: 14,
+            pref_code: None,
         };
-        let (year, bbox, zoom) = q.into_domain().unwrap();
+        let (year, bbox, zoom, _pref_code) = q.into_domain().unwrap();
         assert_eq!(year.value(), 2023);
         assert!((bbox.west() - 139.70).abs() < f64::EPSILON);
         assert!((bbox.south() - 35.65).abs() < f64::EPSILON);
@@ -130,6 +147,7 @@ mod tests {
             year: 2023,
             bbox: "not,valid,bbox".into(),
             zoom: 14,
+            pref_code: None,
         };
         assert!(q.into_domain().is_err());
     }
@@ -140,6 +158,7 @@ mod tests {
             year: 1999,
             bbox: "139.70,35.65,139.80,35.70".into(),
             zoom: 14,
+            pref_code: None,
         };
         assert!(q.into_domain().is_err());
     }
@@ -150,6 +169,7 @@ mod tests {
             year: 2023,
             bbox: "139.70,35.65,139.80".into(),
             zoom: 14,
+            pref_code: None,
         };
         assert!(q.into_domain().is_err());
     }
@@ -161,6 +181,7 @@ mod tests {
             from: 2024,
             to: 2020,
             zoom: 14,
+            pref_code: None,
         };
         assert!(q.into_domain().is_err());
     }

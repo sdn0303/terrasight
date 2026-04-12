@@ -35,7 +35,7 @@ pub async fn get_land_prices(
     State(usecase): State<Arc<GetLandPricesUsecase>>,
     Query(params): Query<LandPriceQuery>,
 ) -> Result<Json<LayerResponseDto>, AppError> {
-    let (year, bbox, zoom) = params.into_domain().inspect(|(y, b, z)| {
+    let (year, bbox, zoom, pref_code) = params.into_domain().inspect(|(y, b, z, _)| {
         tracing::debug!(
             year = y.value(),
             south = b.south(),
@@ -48,7 +48,7 @@ pub async fn get_land_prices(
     })?;
 
     usecase
-        .execute(year, bbox, zoom)
+        .execute(year, bbox, zoom, pref_code.as_ref())
         .await
         .inspect(|lr| {
             tracing::info!(

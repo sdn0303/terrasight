@@ -1,0 +1,2 @@
+-- Seed data for development (populated by pipeline scripts)
+-- This file intentionally left minimal; use scripts/commands/pipeline.sh for data import.

@@ -27,4 +27,7 @@ pub enum DomainError {
 
     #[error("Request timed out: {0}")]
     Timeout(String),
+
+    #[error("invalid prefecture code: {0}")]
+    InvalidPrefCode(String),
 }

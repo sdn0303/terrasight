@@ -18,7 +18,7 @@ pub async fn get_stats(
     State(usecase): State<Arc<GetStatsUsecase>>,
     Query(params): Query<BBoxQuery>,
 ) -> Result<Json<StatsResponse>, AppError> {
-    let bbox = params.into_domain().inspect(|b| {
+    let (bbox, pref_code) = params.into_domain().inspect(|(b, _)| {
         tracing::debug!(
             south = b.south(),
             west = b.west(),
@@ -29,7 +29,7 @@ pub async fn get_stats(
     })?;
 
     usecase
-        .execute(&bbox)
+        .execute(&bbox, pref_code.as_ref())
         .await
         .inspect(|stats| {
             tracing::info!(

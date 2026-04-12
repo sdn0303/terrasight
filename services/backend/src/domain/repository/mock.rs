@@ -30,7 +30,7 @@ use crate::domain::repository::{
     StatsRepository, TlsRepository, TrendRepository,
 };
 use crate::domain::value_object::{
-    AreaCode, BBox, Coord, LayerType, Year, YearsLookback, ZoomLevel,
+    AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
 
 /// Pop the next queued response or panic if the queue is empty.
@@ -76,6 +76,7 @@ impl LayerRepository for MockLayerRepository {
         _layer: LayerType,
         _bbox: &BBox,
         _zoom: ZoomLevel,
+        _pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         pop(&self.find_layer, "find_layer")
     }
@@ -119,21 +120,34 @@ impl MockStatsRepository {
 
 #[async_trait]
 impl StatsRepository for MockStatsRepository {
-    async fn calc_land_price_stats(&self, _bbox: &BBox) -> Result<LandPriceStats, DomainError> {
+    async fn calc_land_price_stats(
+        &self,
+        _bbox: &BBox,
+        _pref_code: Option<&PrefCode>,
+    ) -> Result<LandPriceStats, DomainError> {
         pop(&self.land_price, "land_price")
     }
 
-    async fn calc_risk_stats(&self, _bbox: &BBox) -> Result<RiskStats, DomainError> {
+    async fn calc_risk_stats(
+        &self,
+        _bbox: &BBox,
+        _pref_code: Option<&PrefCode>,
+    ) -> Result<RiskStats, DomainError> {
         pop(&self.risk, "risk")
     }
 
-    async fn count_facilities(&self, _bbox: &BBox) -> Result<FacilityStats, DomainError> {
+    async fn count_facilities(
+        &self,
+        _bbox: &BBox,
+        _pref_code: Option<&PrefCode>,
+    ) -> Result<FacilityStats, DomainError> {
         pop(&self.facilities, "facilities")
     }
 
     async fn calc_zoning_distribution(
         &self,
         _bbox: &BBox,
+        _pref_code: Option<&PrefCode>,
     ) -> Result<HashMap<String, f64>, DomainError> {
         pop(&self.zoning, "zoning_distribution")
     }
@@ -210,6 +224,7 @@ impl LandPriceRepository for MockLandPriceRepository {
         _year: Year,
         _bbox: &BBox,
         _zoom: ZoomLevel,
+        _pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         pop(&self.find_by_year, "find_by_year_and_bbox")
     }
@@ -220,6 +235,7 @@ impl LandPriceRepository for MockLandPriceRepository {
         _to_year: Year,
         _bbox: &BBox,
         _zoom: ZoomLevel,
+        _pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         pop(&self.find_all_years, "find_all_years_by_bbox")
     }
@@ -231,6 +247,7 @@ impl LandPriceRepository for MockLandPriceRepository {
         _offset: u32,
         _price_range: Option<(PricePerSqm, PricePerSqm)>,
         _zones: &[ZoneCode],
+        _pref_code: Option<&PrefCode>,
     ) -> Result<Vec<OpportunityRecord>, DomainError> {
         pop(&self.find_for_opportunities, "find_for_opportunities")
     }

@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
+use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
 /// Area data query with layers parameter.
 #[derive(Debug, Deserialize)]
@@ -18,12 +18,18 @@ pub struct AreaDataQuery {
     /// Defaults to 14 (street level) when not provided.
     #[serde(default = "default_zoom")]
     pub zoom: u32,
+    /// Optional prefecture code filter (e.g. `"13"` for Tokyo).
+    #[serde(default)]
+    pub pref_code: Option<String>,
 }
 
 impl AreaDataQuery {
-    /// Convert to domain types: validated BBox + parsed LayerType list + ZoomLevel.
-    pub fn into_domain(self) -> Result<(BBox, Vec<LayerType>, ZoomLevel), DomainError> {
+    /// Convert to domain types: validated BBox + parsed LayerType list + ZoomLevel + optional PrefCode.
+    pub fn into_domain(
+        self,
+    ) -> Result<(BBox, Vec<LayerType>, ZoomLevel, Option<PrefCode>), DomainError> {
         let bbox = BBox::new(self.south, self.west, self.north, self.east)?;
+        let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
 
         let layers: Vec<LayerType> = self
             .layers
@@ -43,7 +49,7 @@ impl AreaDataQuery {
             return Err(DomainError::MissingParameter("layers".into()));
         }
 
-        Ok((bbox, layers, ZoomLevel::clamped(self.zoom)))
+        Ok((bbox, layers, ZoomLevel::clamped(self.zoom), pref_code))
     }
 }
 
@@ -64,10 +70,12 @@ mod tests {
             east: 139.80,
             layers: "landprice,flood,unknown".into(),
             zoom: 14,
+            pref_code: None,
         };
-        let (_, layers, zoom) = q.into_domain().unwrap();
+        let (_, layers, zoom, pref_code) = q.into_domain().unwrap();
         assert_eq!(layers.len(), 2);
         assert_eq!(zoom, ZoomLevel::clamped(14));
+        assert!(pref_code.is_none());
     }
 
     #[test]
@@ -79,6 +87,7 @@ mod tests {
             east: 139.80,
             layers: String::new(),
             zoom: 14,
+            pref_code: None,
         };
         assert!(q.into_domain().is_err());
     }

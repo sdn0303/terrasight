@@ -11,7 +11,7 @@ use crate::domain::constants::{STATS_RISK_WEIGHT_FLOOD, STATS_RISK_WEIGHT_STEEP}
 use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::StatsRepository;
-use crate::domain::value_object::BBox;
+use crate::domain::value_object::{BBox, PrefCode};
 
 /// Maximum time to wait for a single stats aggregation query.
 const STATS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -50,7 +50,11 @@ impl PgStatsRepository {
 #[async_trait]
 impl StatsRepository for PgStatsRepository {
     #[tracing::instrument(skip(self))]
-    async fn calc_land_price_stats(&self, bbox: &BBox) -> Result<LandPriceStats, DomainError> {
+    async fn calc_land_price_stats(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LandPriceStats, DomainError> {
         let query = sqlx::query_as::<_, LandPriceStatsRow>(
             r#"
             SELECT
@@ -61,12 +65,14 @@ impl StatsRepository for PgStatsRepository {
                 COUNT(*) AS count
             FROM land_prices
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND year = (SELECT MAX(year) FROM land_prices)
+              AND survey_year = (SELECT MAX(survey_year) FROM land_prices WHERE ($5::text IS NULL OR pref_code = $5))
+              AND ($5::text IS NULL OR pref_code = $5)
             "#,
         );
         let row = timeout(
             STATS_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .fetch_one(&self.pool),
         )
         .await
@@ -78,7 +84,11 @@ impl StatsRepository for PgStatsRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn calc_risk_stats(&self, bbox: &BBox) -> Result<RiskStats, DomainError> {
+    async fn calc_risk_stats(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<RiskStats, DomainError> {
         let bbox_area_query = sqlx::query_as::<_, (f64,)>(
             "SELECT ST_Area(ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography)",
         );
@@ -111,6 +121,7 @@ impl StatsRepository for PgStatsRepository {
             SELECT COALESCE(SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography)), 0)
             FROM flood_risk
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+              AND ($5::text IS NULL OR pref_code = $5)
             "#,
         );
         let flood_row = timeout(
@@ -122,6 +133,7 @@ impl StatsRepository for PgStatsRepository {
                 bbox.east(),
                 bbox.north(),
             )
+            .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
         )
         .await
@@ -133,6 +145,7 @@ impl StatsRepository for PgStatsRepository {
             SELECT COALESCE(SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography)), 0)
             FROM steep_slope
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+              AND ($5::text IS NULL OR pref_code = $5)
             "#,
         );
         let slope_row = timeout(
@@ -144,6 +157,7 @@ impl StatsRepository for PgStatsRepository {
                 bbox.east(),
                 bbox.north(),
             )
+            .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
         )
         .await
@@ -164,9 +178,13 @@ impl StatsRepository for PgStatsRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn count_facilities(&self, bbox: &BBox) -> Result<FacilityStats, DomainError> {
+    async fn count_facilities(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<FacilityStats, DomainError> {
         let schools_query = sqlx::query_as::<_, (i64,)>(
-            "SELECT COUNT(*) FROM schools WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))",
+            "SELECT COUNT(*) FROM schools WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
         );
         let schools = timeout(
             STATS_QUERY_TIMEOUT,
@@ -177,6 +195,7 @@ impl StatsRepository for PgStatsRepository {
                 bbox.east(),
                 bbox.north(),
             )
+            .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
         )
         .await
@@ -184,7 +203,7 @@ impl StatsRepository for PgStatsRepository {
         .map_err(map_db_err)?;
 
         let medical_query = sqlx::query_as::<_, (i64,)>(
-            "SELECT COUNT(*) FROM medical_facilities WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))",
+            "SELECT COUNT(*) FROM medical_facilities WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
         );
         let medical = timeout(
             STATS_QUERY_TIMEOUT,
@@ -195,6 +214,7 @@ impl StatsRepository for PgStatsRepository {
                 bbox.east(),
                 bbox.north(),
             )
+            .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
         )
         .await
@@ -216,6 +236,7 @@ impl StatsRepository for PgStatsRepository {
     async fn calc_zoning_distribution(
         &self,
         bbox: &BBox,
+        pref_code: Option<&PrefCode>,
     ) -> Result<HashMap<String, f64>, DomainError> {
         let query = sqlx::query_as::<_, (String, f64)>(
             r#"
@@ -225,6 +246,7 @@ impl StatsRepository for PgStatsRepository {
                    AS ratio
             FROM zoning
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+              AND ($5::text IS NULL OR pref_code = $5)
             GROUP BY zone_type
             ORDER BY ratio DESC
             "#,
@@ -232,6 +254,7 @@ impl StatsRepository for PgStatsRepository {
         let rows = timeout(
             STATS_QUERY_TIMEOUT,
             bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
+                .bind(pref_code.map(PrefCode::as_str))
                 .fetch_all(&self.pool),
         )
         .await

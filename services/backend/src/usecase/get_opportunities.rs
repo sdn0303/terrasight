@@ -95,6 +95,7 @@ impl GetOpportunitiesUsecase {
                 0,
                 filters.price_range,
                 &filters.zones,
+                filters.pref_code.as_ref(),
             )
             .await
             .inspect_err(|e| tracing::warn!(error = %e, "opportunities fetch failed"))?;
@@ -210,6 +211,8 @@ mod tests {
             station_max: None,
             price_range: None,
             preset: WeightPreset::Balance,
+            pref_code: None,
+            cities: Vec::new(),
         }
     }
 

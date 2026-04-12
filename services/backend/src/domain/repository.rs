@@ -19,6 +19,7 @@ pub trait LayerRepository: Send + Sync {
         layer: LayerType,
         bbox: &BBox,
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError>;
 }
 
@@ -26,12 +27,25 @@ pub trait LayerRepository: Send + Sync {
 
 #[async_trait]
 pub trait StatsRepository: Send + Sync {
-    async fn calc_land_price_stats(&self, bbox: &BBox) -> Result<LandPriceStats, DomainError>;
-    async fn calc_risk_stats(&self, bbox: &BBox) -> Result<RiskStats, DomainError>;
-    async fn count_facilities(&self, bbox: &BBox) -> Result<FacilityStats, DomainError>;
+    async fn calc_land_price_stats(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LandPriceStats, DomainError>;
+    async fn calc_risk_stats(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<RiskStats, DomainError>;
+    async fn count_facilities(
+        &self,
+        bbox: &BBox,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<FacilityStats, DomainError>;
     async fn calc_zoning_distribution(
         &self,
         bbox: &BBox,
+        pref_code: Option<&PrefCode>,
     ) -> Result<HashMap<String, f64>, DomainError>;
 }
 
@@ -60,38 +74,20 @@ pub trait LandPriceRepository: Send + Sync {
         year: Year,
         bbox: &BBox,
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError>;
 
     /// Fetch land price GeoJSON features across a year range for time machine animation.
-    ///
-    /// Returns features with `year` property included so the client can filter
-    /// client-side via MapLibre `setFilter`. The feature limit is multiplied by the
-    /// number of years to accommodate multi-year data in a single response.
     async fn find_all_years_by_bbox(
         &self,
         from_year: Year,
         to_year: Year,
         bbox: &BBox,
         zoom: ZoomLevel,
+        pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError>;
 
     /// Fetch raw land price records for the `/api/v1/opportunities` endpoint.
-    ///
-    /// Returns raw [`OpportunityRecord`]s (pre-TLS-enrichment) filtered by
-    /// `bbox`, an optional price range, and a zone whitelist. The caller
-    /// must apply TLS scoring, risk classification, and signal derivation
-    /// on top.
-    ///
-    /// Uses a spatial join with the `zoning` table to populate
-    /// [`BuildingCoverageRatio`] and [`FloorAreaRatio`]. Results are
-    /// ordered by `price_per_sqm DESC` and paginated via `limit`/`offset`.
-    ///
-    /// `limit` and `offset` are raw `u32` values because the usecase layer
-    /// passes a fetch-pool size (typically
-    /// [`crate::domain::constants::OPPORTUNITY_FETCH_POOL_SIZE`]) that
-    /// can exceed the user-facing [`OpportunityLimit::MAX`]. User-facing
-    /// pagination is applied post-enrichment by the usecase, not at this
-    /// layer.
     async fn find_for_opportunities(
         &self,
         bbox: &BBox,
@@ -99,6 +95,7 @@ pub trait LandPriceRepository: Send + Sync {
         offset: u32,
         price_range: Option<(PricePerSqm, PricePerSqm)>,
         zones: &[ZoneCode],
+        pref_code: Option<&PrefCode>,
     ) -> Result<Vec<OpportunityRecord>, DomainError>;
 }
 

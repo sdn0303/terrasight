@@ -109,11 +109,11 @@ impl TlsRepository for PgTlsRepository {
                 ORDER BY dist
                 LIMIT 1
             )
-            SELECT lp.year, lp.price_per_sqm, lp.address,
+            SELECT lp.survey_year::int AS year, lp.price_per_sqm, lp.address,
                    ST_Distance(lp.geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS distance_m
             FROM land_prices lp
             INNER JOIN nearest n ON lp.address = n.address
-            ORDER BY lp.year
+            ORDER BY lp.survey_year
             "#,
         );
         let rows = timeout(
@@ -131,10 +131,10 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError> {
         // MAX depth_rank within 500m buffer. Returns NULL when no flood zone intersects.
-        // depth_rank is smallint (0-5) in the new schema.
-        let query = sqlx::query_as::<_, (Option<i16>,)>(
+        // depth_rank is text in the schema; safe cast ignores non-numeric values.
+        let query = sqlx::query_as::<_, (Option<i32>,)>(
             r#"
-            SELECT MAX(depth_rank)
+            SELECT MAX(CASE WHEN depth_rank ~ '^\d+$' THEN depth_rank::int END)
             FROM flood_risk
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
             "#,
@@ -147,7 +147,7 @@ impl TlsRepository for PgTlsRepository {
         .map_err(|_| DomainError::Timeout("tls flood_depth_rank query".into()))?
         .map_err(map_db_err)?;
 
-        Ok(row.0.map(|v| v as i32))
+        Ok(row.0)
     }
 
     #[tracing::instrument(skip(self))]
@@ -209,7 +209,7 @@ impl TlsRepository for PgTlsRepository {
             r#"
             SELECT COUNT(*) FILTER (WHERE facility_type = '病院') AS hospital_count,
                    COUNT(*) FILTER (WHERE facility_type != '病院') AS clinic_count,
-                   COALESCE(SUM(bed_count), 0)::int8 AS total_beds
+                   COALESCE(SUM(beds), 0)::int8 AS total_beds
             FROM medical_facilities
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 1000)
             "#,
@@ -274,7 +274,7 @@ impl TlsRepository for PgTlsRepository {
                        COUNT(*)::bigint AS sample_count
                 FROM land_prices lp, nearest n
                 WHERE lp.zone_type = n.zone_type
-                  AND lp.year = (SELECT MAX(year) FROM land_prices)
+                  AND lp.survey_year = (SELECT MAX(survey_year) FROM land_prices)
             )
             SELECT
                 COALESCE(
@@ -315,7 +315,7 @@ impl TlsRepository for PgTlsRepository {
             SELECT COUNT(*)
             FROM land_prices
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
-              AND year >= (SELECT MAX(year) - 1 FROM land_prices)
+              AND survey_year >= (SELECT MAX(survey_year) - 1 FROM land_prices)
             "#,
         );
         let row = timeout(
