@@ -1,3 +1,8 @@
+---
+paths:
+  - ".github/**"
+---
+
 # GitHub Actions Rules
 
 ## Design Principles
