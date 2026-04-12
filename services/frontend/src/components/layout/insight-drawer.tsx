@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { CARD_RADIUS, DRAWER_WIDTH, PAGE_INSET } from "@/lib/layout";
 import { GRADIENT } from "@/lib/theme-tokens";
 import type { DrawerTab } from "@/stores/ui-store";
@@ -38,6 +39,15 @@ export function InsightDrawer({
   activeTab,
   onTabChange,
 }: InsightDrawerProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const active = tabs.find((t) => t.id === activeTab);
@@ -115,6 +125,7 @@ export function InsightDrawer({
             return (
               <button
                 key={tab.id}
+                id={`tab-${tab.id}`}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
@@ -139,7 +150,11 @@ export function InsightDrawer({
       </header>
 
       {/* Body — active tab content */}
-      <div className="flex-1 overflow-y-auto px-[18px] py-3.5">
+      <div
+        role="tabpanel"
+        aria-labelledby={`tab-${activeTab}`}
+        className="flex-1 overflow-y-auto px-[18px] py-3.5"
+      >
         {active?.content}
       </div>
     </aside>

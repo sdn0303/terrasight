@@ -79,4 +79,16 @@ describe("LeftPanel", () => {
     const region = screen.getByRole("region", { name: /investment finder/i });
     expect(region).toBeInTheDocument();
   });
+
+  it("closes on Esc key", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <LeftPanel {...baseProps} onClose={onClose}>
+        <div>body</div>
+      </LeftPanel>,
+    );
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
 });
