@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 
 import psycopg2
+from psycopg2 import sql
+from psycopg2.extras import execute_values
 from shapely.geometry import shape
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
@@ -27,6 +29,54 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 1000
+
+# Allowlist of valid table names to prevent SQL injection.
+VALID_TABLES = frozenset({
+    "admin_boundaries", "land_prices", "zoning", "flood_risk",
+    "steep_slope", "schools", "medical_facilities", "stations",
+    "railways", "seismic_hazard", "liquefaction",
+})
+
+# Column specs per table: (column_names, value_template)
+# The template uses %s placeholders matching the tuple order from _build_row.
+_TABLE_SPECS: dict[str, tuple[list[str], str]] = {
+    "land_prices": (
+        ["pref_code", "address", "price_per_sqm", "land_use", "zone_type", "survey_year", "geom"],
+        "(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "zoning": (
+        ["pref_code", "zone_code", "zone_type", "floor_area_ratio", "building_coverage", "geom"],
+        "(%s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "admin_boundaries": (
+        ["pref_code", "pref_name", "city_code", "city_name", "admin_code", "level", "geom"],
+        "(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "schools": (
+        ["pref_code", "school_name", "school_type", "address", "geom"],
+        "(%s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "medical_facilities": (
+        ["pref_code", "facility_name", "facility_type", "beds", "address", "geom"],
+        "(%s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "stations": (
+        ["pref_code", "station_name", "station_code", "line_name", "operator_name", "passenger_count", "geom"],
+        "(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "railways": (
+        ["pref_code", "line_name", "operator_name", "railway_type", "geom"],
+        "(%s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "flood_risk": (
+        ["pref_code", "depth_rank", "river_name", "geom"],
+        "(%s, %s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+    "steep_slope": (
+        ["pref_code", "area_name", "geom"],
+        "(%s, %s, ST_GeomFromText(%s, 4326))",
+    ),
+}
 
 
 def get_db_url() -> str:
@@ -45,8 +95,11 @@ def import_geojson_to_table(
 ) -> int:
     """Import GeoJSON features into a PostGIS table.
 
-    Idempotent: DELETE WHERE pref_code = X, then batch INSERT.
+    Idempotent: DELETE WHERE pref_code = X, then bulk INSERT via execute_values.
     """
+    if table_name not in VALID_TABLES:
+        raise ValueError(f"table_name '{table_name}' not in allowlist")
+
     with open(geojson_path, encoding="utf-8") as f:
         data = json.load(f)
 
@@ -56,146 +109,116 @@ def import_geojson_to_table(
 
     cur = conn.cursor()
 
-    # Delete existing data for this pref_code
-    cur.execute(f"DELETE FROM {table_name} WHERE pref_code = %s", (pref_code,))
+    # Delete existing data for this pref_code (safe identifier)
+    cur.execute(
+        sql.SQL("DELETE FROM {} WHERE pref_code = %s").format(sql.Identifier(table_name)),
+        (pref_code,),
+    )
     deleted = cur.rowcount
     if deleted:
         logger.info(f"Deleted {deleted} existing rows from {table_name} for pref={pref_code}")
 
-    # Import in batches
-    imported = 0
+    # Build rows for bulk insert
+    rows: list[tuple] = []
     for feat in features:
         props = feat.get("properties", {})
         geom = feat.get("geometry")
         if geom is None:
             continue
-
         geom_wkt = shape(geom).wkt
+        row = _build_row(table_name, props, geom_wkt, pref_code)
+        if row is not None:
+            rows.append(row)
 
-        # Build insert based on table
-        try:
-            _insert_row(cur, table_name, props, geom_wkt, pref_code)
-            imported += 1
-        except Exception:
-            logger.exception(f"Failed to insert row into {table_name}")
-            continue
+    if not rows:
+        return 0
 
-        if imported % BATCH_SIZE == 0:
-            conn.commit()
-
+    # Bulk insert using execute_values
+    cols, template = _TABLE_SPECS[table_name]
+    insert_sql = sql.SQL("INSERT INTO {} ({}) VALUES %s").format(
+        sql.Identifier(table_name),
+        sql.SQL(", ").join(sql.Identifier(c) for c in cols),
+    )
+    execute_values(cur, insert_sql.as_string(conn), rows, template=template, page_size=BATCH_SIZE)
     conn.commit()
-    logger.info(f"Imported {imported} rows into {table_name} for pref={pref_code}")
-    return imported
+
+    logger.info(f"Imported {len(rows)} rows into {table_name} for pref={pref_code}")
+    return len(rows)
 
 
-def _insert_row(cur, table_name: str, props: dict, geom_wkt: str, pref_code: str) -> None:
-    """Insert a single row based on table schema."""
+def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> tuple | None:
+    """Build a row tuple matching the column spec for the given table."""
     if table_name == "land_prices":
-        cur.execute(
-            """INSERT INTO land_prices (pref_code, address, price_per_sqm, land_use, zone_type, survey_year, geom)
-               VALUES (%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("address", ""),
-                props.get("price_per_sqm", 0),
-                props.get("land_use"),
-                props.get("zone_type"),
-                props.get("survey_year", 2024),
-                geom_wkt,
-            ),
+        return (
+            pref_code,
+            props.get("address", ""),
+            props.get("price_per_sqm", 0),
+            props.get("land_use"),
+            props.get("zone_type"),
+            props.get("survey_year", 2024),
+            geom_wkt,
         )
-    elif table_name == "zoning":
-        cur.execute(
-            """INSERT INTO zoning (pref_code, zone_code, zone_type, floor_area_ratio, building_coverage, geom)
-               VALUES (%s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("zone_code", ""),
-                props.get("zone_type", ""),
-                props.get("floor_area_ratio"),
-                props.get("building_coverage"),
-                geom_wkt,
-            ),
+    if table_name == "zoning":
+        return (
+            pref_code,
+            props.get("zone_code", ""),
+            props.get("zone_type", ""),
+            props.get("floor_area_ratio"),
+            props.get("building_coverage"),
+            geom_wkt,
         )
-    elif table_name == "admin_boundaries":
-        cur.execute(
-            """INSERT INTO admin_boundaries (pref_code, pref_name, city_code, city_name, admin_code, level, geom)
-               VALUES (%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("prefName", ""),
-                props.get("cityCode"),
-                props.get("cityName"),
-                props.get("adminCode", ""),
-                "municipality" if props.get("cityCode") else "prefecture",
-                geom_wkt,
-            ),
+    if table_name == "admin_boundaries":
+        return (
+            pref_code,
+            props.get("prefName", ""),
+            props.get("cityCode"),
+            props.get("cityName"),
+            props.get("adminCode", ""),
+            "municipality" if props.get("cityCode") else "prefecture",
+            geom_wkt,
         )
-    elif table_name == "schools":
-        cur.execute(
-            """INSERT INTO schools (pref_code, school_name, school_type, address, geom)
-               VALUES (%s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("school_name", props.get("name", "")),
-                props.get("school_type", ""),
-                props.get("address"),
-                geom_wkt,
-            ),
+    if table_name == "schools":
+        return (
+            pref_code,
+            props.get("school_name", props.get("name", "")),
+            props.get("school_type", ""),
+            props.get("address"),
+            geom_wkt,
         )
-    elif table_name == "medical_facilities":
-        cur.execute(
-            """INSERT INTO medical_facilities (pref_code, facility_name, facility_type, beds, address, geom)
-               VALUES (%s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("facility_name", props.get("name", "")),
-                props.get("facility_type", ""),
-                props.get("beds", props.get("bed_count")),
-                props.get("address"),
-                geom_wkt,
-            ),
+    if table_name == "medical_facilities":
+        return (
+            pref_code,
+            props.get("facility_name", props.get("name", "")),
+            props.get("facility_type", ""),
+            props.get("beds", props.get("bed_count")),
+            props.get("address"),
+            geom_wkt,
         )
-    elif table_name == "stations":
-        cur.execute(
-            """INSERT INTO stations (pref_code, station_name, station_code, line_name, operator_name, passenger_count, geom)
-               VALUES (%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("station_name", ""),
-                props.get("station_code"),
-                props.get("line_name"),
-                props.get("operator_name"),
-                props.get("passenger_count"),
-                geom_wkt,
-            ),
+    if table_name == "stations":
+        return (
+            pref_code,
+            props.get("station_name", ""),
+            props.get("station_code"),
+            props.get("line_name"),
+            props.get("operator_name"),
+            props.get("passenger_count"),
+            geom_wkt,
         )
-    elif table_name == "railways":
-        cur.execute(
-            """INSERT INTO railways (pref_code, line_name, operator_name, railway_type, geom)
-               VALUES (%s, %s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (
-                pref_code,
-                props.get("line_name", ""),
-                props.get("operator_name"),
-                props.get("railway_type"),
-                geom_wkt,
-            ),
+    if table_name == "railways":
+        return (
+            pref_code,
+            props.get("line_name", ""),
+            props.get("operator_name"),
+            props.get("railway_type"),
+            geom_wkt,
         )
-    elif table_name == "flood_risk":
-        cur.execute(
-            """INSERT INTO flood_risk (pref_code, depth_rank, river_name, geom)
-               VALUES (%s, %s, %s, ST_GeomFromText(%s, 4326))""",
-            (pref_code, props.get("depth_rank"), props.get("river_name"), geom_wkt),
-        )
-    elif table_name == "steep_slope":
-        cur.execute(
-            """INSERT INTO steep_slope (pref_code, area_name, geom)
-               VALUES (%s, %s, ST_GeomFromText(%s, 4326))""",
-            (pref_code, props.get("area_name"), geom_wkt),
-        )
-    else:
-        logger.warning(f"No import handler for table: {table_name}")
+    if table_name == "flood_risk":
+        return (pref_code, props.get("depth_rank"), props.get("river_name"), geom_wkt)
+    if table_name == "steep_slope":
+        return (pref_code, props.get("area_name"), geom_wkt)
+
+    logger.warning(f"No import handler for table: {table_name}")
+    return None
 
 
 def main() -> None:

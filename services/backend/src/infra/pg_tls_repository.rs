@@ -131,10 +131,10 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError> {
         // MAX depth_rank within 500m buffer. Returns NULL when no flood zone intersects.
-        // depth_rank is text in the schema; cast to integer for numeric MAX.
+        // depth_rank is text in the schema; safe cast ignores non-numeric values.
         let query = sqlx::query_as::<_, (Option<i32>,)>(
             r#"
-            SELECT MAX(depth_rank::int)
+            SELECT MAX(CASE WHEN depth_rank ~ '^\d+$' THEN depth_rank::int END)
             FROM flood_risk
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 500)
             "#,

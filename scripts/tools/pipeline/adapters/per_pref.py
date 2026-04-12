@@ -4,6 +4,7 @@ from __future__ import annotations
 import glob
 import json
 import logging
+import re
 from pathlib import Path
 
 import fiona
@@ -15,7 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class PerPrefArchiveAdapter(BaseAdapter):
-    """Handles datasets with {pref_code} in ZIP filename."""
+    """Handles datasets with {pref_code} in ZIP filename.
+
+    For datasets with {year} in output_geojson (e.g. land-price), each
+    matched archive is treated as a separate year and written to its own
+    output file. All features are also aggregated into a single
+    ConvertResult so the caller gets a combined count.
+    """
 
     def convert(
         self,
@@ -28,7 +35,6 @@ class PerPrefArchiveAdapter(BaseAdapter):
         if pattern is None:
             return None
 
-        # Resolve pattern with pref_code
         resolved = pattern.replace("{pref_code}", pref_code)
         matches = sorted(glob.glob(str(raw_dir.parent.parent / resolved)))
 
@@ -36,55 +42,92 @@ class PerPrefArchiveAdapter(BaseAdapter):
             logger.warning(f"No raw files for {entry.id} pref={pref_code}: {resolved}")
             return None
 
-        raw_path = Path(matches[-1])  # Use latest if multiple
-
-        # Determine output path
         if entry.output_geojson is None:
             return None
-        out_path = output_dir / entry.output_geojson.replace("{pref_code}", pref_code).replace("data/geojson/", "")
-        out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        features = []
-        try:
-            with fiona.open(f"zip://{raw_path}") as src:
-                for feat in src:
-                    geom = shape(feat["geometry"])
-                    if geom.is_empty or not geom.is_valid:
-                        continue
-                    props = dict(feat["properties"])
-                    # Apply column renames
-                    for old_key, new_key in entry.column_renames.items():
-                        if old_key in props:
-                            props[new_key] = props.pop(old_key)
-                    props["pref_code"] = pref_code
-                    features.append({
-                        "type": "Feature",
-                        "geometry": mapping(geom),
-                        "properties": props,
-                    })
-        except Exception:
-            logger.exception(f"Failed to read {raw_path} for {entry.id}")
+        has_year_placeholder = "{year}" in entry.output_geojson
+        all_features: list[dict] = []
+        last_out_path: Path | None = None
+
+        for raw_match in matches:
+            raw_path = Path(raw_match)
+            year = _extract_year_from_filename(raw_path.name) if has_year_placeholder else None
+
+            out_rel = entry.output_geojson.replace("{pref_code}", pref_code)
+            if year and has_year_placeholder:
+                out_rel = out_rel.replace("{year}", year)
+            out_rel = out_rel.replace("data/geojson/", "")
+            out_path = output_dir / out_rel
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+
+            features = _read_features(raw_path, entry, pref_code)
+            if not features:
+                continue
+
+            geojson = {"type": "FeatureCollection", "features": features}
+            out_path.write_text(json.dumps(geojson, ensure_ascii=False), encoding="utf-8")
+            logger.info(
+                f"Converted {entry.id} pref={pref_code}"
+                + (f" year={year}" if year else "")
+                + f": {len(features)} features -> {out_path}"
+            )
+            all_features.extend(features)
+            last_out_path = out_path
+
+            # For non-year datasets, only process the latest archive
+            if not has_year_placeholder:
+                break
+
+        if not all_features or last_out_path is None:
             return None
 
-        if not features:
-            logger.warning(f"No features extracted for {entry.id} pref={pref_code}")
-            return None
-
-        geojson = {
-            "type": "FeatureCollection",
-            "features": features,
-        }
-        out_path.write_text(json.dumps(geojson, ensure_ascii=False), encoding="utf-8")
-        logger.info(f"Converted {entry.id} pref={pref_code}: {len(features)} features -> {out_path}")
-
-        bbox = _compute_bbox(features)
         return ConvertResult(
             dataset_id=entry.id,
             pref_code=pref_code,
-            output_path=out_path,
-            feature_count=len(features),
-            bbox=bbox,
+            output_path=last_out_path,
+            feature_count=len(all_features),
+            bbox=_compute_bbox(all_features),
         )
+
+
+def _read_features(raw_path: Path, entry: DatasetEntry, pref_code: str) -> list[dict]:
+    """Read features from a single archive."""
+    features = []
+    try:
+        with fiona.open(f"zip://{raw_path}") as src:
+            for feat in src:
+                geom = shape(feat["geometry"])
+                if geom.is_empty or not geom.is_valid:
+                    continue
+                props = dict(feat["properties"])
+                for old_key, new_key in entry.column_renames.items():
+                    if old_key in props:
+                        props[new_key] = props.pop(old_key)
+                props["pref_code"] = pref_code
+                features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props,
+                })
+    except Exception:
+        logger.exception(f"Failed to read {raw_path} for {entry.id}")
+    return features
+
+
+def _extract_year_from_filename(filename: str) -> str | None:
+    """Extract a 4-digit year from a filename like L01-25_13_GML.zip."""
+    # Try common KSJ patterns: L01-25 means 令和7年=2025, but also check 4-digit
+    m = re.search(r"(\d{4})", filename)
+    if m:
+        return m.group(1)
+    # KSJ 2-digit year: L01-{YY} where YY is Japanese fiscal year offset
+    m = re.search(r"-(\d{2})[_.]", filename)
+    if m:
+        yy = int(m.group(1))
+        # Heuristic: values < 50 are Reiwa era (2019+), else Heisei
+        year = 2000 + yy if yy < 50 else 1988 + yy
+        return str(year)
+    return None
 
 
 def _compute_bbox(features: list[dict]) -> tuple[float, float, float, float] | None:
@@ -97,4 +140,4 @@ def _compute_bbox(features: list[dict]) -> tuple[float, float, float, float] | N
     if not geoms:
         return None
     union = unary_union(geoms)
-    return union.bounds  # (minx, miny, maxx, maxy)
+    return union.bounds

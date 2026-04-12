@@ -191,8 +191,8 @@
       "ksj_code": "A00",
       "name": "人口集中地区",
       "scope": "per_prefecture",
-      "source_type": "national_single_zip",
-      "adapter": "NationalArchiveAdapter",
+      "source_type": "manual_static",
+      "adapter": "ManualStaticAdapter",
       "output_fgb": "data/fgb/{pref_code}/did.fgb",
       "static_layer": true,
       "priority": "P1"
@@ -214,7 +214,9 @@
       "name": "洪水浸水想定",
       "scope": "per_prefecture",
       "source_type": "nested_per_pref_archive",
-      "adapter": "NestedPerPrefArchiveAdapter",
+      "adapter": "PerPrefArchiveAdapter",
+      "raw_pattern": "data/raw/A31b-*_{pref_code}*.zip",
+      "output_geojson": "data/geojson/{pref_code}/flood.geojson",
       "db_table": "flood_risk",
       "static_layer": false,
       "priority": "P2"
@@ -225,7 +227,9 @@
       "name": "急傾斜地",
       "scope": "per_prefecture",
       "source_type": "irregular_pref_archive",
-      "adapter": "IrregularPrefArchiveAdapter",
+      "adapter": "PerPrefArchiveAdapter",
+      "raw_pattern": "data/raw/A47-*_{pref_code}*.zip",
+      "output_geojson": "data/geojson/{pref_code}/steep-slope.geojson",
       "db_table": "steep_slope",
       "static_layer": false,
       "priority": "P2"

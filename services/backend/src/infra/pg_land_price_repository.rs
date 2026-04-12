@@ -43,7 +43,7 @@ impl From<LandPriceFeatureRow> for GeoFeature {
                 "price_per_sqm": row.price_per_sqm,
                 "address": row.address,
                 "land_use": row.land_use,
-                "survey_year": row.survey_year,
+                "year": row.survey_year,
             }),
         )
     }
