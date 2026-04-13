@@ -1,0 +1,10 @@
+[package]
+name = "terrasight-domain"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+description = "Shared domain types, constants, and scoring logic for Terrasight (Backend + WASM)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"

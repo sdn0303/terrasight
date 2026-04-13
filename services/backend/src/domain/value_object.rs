@@ -4,7 +4,7 @@ use crate::domain::constants::{
 };
 use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
-use crate::domain::scoring::tls::WeightPreset;
+use terrasight_domain::scoring::tls::WeightPreset;
 
 /// Bounding box with enforced invariants:
 /// - `south < north`, `west < east`
@@ -266,7 +266,7 @@ impl RiskLevel {
 
     /// Derive a `RiskLevel` from a raw S1 disaster sub-score (higher = safer).
     pub fn from_disaster_score(score: f64) -> Self {
-        use crate::domain::scoring::constants::{
+        use terrasight_domain::scoring::constants::{
             DISASTER_SCORE_LOW_THRESHOLD, DISASTER_SCORE_MID_THRESHOLD,
         };
         if score >= DISASTER_SCORE_LOW_THRESHOLD {
@@ -306,7 +306,7 @@ impl OpportunitySignal {
     /// High-risk locations are never classified as hotter than `Neutral`,
     /// regardless of TLS score.
     pub fn derive(tls: TlsScore, risk: RiskLevel) -> Self {
-        use crate::domain::scoring::constants::{
+        use terrasight_domain::scoring::constants::{
             SIGNAL_HOT_MIN_TLS, SIGNAL_NEUTRAL_MIN_TLS, SIGNAL_WARM_MIN_TLS,
         };
         let score = tls.value();

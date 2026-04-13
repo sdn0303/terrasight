@@ -3,8 +3,8 @@
 use serde::Serialize;
 
 use crate::domain::constants::SCORE_DISCLAIMER;
-use crate::domain::scoring::tls::CrossAnalysis;
 use crate::usecase::compute_tls::{AxesOutput, AxisOutput, SubScoreOutput, TlsOutput};
+use terrasight_domain::scoring::tls::CrossAnalysis;
 
 /// Response for `GET /api/score` (TLS system).
 #[derive(Debug, Serialize)]

@@ -5,29 +5,9 @@
 
 use geo::{Area, BooleanOps, Coord, Polygon, Rect};
 use serde::Serialize;
+pub(crate) use terrasight_domain::types::{LandPriceStats, RiskStats};
 
 use crate::spatial_index::LayerStatsData;
-
-/// Computed land price statistics for a queried area.
-///
-/// All aggregation fields are `None` when no valid price data exists in the
-/// queried area, matching the backend `/api/stats` nullable contract.
-#[derive(Debug, Serialize)]
-pub(crate) struct LandPriceStats {
-    pub(crate) avg_per_sqm: Option<f64>,
-    pub(crate) median_per_sqm: Option<f64>,
-    pub(crate) min_per_sqm: Option<i64>,
-    pub(crate) max_per_sqm: Option<i64>,
-    pub(crate) count: i64,
-}
-
-/// Computed risk statistics for a queried area.
-#[derive(Debug, Serialize)]
-pub(crate) struct RiskStats {
-    pub(crate) flood_area_ratio: f64,
-    pub(crate) steep_slope_area_ratio: f64,
-    pub(crate) composite_risk: f64,
-}
 
 /// Facility counts for a queried area.
 #[derive(Debug, Serialize)]

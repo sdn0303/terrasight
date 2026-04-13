@@ -211,23 +211,7 @@ pub struct TrendLocation {
     pub distance_m: f64,
 }
 
-/// Aggregated land price statistics within a bounding box.
-#[derive(Debug, Clone)]
-pub struct LandPriceStats {
-    pub avg_per_sqm: Option<f64>,
-    pub median_per_sqm: Option<f64>,
-    pub min_per_sqm: Option<i64>,
-    pub max_per_sqm: Option<i64>,
-    pub count: i64,
-}
-
-/// Risk statistics within a bounding box.
-#[derive(Debug, Clone)]
-pub struct RiskStats {
-    pub flood_area_ratio: f64,
-    pub steep_slope_area_ratio: f64,
-    pub composite_risk: f64,
-}
+pub use terrasight_domain::types::{LandPriceStats, RiskStats};
 
 /// Facility counts within a bounding box.
 #[derive(Debug, Clone)]

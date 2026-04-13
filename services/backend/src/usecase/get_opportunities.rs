@@ -192,8 +192,8 @@ mod tests {
     use super::*;
     use crate::domain::entity::ZoneCode;
     use crate::domain::repository::mock::{MockLandPriceRepository, MockTlsRepository};
-    use crate::domain::scoring::tls::WeightPreset;
     use crate::domain::value_object::{BBox, OpportunityLimit, OpportunityOffset};
+    use terrasight_domain::scoring::tls::WeightPreset;
 
     fn sample_filters() -> OpportunitiesFilters {
         OpportunitiesFilters {

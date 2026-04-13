@@ -7,22 +7,22 @@ use serde_json::json;
 use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::TlsRepository;
-use crate::domain::scoring::axis::{
+use crate::domain::value_object::Coord;
+use terrasight_domain::scoring::axis::{
     SubAvailability, compute_s1, compute_s2, compute_s3, compute_s4, compute_s5,
 };
-use crate::domain::scoring::constants::{
+use terrasight_domain::scoring::constants::{
     S1_WEIGHT_FLOOD, S1_WEIGHT_LANDSLIDE, S1_WEIGHT_LIQUEFACTION, S1_WEIGHT_SEISMIC,
     S1_WEIGHT_TSUNAMI,
 };
-use crate::domain::scoring::sub_scores::{
+use terrasight_domain::scoring::sub_scores::{
     score_avs30, score_education, score_far, score_flood, score_landslide, score_liquefaction,
     score_medical, score_price_trend, score_relative_value, score_seismic, score_tsunami,
     score_volume,
 };
-use crate::domain::scoring::tls::{
+use terrasight_domain::scoring::tls::{
     CrossAnalysis, Grade, WeightPreset, compute_cross_analysis, compute_tls,
 };
-use crate::domain::value_object::Coord;
 
 pub(crate) struct ComputeTlsUsecase {
     repo: Arc<dyn TlsRepository>,

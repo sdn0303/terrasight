@@ -513,6 +513,7 @@ dependencies = [
  "rstar",
  "serde",
  "serde_json",
+ "terrasight-domain",
  "thiserror 2.0.18",
  "wasm-bindgen",
 ]
@@ -657,6 +658,14 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys",
+]
+
+[[package]]
+name = "terrasight-domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

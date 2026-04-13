@@ -3,7 +3,7 @@
 //! Each function converts a raw data value into a normalised 0–100 score.
 //! Functions for unavailable data sources return [`constants::UNAVAILABLE_DEFAULT`].
 
-use super::constants::*;
+use crate::scoring::constants::*;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S1 Disaster sub-scores
@@ -17,7 +17,7 @@ use super::constants::*;
 ///
 /// The DB column `flood_risk.depth_rank` is constrained to `[0, 5]`
 /// (see migration `20260326000001_schema_redesign.sql`).
-pub(crate) fn score_flood(depth_rank: Option<i32>) -> f64 {
+pub fn score_flood(depth_rank: Option<i32>) -> f64 {
     match depth_rank {
         None => FLOOD_DEFAULT,
         Some(rank) => FLOOD_MAP
@@ -29,7 +29,7 @@ pub(crate) fn score_flood(depth_rank: Option<i32>) -> f64 {
 }
 
 /// Liquefaction score from PL value. `None` = data unavailable = 100.
-pub(crate) fn score_liquefaction(pl_value: Option<f64>) -> f64 {
+pub fn score_liquefaction(pl_value: Option<f64>) -> f64 {
     match pl_value {
         None => UNAVAILABLE_DEFAULT,
         Some(pl) => {
@@ -47,7 +47,7 @@ pub(crate) fn score_liquefaction(pl_value: Option<f64>) -> f64 {
 }
 
 /// Seismic hazard score from 30-year exceedance probability (0.0–1.0).
-pub(crate) fn score_seismic(prob_30yr: f64) -> f64 {
+pub fn score_seismic(prob_30yr: f64) -> f64 {
     for &(upper, score) in SEISMIC_MAP {
         if prob_30yr < upper {
             return score;
@@ -57,7 +57,7 @@ pub(crate) fn score_seismic(prob_30yr: f64) -> f64 {
 }
 
 /// Tsunami inundation score from depth in metres. `None` = data unavailable = 100.
-pub(crate) fn score_tsunami(depth_m: Option<f64>) -> f64 {
+pub fn score_tsunami(depth_m: Option<f64>) -> f64 {
     match depth_m {
         None => UNAVAILABLE_DEFAULT,
         Some(d) => {
@@ -78,7 +78,7 @@ pub(crate) fn score_tsunami(depth_m: Option<f64>) -> f64 {
 /// - `Some(false)` = no hazard → `LANDSLIDE_NONE` (100)
 ///
 /// Future: distinguish 警戒区域 vs 特別警戒区域 when zone_class data is available.
-pub(crate) fn score_landslide(steep_nearby: Option<bool>) -> f64 {
+pub fn score_landslide(steep_nearby: Option<bool>) -> f64 {
     match steep_nearby {
         None => UNAVAILABLE_DEFAULT,
         Some(false) => LANDSLIDE_NONE,
@@ -91,7 +91,7 @@ pub(crate) fn score_landslide(steep_nearby: Option<bool>) -> f64 {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// AVS30 ground quality score. `None` = data unavailable = 100.
-pub(crate) fn score_avs30(avs30: Option<f64>) -> f64 {
+pub fn score_avs30(avs30: Option<f64>) -> f64 {
     match avs30 {
         None => UNAVAILABLE_DEFAULT,
         Some(v) => {
@@ -113,7 +113,7 @@ pub(crate) fn score_avs30(avs30: Option<f64>) -> f64 {
 ///
 /// L_edu = min(100, school_count × 12 + diversity_bonus)
 /// diversity_bonus = (has_primary + has_junior_high) × 15
-pub(crate) fn score_education(school_count: i64, has_primary: bool, has_junior_high: bool) -> f64 {
+pub fn score_education(school_count: i64, has_primary: bool, has_junior_high: bool) -> f64 {
     let diversity_bonus =
         (has_primary as i64 + has_junior_high as i64) as f64 * EDU_DIVERSITY_BONUS;
     (school_count as f64 * EDU_SCORE_PER_SCHOOL + diversity_bonus).min(SCORE_MAX)
@@ -122,7 +122,7 @@ pub(crate) fn score_education(school_count: i64, has_primary: bool, has_junior_h
 /// Medical accessibility score.
 ///
 /// L_med = min(100, hospital×20 + clinic×5 + log10(beds+1)×10)
-pub(crate) fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: i64) -> f64 {
+pub fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: i64) -> f64 {
     let bed_score = ((total_beds as f64 + 1.0).log10()) * MED_BED_LOG_MULTIPLIER;
     (hospital_count as f64 * MED_HOSPITAL_SCORE
         + clinic_count as f64 * MED_CLINIC_SCORE
@@ -137,7 +137,7 @@ pub(crate) fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: 
 /// Land price trend score from CAGR.
 ///
 /// P_price = clamp(50 + cagr × 500, 0, 100)
-pub(crate) fn score_price_trend(cagr: f64) -> f64 {
+pub fn score_price_trend(cagr: f64) -> f64 {
     (PRICE_TREND_OFFSET + cagr * PRICE_TREND_MULTIPLIER).clamp(SCORE_MIN, SCORE_MAX)
 }
 
@@ -145,7 +145,7 @@ pub(crate) fn score_price_trend(cagr: f64) -> f64 {
 ///
 /// P_far = min(100, designated_far / 8)
 /// `designated_far` is in percent (e.g. 800 = 800%).
-pub(crate) fn score_far(designated_far: Option<f64>) -> f64 {
+pub fn score_far(designated_far: Option<f64>) -> f64 {
     match designated_far {
         None => UNAVAILABLE_DEFAULT,
         Some(far) => (far / FAR_DIVISOR).min(SCORE_MAX),
@@ -160,14 +160,14 @@ pub(crate) fn score_far(designated_far: Option<f64>) -> f64 {
 ///
 /// V_rel = clamp(50 - z_score × 20, 0, 100)
 /// Negative z = below median = cheaper = higher score.
-pub(crate) fn score_relative_value(z_score: f64) -> f64 {
+pub fn score_relative_value(z_score: f64) -> f64 {
     (RELATIVE_VALUE_OFFSET - z_score * RELATIVE_VALUE_MULTIPLIER).clamp(SCORE_MIN, SCORE_MAX)
 }
 
 /// Transaction volume score.
 ///
 /// V_vol = min(100, tx_count × 5)
-pub(crate) fn score_volume(tx_count: i64) -> f64 {
+pub fn score_volume(tx_count: i64) -> f64 {
     (tx_count as f64 * VOLUME_MULTIPLIER).min(SCORE_MAX)
 }
 

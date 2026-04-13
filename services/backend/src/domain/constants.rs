@@ -7,13 +7,10 @@
 // Risk scoring — area-based statistics (bbox / polygon query)
 // ---------------------------------------------------------------------------
 
-/// Flood risk weight used in the area-based stats risk calculation.
-///
-/// Area-based queries aggregate over many cells and omit the liquefaction component.
-pub(crate) const STATS_RISK_WEIGHT_FLOOD: f64 = 0.6;
-
-/// Steep-slope risk weight used in the area-based stats risk calculation.
-pub(crate) const STATS_RISK_WEIGHT_STEEP: f64 = 0.4;
+pub(crate) use terrasight_domain::constants::{
+    BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX, PREF_CODE_LEN, PREF_CODE_MAX, PREF_CODE_MIN,
+    STATS_RISK_WEIGHT_FLOOD, STATS_RISK_WEIGHT_STEEP,
+};
 
 // ---------------------------------------------------------------------------
 // Spatial search radii (metres)
@@ -48,40 +45,11 @@ pub(crate) const YEAR_MIN: i32 = 2000;
 pub(crate) const YEAR_MAX: i32 = 2100;
 
 // ---------------------------------------------------------------------------
-// Prefecture code validation
-// ---------------------------------------------------------------------------
-
-/// Length (in ASCII digits) of a valid prefecture code.
-pub(crate) const PREF_CODE_LEN: usize = 2;
-
-/// Minimum valid prefecture code value (Hokkaido = 01).
-pub(crate) const PREF_CODE_MIN: u8 = 1;
-
-/// Maximum valid prefecture code value (Okinawa = 47).
-pub(crate) const PREF_CODE_MAX: u8 = 47;
-
-// ---------------------------------------------------------------------------
 // City code validation
 // ---------------------------------------------------------------------------
 
 /// Length (in ASCII digits) of a valid JIS X 0402 city code.
 pub(crate) const CITY_CODE_LEN: usize = 5;
-
-// ---------------------------------------------------------------------------
-// Coordinate validation bounds
-// ---------------------------------------------------------------------------
-
-/// Maximum absolute latitude value (degrees). Coordinates with |lat| > this
-/// value are rejected as invalid.
-pub(crate) const LAT_MAX: f64 = 90.0;
-
-/// Maximum absolute longitude value (degrees). Coordinates with |lng| > this
-/// value are rejected as invalid.
-pub(crate) const LNG_MAX: f64 = 180.0;
-
-/// Maximum allowed side length of a bounding box (degrees). Requests for
-/// bounding boxes larger than this are rejected to prevent runaway queries.
-pub(crate) const BBOX_MAX_SIDE_DEG: f64 = 0.5;
 
 // ---------------------------------------------------------------------------
 // Decimal precision (number of fractional digits after rounding)

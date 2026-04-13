@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use super::constants::*;
+use crate::scoring::constants::*;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Grade
@@ -74,11 +74,11 @@ pub enum WeightPreset {
 
 /// Axis weights: (disaster, terrain, livability, future, price)
 pub struct AxisWeights {
-    pub(crate) disaster: f64,
-    pub(crate) terrain: f64,
-    pub(crate) livability: f64,
-    pub(crate) future: f64,
-    pub(crate) price: f64,
+    pub disaster: f64,
+    pub terrain: f64,
+    pub livability: f64,
+    pub future: f64,
+    pub price: f64,
 }
 
 impl std::str::FromStr for WeightPreset {
@@ -134,14 +134,7 @@ impl WeightPreset {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Compute TLS from 5 axis scores using the given weight preset.
-pub(crate) fn compute_tls(
-    s1: f64,
-    s2: f64,
-    s3: f64,
-    s4: f64,
-    s5: f64,
-    preset: WeightPreset,
-) -> f64 {
+pub fn compute_tls(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64, preset: WeightPreset) -> f64 {
     let w = preset.weights();
     let tls = w.disaster * s1 + w.terrain * s2 + w.livability * s3 + w.future * s4 + w.price * s5;
     tls.clamp(SCORE_MIN, SCORE_MAX)
@@ -152,22 +145,16 @@ pub(crate) fn compute_tls(
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone)]
-pub(crate) struct CrossAnalysis {
+pub struct CrossAnalysis {
     /// Safe but cheap = market blind spot. `S1 × (100 - V_rel) / 100`
-    pub(crate) value_discovery: f64,
+    pub value_discovery: f64,
     /// High livability × growing area = strong demand. `S3 × S4 / 100`
-    pub(crate) demand_signal: f64,
+    pub demand_signal: f64,
     /// Comprehensive ground safety. `S1 × S2 / 100`
-    pub(crate) ground_safety: f64,
+    pub ground_safety: f64,
 }
 
-pub(crate) fn compute_cross_analysis(
-    s1: f64,
-    s2: f64,
-    s3: f64,
-    s4: f64,
-    v_rel: f64,
-) -> CrossAnalysis {
+pub fn compute_cross_analysis(s1: f64, s2: f64, s3: f64, s4: f64, v_rel: f64) -> CrossAnalysis {
     CrossAnalysis {
         value_discovery: (s1 * (SCORE_MAX - v_rel) / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
         demand_signal: (s3 * s4 / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),

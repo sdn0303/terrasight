@@ -13,10 +13,10 @@ use serde::Deserialize;
 use crate::domain::constants::DEFAULT_OPPORTUNITY_LIMIT;
 use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
-use crate::domain::scoring::tls::WeightPreset;
 use crate::domain::value_object::{
     BBox, OpportunitiesFilters, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel, TlsScore,
 };
+use terrasight_domain::scoring::tls::WeightPreset;
 
 /// Raw query string parameters for `GET /api/v1/opportunities`.
 ///

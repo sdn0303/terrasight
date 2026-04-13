@@ -4,8 +4,8 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::scoring::tls::WeightPreset;
 use crate::domain::value_object::{BBox, Coord, PrefCode};
+use terrasight_domain::scoring::tls::WeightPreset;
 
 /// Bounding box query parameters for `/api/area-data` and `/api/stats`.
 ///
