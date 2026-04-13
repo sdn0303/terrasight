@@ -2090,34 +2090,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "realestate-api"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "axum-test",
- "chrono",
- "dotenvy",
- "envy",
- "futures",
- "http",
- "moka",
- "serde",
- "serde_json",
- "sqlx",
- "terrasight-domain",
- "terrasight-geo",
- "terrasight-mlit",
- "terrasight-server",
- "thiserror 2.0.18",
- "tokio",
- "tower-http",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2846,6 +2818,34 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "terrasight-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "axum-test",
+ "chrono",
+ "dotenvy",
+ "envy",
+ "futures",
+ "http",
+ "moka",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "terrasight-domain",
+ "terrasight-geo",
+ "terrasight-mlit",
+ "terrasight-server",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

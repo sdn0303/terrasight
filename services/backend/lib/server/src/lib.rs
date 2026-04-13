@@ -2,8 +2,8 @@
 //!
 //! Server infrastructure crate: DB pool, HTTP middleware, and telemetry.
 //!
-//! Merges `realestate-api-core`, `realestate-db`, and `realestate-telemetry`
-//! into a single crate with feature flags.
+//! Consolidates DB pool, HTTP middleware, and telemetry into a single
+//! feature-gated crate.
 //!
 //! ## Feature Flags
 //!

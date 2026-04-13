@@ -34,7 +34,7 @@ async fn test_server() -> Option<TestServer> {
         .await
         .expect("failed to connect to test database");
     // No API key in tests — PostgisFallback is selected automatically.
-    let config = realestate_api::config::Config {
+    let config = terrasight_api::config::Config {
         database_url: db_url,
         reinfolib_api_key: None,
         port: 8000,
@@ -44,7 +44,7 @@ async fn test_server() -> Option<TestServer> {
         rate_limit_rpm: 120,
         rate_limit_burst: 20,
     };
-    let router = realestate_api::build_router(pool, &config);
+    let router = terrasight_api::build_router(pool, &config);
     Some(TestServer::new(router))
 }
 

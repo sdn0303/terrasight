@@ -129,7 +129,7 @@ impl Coord {
 /// # Examples
 ///
 /// ```
-/// use realestate_api::domain::value_object::Year;
+/// use terrasight_api::domain::value_object::Year;
 ///
 /// let year = Year::new(2023).unwrap();
 /// assert_eq!(year.value(), 2023);

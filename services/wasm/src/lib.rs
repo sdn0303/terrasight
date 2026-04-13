@@ -1,6 +1,6 @@
-//! # realestate-wasm
+//! # terrasight-wasm
 //!
-//! WebAssembly spatial engine for the real estate investment data visualiser.
+//! WebAssembly spatial engine for the Terrasight data visualisation platform.
 //!
 //! Exposes a [`SpatialEngine`] to JavaScript via `wasm-bindgen`. The engine
 //! ingests FlatGeobuf (`*.fgb`) byte arrays, builds an in-memory R-tree per
@@ -10,7 +10,7 @@
 //! ## Usage (JavaScript/TypeScript)
 //!
 //! ```js
-//! import init, { SpatialEngine } from '/wasm/realestate_wasm.js';
+//! import init, { SpatialEngine } from '/wasm/terrasight_wasm.js';
 //! await init();
 //!
 //! const engine = new SpatialEngine();

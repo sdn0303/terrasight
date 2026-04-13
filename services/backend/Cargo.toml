@@ -49,7 +49,7 @@ wiremock = "0.6"
 axum-test = "19"
 
 [package]
-name = "realestate-api"
+name = "terrasight-api"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"

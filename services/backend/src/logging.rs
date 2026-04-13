@@ -12,7 +12,7 @@ use terrasight_server::log::LogFormat;
 /// - SQLx internal noise at `warn`
 /// - tower-http request tracing at `debug`
 const DEFAULT_FILTER: &str = "\
-    realestate_api=info,\
+    terrasight_api=info,\
     terrasight_server=info,\
     terrasight_geo=debug,\
     terrasight_mlit=info,\
