@@ -1,3 +1,17 @@
+//! Configuration types for the `terrasight-mlit` API clients.
+//!
+//! [`MlitConfig`] is the single configuration struct shared by all API clients
+//! in this crate. Construct it from environment variables using `envy` or
+//! `serde_env`, or build it manually for tests.
+//!
+//! # Environment Variables
+//!
+//! | Variable | Client | Required |
+//! |---|---|---|
+//! | `REINFOLIB_API_KEY` | `reinfolib::ReinfolibClient` (feature `reinfolib`) | Yes |
+//! | `ESTAT_APP_ID` | `estat::EstatClient` (feature `estat`) | Yes |
+//! | `MLIT_REQUEST_TIMEOUT_SECS` | All clients | No (default: 30) |
+
 use serde::Deserialize;
 
 /// Default HTTP request timeout in seconds.

@@ -1,4 +1,8 @@
 //! Shared HTTP retry logic for MLIT API clients.
+//!
+//! This module is `pub(crate)` — it is an implementation detail not exposed
+//! in the public API. All API clients delegate their HTTP calls to
+//! [`request_with_retry`], which handles rate-limit back-off uniformly.
 
 use std::time::Duration;
 
@@ -7,10 +11,33 @@ use crate::error::MlitError;
 const MAX_RETRIES: u32 = 3;
 const RETRY_BACKOFF_BASE: u64 = 2;
 
-/// Execute an HTTP GET with exponential backoff retry on 429/transient failures.
+/// Execute an HTTP GET with exponential backoff retry on rate-limit and
+/// transient transport failures.
 ///
+/// Retries up to [`MAX_RETRIES`] (3) times. Back-off delays are
+/// `RETRY_BACKOFF_BASE ^ attempt` seconds: 1 s → 2 s → 4 s.
+///
+/// | Condition | Behaviour |
+/// |---|---|
+/// | HTTP 429 (rate limited) | Retry with back-off; error after all attempts |
+/// | Non-2xx (other) | Return [`MlitError::Api`] immediately (no retry) |
+/// | Transport error | Retry with back-off; error after all attempts |
+/// | 2xx | Return the [`reqwest::Response`] to the caller |
+///
+/// # Parameters
+///
+/// - `http`: Shared `reqwest` client (caller controls timeout configuration).
+/// - `url`: Full request URL excluding query parameters.
+/// - `params`: Query parameters appended to the URL.
 /// - `auth_header`: Optional `(header_name, header_value)` for API key auth.
-/// - `context`: Label for tracing messages (e.g., "reinfolib", "jshis").
+/// - `context`: Short label used in `tracing` log fields (e.g., `"reinfolib"`).
+///
+/// # Errors
+///
+/// Returns [`MlitError::RateLimited`] when HTTP 429 persists across all retry
+/// attempts. Returns [`MlitError::Api`] for non-retryable non-2xx responses.
+/// Returns [`MlitError::Http`] when all retry attempts fail with a transport
+/// error.
 pub(crate) async fn request_with_retry(
     http: &reqwest::Client,
     url: &str,

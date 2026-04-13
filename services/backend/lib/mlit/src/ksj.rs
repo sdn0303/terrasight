@@ -1,3 +1,24 @@
+//! Client for the 国土数値情報 (KSJ) national land numerical information API.
+//!
+//! KSJ (国土数値情報ダウンロードサービス) is the MLIT portal for downloading
+//! standardised geospatial datasets covering all of Japan. Available datasets
+//! include administrative boundaries, railways, roads, land use, and many
+//! more. Each dataset is identified by a short code (e.g., `N03` for
+//! administrative boundaries, `L01` for land prices).
+//!
+//! This client is a **Phase 3 stub**. [`KsjClient`] constructs the HTTP client,
+//! but no endpoint methods are implemented yet. They will be added when KSJ
+//! dataset downloads are integrated into the data pipeline.
+//!
+//! # Authentication
+//!
+//! No API key is required. All KSJ download endpoints are publicly accessible.
+//!
+//! # Planned Endpoints
+//!
+//! - `get_dataset_list(identifier)` — list available files for a dataset code.
+//! - `download_dataset(url)` — stream a KSJ ZIP archive.
+
 use std::time::Duration;
 
 use crate::config::MlitConfig;

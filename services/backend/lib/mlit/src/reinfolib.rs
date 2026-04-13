@@ -1,3 +1,48 @@
+//! Client for the 不動産情報ライブラリ (Reinfolib) API.
+//!
+//! Reinfolib is the MLIT real estate information platform. It provides:
+//!
+//! - **Transaction price data** — actual sale prices for land, condominiums,
+//!   and detached houses, reported per quarter at zoom-14 tile granularity
+//!   (endpoints `XPT001`, `XIT001`).
+//! - **Official land appraisal points** — 地価公示 and 地価調査 survey data,
+//!   reported annually (endpoint `XPT002`).
+//! - **Urban planning layers** — 用途地域 zoning polygons (`XKT002`), school
+//!   facilities (`XKT006`), medical facilities (`XKT010`), and disaster-hazard
+//!   areas (`XKT016`).
+//!
+//! All tile-based endpoints return GeoJSON `FeatureCollection` responses.
+//! Use [`ReinfolibClient`] to query any of these endpoints.
+//!
+//! # Authentication
+//!
+//! An API key (`Ocp-Apim-Subscription-Key` header) is required. Obtain one
+//! from the [MLIT developer portal](https://www.reinfolib.mlit.go.jp/) and
+//! set `REINFOLIB_API_KEY` in the environment, then pass it via
+//! [`crate::config::MlitConfig`].
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use terrasight_mlit::config::MlitConfig;
+//! use terrasight_mlit::reinfolib::ReinfolibClient;
+//!
+//! # async fn example() -> Result<(), terrasight_mlit::error::MlitError> {
+//! let config = MlitConfig {
+//!     reinfolib_api_key: Some("your-api-key".into()),
+//!     ..MlitConfig::default()
+//! };
+//! let client = ReinfolibClient::new(&config)?;
+//!
+//! // Fetch official land price points around Tokyo Station (2024)
+//! let features = client
+//!     .get_land_prices(139.766, 35.680, 139.768, 35.682, 2024)
+//!     .await?;
+//! println!("{} land price features", features.len());
+//! # Ok(())
+//! # }
+//! ```
+
 use std::time::Duration;
 
 use crate::config::MlitConfig;

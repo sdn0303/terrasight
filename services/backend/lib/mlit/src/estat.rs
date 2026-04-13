@@ -1,3 +1,23 @@
+//! Client for the e-Stat (政府統計の総合窓口) government statistics API.
+//!
+//! e-Stat is Japan's official portal for published government statistics,
+//! operated jointly by all central ministries. It aggregates census data,
+//! economic indicators, population surveys, and other statistical releases.
+//!
+//! This client is a **Phase 3 stub**. [`EstatClient`] constructs the HTTP
+//! client and validates configuration, but no endpoint methods are implemented
+//! yet. They will be added in a future iteration.
+//!
+//! # Authentication
+//!
+//! Requires an application ID obtained from
+//! <https://www.e-stat.go.jp/api/>. Set `ESTAT_APP_ID` in the environment and
+//! pass it via [`crate::config::MlitConfig`].
+//!
+//! # Planned Endpoints
+//!
+//! - `get_stats_data(stats_data_id)` — download a statistical table by ID.
+
 use std::time::Duration;
 
 use crate::config::MlitConfig;
