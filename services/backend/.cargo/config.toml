@@ -1,7 +1,7 @@
 # Cargo workspace configuration for the backend service.
 #
 # Integration tests share a single PostGIS database and a fixed-size
-# connection pool (20 connections). Running tests in parallel causes pool
+# connection pool (5 connections). Running tests in parallel causes pool
 # starvation when the opportunities endpoint holds connections for TLS
 # enrichment of large record sets. Serializing integration tests prevents
 # this without requiring a larger pool or per-test database isolation.

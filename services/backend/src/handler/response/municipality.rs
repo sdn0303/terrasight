@@ -6,7 +6,6 @@ use crate::domain::municipality::Municipality;
 
 /// Single municipality record returned in the response array.
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct MunicipalityResponse {
     pub city_code: String,
     pub city_name: String,

@@ -9,7 +9,9 @@ import { useTransactionSummary } from "@/features/transactions/api/use-transacti
 export function MunicipalityList() {
   const prefCode = usePrefectureStore((s) => s.selectedPrefCode);
   const { data: municipalities, isLoading, isError } = useMunicipalities(prefCode);
-  const { data: transactionSummary } = useTransactionSummary(prefCode);
+  const { data: transactionSummary } = useTransactionSummary(
+    dataMode === "transactions" ? prefCode : null,
+  );
   const selectArea = useMapStore((s) => s.selectArea);
   const setViewState = useMapStore((s) => s.setViewState);
   const viewState = useMapStore((s) => s.viewState);

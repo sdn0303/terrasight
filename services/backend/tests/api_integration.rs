@@ -702,16 +702,16 @@ async fn appraisals_returns_data_for_tokyo() {
         "expected appraisal rows for pref_code=13"
     );
 
-    // AppraisalDetailResponse uses #[serde(rename_all = "camelCase")]
+    // AppraisalDetailResponse serializes as snake_case (Zod schema source of truth)
     let first = &items[0];
-    assert!(first["cityCode"].is_string(), "cityCode must be a string");
+    assert!(first["city_code"].is_string(), "city_code must be a string");
     assert!(
-        first["pricePerSqm"].is_number(),
-        "pricePerSqm must be a number"
+        first["price_per_sqm"].is_number(),
+        "price_per_sqm must be a number"
     );
     assert!(
-        first["appraisalPrice"].is_number(),
-        "appraisalPrice must be a number"
+        first["appraisal_price"].is_number(),
+        "appraisal_price must be a number"
     );
 }
 
@@ -737,20 +737,20 @@ async fn municipalities_returns_list_for_tokyo() {
         "expected municipalities for pref_code=13 (Tokyo has 62)"
     );
 
-    // MunicipalityResponse uses #[serde(rename_all = "camelCase")]
+    // MunicipalityResponse serializes as snake_case (Zod schema source of truth)
     let first = &items[0];
-    assert!(first["cityCode"].is_string(), "cityCode must be a string");
-    assert!(first["cityName"].is_string(), "cityName must be a string");
-    assert!(first["prefCode"].is_string(), "prefCode must be a string");
+    assert!(first["city_code"].is_string(), "city_code must be a string");
+    assert!(first["city_name"].is_string(), "city_name must be a string");
+    assert!(first["pref_code"].is_string(), "pref_code must be a string");
 
     // Every city_code must start with "13" (Tokyo prefecture)
     for item in items {
-        let city_code = item["cityCode"]
+        let city_code = item["city_code"]
             .as_str()
-            .expect("cityCode must be a string");
+            .expect("city_code must be a string");
         assert!(
             city_code.starts_with("13"),
-            "cityCode {city_code} should start with '13' for Tokyo"
+            "city_code {city_code} should start with '13' for Tokyo"
         );
     }
 }

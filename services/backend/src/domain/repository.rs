@@ -167,8 +167,8 @@ pub trait TransactionRepository: Send + Sync {
 
     /// Fetch individual transaction records for a given city code.
     ///
-    /// `city_code` is a raw 5-digit JIS X 0402 string; replace with `&CityCode`
-    /// once that value object is introduced.
+    /// `city_code` is a raw 5-digit JIS X 0402 string. CityCode は導入済みだが、
+    /// handler 層でバリデーション済みのため trait は &str を維持。
     async fn find_transactions(
         &self,
         city_code: &str,
@@ -183,8 +183,8 @@ pub trait TransactionRepository: Send + Sync {
 pub trait AppraisalRepository: Send + Sync {
     /// Fetch appraisal records for a prefecture, optionally filtered by city code.
     ///
-    /// `city_code` is a raw 5-digit JIS X 0402 string; replace with `&CityCode`
-    /// once that value object is introduced.
+    /// `city_code` is a raw 5-digit JIS X 0402 string. CityCode は導入済みだが、
+    /// handler 層でバリデーション済みのため trait は &str を維持。
     async fn find_appraisals(
         &self,
         pref_code: &PrefCode,

@@ -9,10 +9,15 @@ const log = logger.child({ module: "spatial-engine" });
 // Manifest-driven layer loading
 // ---------------------------------------------------------------------------
 
+const DATA_BASE = process.env.NEXT_PUBLIC_DATA_URL ?? "/data/fgb";
+
 async function loadLayerManifest(
   prefCode: string,
 ): Promise<Array<{ id: string; url: string }>> {
-  const res = await fetch("/data/fgb/manifest.json");
+  const res = await fetch(`${DATA_BASE}/manifest.json`);
+  if (!res.ok) {
+    throw new Error(`Manifest fetch failed: ${res.status}`);
+  }
   const raw: unknown = await res.json();
   const manifest = ManifestSchema.parse(raw);
 
@@ -21,13 +26,13 @@ async function loadLayerManifest(
   // Prefecture-specific layers
   const prefLayers = manifest.prefectures[prefCode]?.layers ?? [];
   for (const layer of prefLayers) {
-    layers.push({ id: layer.id, url: `/data/fgb/${layer.path}` });
+    layers.push({ id: layer.id, url: `${DATA_BASE}/${layer.path}` });
   }
 
   // National layers (always loaded)
   const nationalLayers = manifest.prefectures["national"]?.layers ?? [];
   for (const layer of nationalLayers) {
-    layers.push({ id: layer.id, url: `/data/fgb/${layer.path}` });
+    layers.push({ id: layer.id, url: `${DATA_BASE}/${layer.path}` });
   }
 
   return layers;
@@ -208,55 +213,55 @@ export class SpatialEngineAdapter {
 
     performance.mark("wasm-init-start");
 
-    const layers = await loadLayerManifest(prefCode);
-    this._expectedLayers = layers.map((l) => l.id);
+    try {
+      const layers = await loadLayerManifest(prefCode);
+      this._expectedLayers = layers.map((l) => l.id);
 
-    this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
-      type: "module",
-    });
+      this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
+        type: "module",
+      });
 
-    this.worker.onmessage = (event: MessageEvent<unknown>) => {
-      const msg = event.data as WorkerMessage;
-      this.handleMessage(msg);
-    };
-
-    this.worker.onerror = (event: ErrorEvent) => {
-      console.warn("[SpatialEngineAdapter] Worker error:", event.message);
-    };
-
-    const initPromise = new Promise<void>((resolve, reject) => {
-      // Temporary handler to capture the first "init-done" or "error"
-      const originalHandler = this.worker?.onmessage;
-      if (!this.worker) {
-        reject(new Error("Worker unexpectedly null"));
-        return;
-      }
       this.worker.onmessage = (event: MessageEvent<unknown>) => {
         const msg = event.data as WorkerMessage;
-        if (msg.type === "init-done") {
-          // Restore normal handler then resolve
-          if (this.worker) this.worker.onmessage = originalHandler ?? null;
-          this.handleMessage(msg);
-          resolve();
-        } else if (msg.type === "error") {
-          reject(new Error(msg.message));
-        } else {
-          // Route any race-condition query results through normal handler
-          this.handleMessage(msg);
-        }
+        this.handleMessage(msg);
       };
-    });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("SpatialEngine init timed out after 30s")),
-        30_000,
-      ),
-    );
+      this.worker.onerror = (event: ErrorEvent) => {
+        console.warn("[SpatialEngineAdapter] Worker error:", event.message);
+      };
 
-    this.worker.postMessage({ type: "init", layers });
+      const initPromise = new Promise<void>((resolve, reject) => {
+        // Temporary handler to capture the first "init-done" or "error"
+        const originalHandler = this.worker?.onmessage;
+        if (!this.worker) {
+          reject(new Error("Worker unexpectedly null"));
+          return;
+        }
+        this.worker.onmessage = (event: MessageEvent<unknown>) => {
+          const msg = event.data as WorkerMessage;
+          if (msg.type === "init-done") {
+            // Restore normal handler then resolve
+            if (this.worker) this.worker.onmessage = originalHandler ?? null;
+            this.handleMessage(msg);
+            resolve();
+          } else if (msg.type === "error") {
+            reject(new Error(msg.message));
+          } else {
+            // Route any race-condition query results through normal handler
+            this.handleMessage(msg);
+          }
+        };
+      });
 
-    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("SpatialEngine init timed out after 30s")),
+          30_000,
+        ),
+      );
+
+      this.worker.postMessage({ type: "init", layers });
+
       await Promise.race([initPromise, timeoutPromise]);
     } catch (err) {
       performance.mark("wasm-init-failed");
@@ -269,9 +274,12 @@ export class SpatialEngineAdapter {
         "[SpatialEngineAdapter] Falling back to FlatGeobuf mode:",
         err instanceof Error ? err.message : err,
       );
-      this.worker.terminate();
-      this.worker = null;
+      if (this.worker) {
+        this.worker.terminate();
+        this.worker = null;
+      }
       // _loadedLayers stays empty — callers fall back to full FGB load
+      this.notifyListeners(false);
     }
   }
 
@@ -286,6 +294,7 @@ export class SpatialEngineAdapter {
     }
     this._loadedLayers.clear();
     this._expectedLayers = [];
+    this.notifyListeners(false);
 
     await this.init(prefCode);
   }

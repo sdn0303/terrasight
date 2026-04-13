@@ -10,6 +10,7 @@ const ManifestLayerSchema = z.object({
 export const ManifestSchema = z.object({
   version: z.string(),
   prefectures: z.record(
+    z.string(),
     z.object({ layers: z.array(ManifestLayerSchema) }),
   ),
 });

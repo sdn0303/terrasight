@@ -15,6 +15,8 @@ export function PrefDropdown() {
   return (
     <button
       type="button"
+      disabled
+      aria-disabled="true"
       className="flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-[11px] font-semibold"
       style={{
         background: "var(--neutral-50)",

@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::PrefCode;
+use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Query parameters for `GET /api/v1/appraisals`.
 ///
@@ -19,9 +19,20 @@ impl AppraisalsQuery {
     /// Convert to domain value objects.
     ///
     /// `pref_code` is validated via [`PrefCode::new`].
-    /// `city_code` is passed through as-is (raw 5-digit JIS X 0402 string).
+    /// `city_code`, when present, is validated via [`CityCode::new`] and its
+    /// prefecture prefix is checked against `pref_code`.
     pub fn into_domain(self) -> Result<(PrefCode, Option<String>), DomainError> {
         let pref = PrefCode::new(&self.pref_code)?;
+        if let Some(ref code) = self.city_code {
+            let city = CityCode::new(code)?;
+            if city.pref_code() != pref.as_str() {
+                return Err(DomainError::InvalidCityCode(format!(
+                    "city_code {} does not belong to pref_code {}",
+                    code,
+                    pref.as_str(),
+                )));
+            }
+        }
         Ok((pref, self.city_code))
     }
 }
@@ -57,6 +68,24 @@ mod tests {
         let q = AppraisalsQuery {
             pref_code: "invalid".into(),
             city_code: None,
+        };
+        assert!(q.into_domain().is_err());
+    }
+
+    #[test]
+    fn into_domain_invalid_city_code_returns_err() {
+        let q = AppraisalsQuery {
+            pref_code: "13".into(),
+            city_code: Some("bad".into()),
+        };
+        assert!(q.into_domain().is_err());
+    }
+
+    #[test]
+    fn into_domain_city_code_pref_mismatch_returns_err() {
+        let q = AppraisalsQuery {
+            pref_code: "13".into(),
+            city_code: Some("27102".into()),
         };
         assert!(q.into_domain().is_err());
     }

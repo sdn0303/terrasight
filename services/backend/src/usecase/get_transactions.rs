@@ -17,7 +17,8 @@ impl GetTransactionsUsecase {
 
     /// Fetch individual transaction records for the given city code.
     ///
-    /// `limit` is clamped to `[1, DEFAULT_TRANSACTION_LIMIT]` when `None`.
+    /// `limit` is clamped to `[1, MAX_TRANSACTION_LIMIT]`; `0` or `None`
+    /// falls back to `DEFAULT_TRANSACTION_LIMIT`.
     #[tracing::instrument(skip(self), fields(usecase = "get_transactions"))]
     pub async fn execute(
         &self,
@@ -26,8 +27,8 @@ impl GetTransactionsUsecase {
         limit: Option<u32>,
     ) -> Result<Vec<TransactionDetail>, DomainError> {
         let limit = limit
-            .unwrap_or(DEFAULT_TRANSACTION_LIMIT)
-            .min(MAX_TRANSACTION_LIMIT);
+            .map(|l| l.clamp(1, MAX_TRANSACTION_LIMIT))
+            .unwrap_or(DEFAULT_TRANSACTION_LIMIT);
         self.repo
             .find_transactions(city_code, year_from, limit)
             .await

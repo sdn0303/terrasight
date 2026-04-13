@@ -5,7 +5,10 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { deserialize } from "flatgeobuf/lib/mjs/geojson";
 import { layerUrl } from "@/lib/data-url";
+import { canonicalLayerId } from "@/lib/layer-ids";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
+
+const NATIONAL_LAYERS = new Set(["fault", "volcano", "seismic"]);
 import { useSpatialEngineReady } from "@/hooks/use-spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { usePrefectureStore } from "@/stores/prefecture-store";
@@ -50,10 +53,14 @@ export function useStaticLayer(layerId: string, enabled: boolean) {
   });
 
   // Fallback path: full FlatGeobuf load (no bbox filtering).
+  const canonicalId = canonicalLayerId(layerId);
+  const prefCodeForFallback = NATIONAL_LAYERS.has(canonicalId)
+    ? "national"
+    : selectedPrefCode;
   const fallbackResult = useQuery<FeatureCollection>({
-    queryKey: ["static-layer-fallback", selectedPrefCode, layerId],
+    queryKey: ["static-layer-fallback", prefCodeForFallback, layerId],
     queryFn: async ({ signal }) => {
-      const url = layerUrl(selectedPrefCode, layerId);
+      const url = layerUrl(prefCodeForFallback, layerId);
       const response = await fetch(url, { signal });
       if (!response.ok) {
         throw new Error(`Failed to fetch ${url}: ${response.status}`);
