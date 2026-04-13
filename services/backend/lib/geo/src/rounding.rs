@@ -3,7 +3,7 @@
 /// # Examples
 ///
 /// ```
-/// use realestate_geo_math::rounding::round_dp;
+/// use terrasight_geo::rounding::round_dp;
 ///
 /// assert_eq!(round_dp(3.14159, 2), 3.14);
 /// assert_eq!(round_dp(25.55, 1), 25.6);

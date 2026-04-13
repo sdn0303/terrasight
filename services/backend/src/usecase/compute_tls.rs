@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use mlit_client::jshis::JshisClient;
-use realestate_geo_math::finance::compute_cagr;
 use serde_json::json;
+use terrasight_geo::finance::compute_cagr;
+use terrasight_mlit::jshis::JshisClient;
 
 use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;

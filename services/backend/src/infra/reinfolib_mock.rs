@@ -134,12 +134,12 @@ impl ReinfolibDataSource for PostgisFallback {
 /// Replace the `Err(...)` stubs with real conversion code after validating
 /// against live API responses.
 ///
-/// Once the `mlit-client` crate is wired in, add the dependency to `Cargo.toml`
+/// Once the `terrasight-mlit` crate is wired in, add the dependency to `Cargo.toml`
 /// and hold the client here:
 ///
 /// ```toml
 /// # In [dependencies]:
-/// mlit-client = { path = "lib/mlit-client", features = ["reinfolib"] }
+/// terrasight-mlit = { path = "lib/mlit", features = ["reinfolib"] }
 /// ```
 pub(crate) struct LiveReinfolib;
 
@@ -165,7 +165,7 @@ impl ReinfolibDataSource for LiveReinfolib {
         //   raw.into_iter().map(raw_value_to_geo_feature).collect()
         Err(DomainError::Database(
             "LiveReinfolib::get_land_prices is not yet implemented — \
-             add mlit-client dependency and implement response conversion"
+             add terrasight-mlit dependency and implement response conversion"
                 .into(),
         ))
     }

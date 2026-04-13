@@ -14,8 +14,8 @@ use terrasight_server::log::LogFormat;
 const DEFAULT_FILTER: &str = "\
     realestate_api=info,\
     terrasight_server=info,\
-    realestate_geo_math=debug,\
-    mlit_client=info,\
+    terrasight_geo=debug,\
+    terrasight_mlit=info,\
     sqlx=warn,\
     tower_http=debug,\
     hyper=warn\

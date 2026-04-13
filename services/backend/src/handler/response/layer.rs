@@ -1,8 +1,8 @@
 //! GeoJSON layer response DTOs shared between the area-data and
 //! land-price endpoints.
 
-use realestate_geo_math::spatial::point_to_polygon;
 use serde::Serialize;
+use terrasight_geo::spatial::point_to_polygon;
 
 use crate::domain::entity::LayerResult;
 use crate::domain::value_object::LayerType;

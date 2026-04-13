@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use realestate_geo_math::{finance::compute_cagr, rounding::round_dp};
+use terrasight_geo::{finance::compute_cagr, rounding::round_dp};
 
 use crate::domain::constants::PRECISION_RATIO;
 use crate::domain::error::DomainError;

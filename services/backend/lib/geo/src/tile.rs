@@ -13,7 +13,7 @@
 /// # Example
 ///
 /// ```
-/// use mlit_client::tile::TileCoord;
+/// use terrasight_geo::tile::TileCoord;
 /// let tile = TileCoord { z: 14, x: 14552, y: 6451 };
 /// assert_eq!(tile.z, 14);
 /// ```
@@ -35,7 +35,7 @@ const WGS84_LNG_OFFSET: f64 = 180.0;
 /// # Example
 ///
 /// ```
-/// use mlit_client::tile::lng_to_tile_x;
+/// use terrasight_geo::tile::lng_to_tile_x;
 /// // Tokyo Station longitude
 /// let x = lng_to_tile_x(139.7671, 14);
 /// assert_eq!(x, 14552);
@@ -52,7 +52,7 @@ pub fn lng_to_tile_x(lng: f64, z: u8) -> u32 {
 /// # Example
 ///
 /// ```
-/// use mlit_client::tile::lat_to_tile_y;
+/// use terrasight_geo::tile::lat_to_tile_y;
 /// // Tokyo Station latitude
 /// let y = lat_to_tile_y(35.6812, 14);
 /// assert_eq!(y, 6451);
@@ -72,7 +72,7 @@ pub fn lat_to_tile_y(lat: f64, z: u8) -> u32 {
 /// # Example
 ///
 /// ```
-/// use mlit_client::tile::bbox_to_tiles;
+/// use terrasight_geo::tile::bbox_to_tiles;
 ///
 /// // Small area around Tokyo Station — fits in a single tile at z=14
 /// let tiles = bbox_to_tiles(139.766, 35.680, 139.768, 35.682, 14);

@@ -1578,19 +1578,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mlit-client"
-version = "0.1.0"
-dependencies = [
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "wiremock",
-]
-
-[[package]]
 name = "moka"
 version = "0.12.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2115,15 +2102,14 @@ dependencies = [
  "envy",
  "futures",
  "http",
- "mlit-client",
  "moka",
- "realestate-api-core",
- "realestate-db",
- "realestate-geo-math",
- "realestate-telemetry",
  "serde",
  "serde_json",
  "sqlx",
+ "terrasight-domain",
+ "terrasight-geo",
+ "terrasight-mlit",
+ "terrasight-server",
  "thiserror 2.0.18",
  "tokio",
  "tower-http",
@@ -2157,10 +2143,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
 ]
-
-[[package]]
-name = "realestate-geo-math"
-version = "0.1.0"
 
 [[package]]
 name = "realestate-telemetry"
@@ -2906,6 +2888,55 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "terrasight-domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "terrasight-geo"
+version = "0.1.0"
+
+[[package]]
+name = "terrasight-mlit"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "terrasight-geo",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "wiremock",
+]
+
+[[package]]
+name = "terrasight-server"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "governor",
+ "http",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tower_governor",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

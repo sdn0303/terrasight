@@ -76,7 +76,8 @@ impl ReinfolibClient {
         north: f64,
         extra_params: &[(&str, &str)],
     ) -> Result<Vec<serde_json::Value>, MlitError> {
-        let tiles = crate::tile::bbox_to_tiles(west, south, east, north, Self::DEFAULT_ZOOM);
+        let tiles =
+            terrasight_geo::tile::bbox_to_tiles(west, south, east, north, Self::DEFAULT_ZOOM);
         tracing::debug!(
             endpoint = endpoint,
             tile_count = tiles.len(),

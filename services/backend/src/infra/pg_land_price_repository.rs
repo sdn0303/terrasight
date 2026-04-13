@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use realestate_geo_math::spatial::{bbox_area_deg2, compute_feature_limit};
 use serde_json::json;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
+use terrasight_geo::spatial::{bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
 use tokio::time::timeout;
 

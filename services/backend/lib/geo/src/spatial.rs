@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```
-/// use realestate_geo_math::spatial::bbox_area_deg2;
+/// use terrasight_geo::spatial::bbox_area_deg2;
 ///
 /// let area = bbox_area_deg2(35.65, 139.70, 35.70, 139.80);
 /// assert!((area - 0.005).abs() < 1e-9);
@@ -62,7 +62,7 @@ fn layer_density(layer: &str) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use realestate_geo_math::spatial::compute_feature_limit;
+/// use terrasight_geo::spatial::compute_feature_limit;
 ///
 /// assert_eq!(compute_feature_limit("flood", 0.02, 12), 3_000);
 /// assert_eq!(compute_feature_limit("flood", 1.0, 12), 10_000);
@@ -88,7 +88,7 @@ pub fn compute_feature_limit(layer: &str, bbox_area_deg2: f64, zoom: u32) -> i64
 /// # Examples
 ///
 /// ```
-/// use realestate_geo_math::spatial::{point_to_polygon, BUFFER_DEG};
+/// use terrasight_geo::spatial::{point_to_polygon, BUFFER_DEG};
 ///
 /// let ring = point_to_polygon(139.7, 35.68);
 /// assert_eq!(ring[0], ring[4]);

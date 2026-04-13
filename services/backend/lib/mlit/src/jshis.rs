@@ -8,7 +8,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use mlit_client::jshis::JshisClient;
+//! use terrasight_mlit::jshis::JshisClient;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -176,7 +176,7 @@ impl JshisClient {
     /// # Example
     ///
     /// ```
-    /// use mlit_client::jshis::JshisClient;
+    /// use terrasight_mlit::jshis::JshisClient;
     ///
     /// let client = JshisClient::new(30).expect("client should build");
     /// ```

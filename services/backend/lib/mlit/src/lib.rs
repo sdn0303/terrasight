@@ -1,4 +1,4 @@
-//! # mlit-client
+//! # terrasight-mlit
 //!
 //! HTTP client for Japanese government real estate and geospatial APIs.
 //!
@@ -11,7 +11,6 @@
 
 pub mod config;
 pub mod error;
-pub mod tile;
 pub mod types;
 
 mod retry;

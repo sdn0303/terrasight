@@ -498,10 +498,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "realestate-geo-math"
-version = "0.1.0"
-
-[[package]]
 name = "realestate-wasm"
 version = "0.1.0"
 dependencies = [
@@ -509,11 +505,11 @@ dependencies = [
  "geo",
  "geozero",
  "js-sys",
- "realestate-geo-math",
  "rstar",
  "serde",
  "serde_json",
  "terrasight-domain",
+ "terrasight-geo",
  "thiserror 2.0.18",
  "wasm-bindgen",
 ]
@@ -667,6 +663,10 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
 ]
+
+[[package]]
+name = "terrasight-geo"
+version = "0.1.0"
 
 [[package]]
 name = "thiserror"

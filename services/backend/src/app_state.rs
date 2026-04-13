@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use axum::extract::FromRef;
-use mlit_client::jshis::JshisClient;
 use sqlx::PgPool;
+use terrasight_mlit::jshis::JshisClient;
 
 use crate::config::Config;
 use crate::domain::constants::JSHIS_TIMEOUT_SECS;

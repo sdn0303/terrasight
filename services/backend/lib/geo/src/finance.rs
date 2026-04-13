@@ -7,7 +7,7 @@
 /// # Examples
 ///
 /// ```
-/// use realestate_geo_math::finance::compute_cagr;
+/// use terrasight_geo::finance::compute_cagr;
 ///
 /// let cagr = compute_cagr(100_000.0, 120_000.0, 4);
 /// assert!((cagr - 0.0466).abs() < 0.001);
@@ -30,7 +30,7 @@ pub fn compute_cagr(oldest_price: f64, latest_price: f64, years: u32) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use realestate_geo_math::finance::estimate_yield;
+/// use terrasight_geo::finance::estimate_yield;
 ///
 /// assert_eq!(estimate_yield(1_000_000, 0.8), 0.8);
 /// ```
