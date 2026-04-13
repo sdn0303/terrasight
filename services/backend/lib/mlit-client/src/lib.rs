@@ -14,6 +14,8 @@ pub mod error;
 pub mod tile;
 pub mod types;
 
+mod retry;
+
 #[cfg(feature = "reinfolib")]
 pub mod reinfolib;
 

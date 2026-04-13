@@ -1,35 +1,25 @@
 //! Handler-layer response DTOs, grouped by endpoint.
 //!
 //! Each submodule owns the `#[derive(Serialize)]` types returned by a
-//! specific endpoint. A thin `pub use` surface keeps the existing
-//! `handler::response::{StatsResponse, LayerResponseDto, …}` import
-//! paths working unchanged.
+//! specific endpoint.
 
-pub mod appraisal;
-pub mod area_data;
-pub mod area_stats;
-pub mod health;
-pub mod layer;
-pub mod municipality;
-pub mod opportunities;
-pub mod stats;
-pub mod tls;
-pub mod transaction;
-pub mod trend;
+pub(crate) mod appraisal;
+pub(crate) mod area_data;
+pub(crate) mod area_stats;
+pub(crate) mod health;
+pub(crate) mod layer;
+pub(crate) mod municipality;
+pub(crate) mod opportunities;
+pub(crate) mod stats;
+pub(crate) mod tls;
+pub(crate) mod transaction;
+pub(crate) mod trend;
 
-pub use appraisal::AppraisalDetailResponse;
-pub use area_data::AreaDataResponseDto;
-pub use area_stats::{AreaFacilitiesDto, AreaLandPriceDto, AreaRiskDto, AreaStatsResponse};
-pub use health::HealthResponse;
-pub use layer::{
-    FeatureCollectionDto, FeatureDto, LayerResponseDto, geo_feature_to_dto,
-    point_feature_to_polygon_owned,
-};
-pub use municipality::MunicipalityResponse;
-pub use opportunities::{OpportunitiesResponseDto, OpportunityDto, OpportunityStationDto};
-pub use stats::{FacilityStatsDto, LandPriceStatsDto, RiskStatsDto, StatsResponse};
-pub use tls::{
-    AxesDto, AxisDto, CrossAnalysisDto, LocationDto, SubScoreDto, TlsMetadataDto, TlsResponse,
-    TlsSummaryDto,
-};
-pub use trend::{TrendLocationDto, TrendPointDto, TrendResponse};
+pub(crate) use area_data::AreaDataResponseDto;
+pub(crate) use area_stats::AreaStatsResponse;
+pub(crate) use health::HealthResponse;
+pub(crate) use layer::LayerResponseDto;
+pub(crate) use opportunities::OpportunitiesResponseDto;
+pub(crate) use stats::StatsResponse;
+pub(crate) use tls::TlsResponse;
+pub(crate) use trend::TrendResponse;

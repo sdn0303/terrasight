@@ -5,12 +5,12 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::StatsRepository;
 use crate::domain::value_object::{BBox, PrefCode};
 
-pub struct GetStatsUsecase {
+pub(crate) struct GetStatsUsecase {
     stats_repo: Arc<dyn StatsRepository>,
 }
 
 impl GetStatsUsecase {
-    pub fn new(stats_repo: Arc<dyn StatsRepository>) -> Self {
+    pub(crate) fn new(stats_repo: Arc<dyn StatsRepository>) -> Self {
         Self { stats_repo }
     }
 
@@ -18,7 +18,7 @@ impl GetStatsUsecase {
     ///
     /// All 4 stats queries execute in parallel.
     #[tracing::instrument(skip(self), fields(usecase = "get_stats"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         bbox: &BBox,
         pref_code: Option<&PrefCode>,

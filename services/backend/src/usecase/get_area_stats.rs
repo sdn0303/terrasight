@@ -6,21 +6,21 @@ use crate::domain::repository::AdminAreaStatsRepository;
 use crate::domain::value_object::AreaCode;
 
 /// Usecase: fetch aggregated statistics for an administrative area.
-pub struct GetAreaStatsUsecase {
+pub(crate) struct GetAreaStatsUsecase {
     repo: Arc<dyn AdminAreaStatsRepository>,
 }
 
 impl GetAreaStatsUsecase {
-    pub fn new(repo: Arc<dyn AdminAreaStatsRepository>) -> Self {
+    pub(crate) fn new(repo: Arc<dyn AdminAreaStatsRepository>) -> Self {
         Self { repo }
     }
 
     /// Execute the area-stats query for the given administrative area code.
     #[tracing::instrument(skip(self), fields(usecase = "get_area_stats"))]
-    pub async fn execute(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError> {
+    pub(crate) async fn execute(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError> {
         self.repo.get_area_stats(code).await.inspect(|stats| {
             tracing::debug!(
-                code = %stats.code,
+                code = stats.code.as_str(),
                 land_price_count = stats.land_price.count,
                 "area-stats query complete"
             )
@@ -31,13 +31,13 @@ impl GetAreaStatsUsecase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
+    use crate::domain::entity::{AreaName, FacilityStats, LandPriceStats, RiskStats};
     use crate::domain::repository::mock::MockAdminAreaStatsRepository;
 
     fn sample_stats() -> AdminAreaStats {
         AdminAreaStats {
-            code: "13".into(),
-            name: "Tokyo".into(),
+            code: AreaCode::parse("13").unwrap(),
+            name: AreaName::parse("Tokyo").unwrap(),
             level: "prefecture".into(),
             land_price: LandPriceStats {
                 avg_per_sqm: Some(1000.0),
@@ -67,7 +67,7 @@ mod tests {
 
         let result = usecase.execute(&code).await.unwrap();
 
-        assert_eq!(result.code, "13");
+        assert_eq!(result.code.as_str(), "13");
         assert_eq!(result.land_price.count, 42);
     }
 

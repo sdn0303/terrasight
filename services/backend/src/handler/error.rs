@@ -9,7 +9,7 @@ impl ErrorMapping for DomainError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::InvalidCoordinate(_) => StatusCode::BAD_REQUEST,
-            Self::BBoxTooLarge => StatusCode::BAD_REQUEST,
+            Self::BBoxTooLarge { .. } => StatusCode::BAD_REQUEST,
             Self::InvalidYear(_) => StatusCode::BAD_REQUEST,
             Self::MissingParameter(_) => StatusCode::BAD_REQUEST,
             Self::Validation(_) => StatusCode::BAD_REQUEST,
@@ -24,7 +24,7 @@ impl ErrorMapping for DomainError {
     fn error_code(&self) -> &'static str {
         match self {
             Self::InvalidCoordinate(_) => "INVALID_PARAMS",
-            Self::BBoxTooLarge => "BBOX_TOO_LARGE",
+            Self::BBoxTooLarge { .. } => "BBOX_TOO_LARGE",
             Self::InvalidYear(_) => "INVALID_PARAMS",
             Self::MissingParameter(_) => "INVALID_PARAMS",
             Self::Validation(_) => "INVALID_PARAMS",

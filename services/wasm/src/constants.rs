@@ -1,4 +1,7 @@
 //! Shared constants for layer IDs, JSON property keys, and GeoJSON format strings.
+//!
+//! All magic numbers and string literals referenced in more than one
+//! location are collected here to satisfy `proj-no-magic-numbers`.
 
 // ── Layer IDs ──
 // Used in spatial_index.rs (extract_stats_data) and lib.rs (compute_area_stats).
@@ -64,3 +67,30 @@ pub(crate) const RISK_WEIGHT_STEEP: f64 = 0.4;
 // ── Zoning classification keywords ──
 
 pub(crate) const COMMERCIAL_ZONE_KEYWORD: &str = "商業";
+
+/// Estimated bytes per GeoJSON feature string for capacity pre-allocation.
+pub(crate) const GEOJSON_FEATURE_BYTES_ESTIMATE: usize = 256;
+
+/// Normalize a layer ID to its canonical form by removing hyphens and underscores.
+///
+/// The dataset catalog uses hyphen-case ("land-price"), the backend uses
+/// underscore-case ("steep_slope"), while internal WASM code uses concatenated
+/// form ("landprice"). This function ensures all three conventions resolve to the
+/// same internal key.
+pub(crate) fn canonical_layer_id(id: &str) -> String {
+    id.replace(['-', '_'], "")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_layer_id_normalizes() {
+        assert_eq!(canonical_layer_id("land-price"), "landprice");
+        assert_eq!(canonical_layer_id("steep_slope"), "steepslope");
+        assert_eq!(canonical_layer_id("flood-history"), "floodhistory");
+        assert_eq!(canonical_layer_id("landprice"), "landprice");
+        assert_eq!(canonical_layer_id("schools"), "schools");
+    }
+}

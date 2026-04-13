@@ -21,15 +21,36 @@ pub const BUFFER_DEG: f64 = 0.00015;
 
 const MAX_FEATURES: i64 = 10_000;
 
+// ── Layer density (features per square degree at zoom 14) ──
+const DENSITY_LANDPRICE: f64 = 50_000.0;
+const DENSITY_FLOOD: f64 = 150_000.0;
+const DENSITY_ZONING: f64 = 100_000.0;
+const DENSITY_STEEP_SLOPE: f64 = 80_000.0;
+const DENSITY_SCHOOLS: f64 = 30_000.0;
+const DENSITY_MEDICAL: f64 = 80_000.0;
+const DENSITY_DEFAULT: f64 = 30_000.0;
+
+// ── Feature limit constants ──
+const LOW_ZOOM_THRESHOLD: u32 = 10;
+const LOW_ZOOM_DIVISOR: i64 = 4;
+
+// ── Layer name constants ──
+const LAYER_LANDPRICE: &str = "landprice";
+const LAYER_FLOOD: &str = "flood";
+const LAYER_ZONING: &str = "zoning";
+const LAYER_STEEP_SLOPE: &str = "steep_slope";
+const LAYER_SCHOOLS: &str = "schools";
+const LAYER_MEDICAL: &str = "medical";
+
 fn layer_density(layer: &str) -> f64 {
     match layer {
-        "landprice" => 50_000.0,
-        "flood" => 150_000.0,
-        "zoning" => 20_000.0,
-        "steep_slope" => 17_000.0,
-        "schools" => 40_000.0,
-        "medical" => 27_000.0,
-        _ => 30_000.0,
+        LAYER_LANDPRICE => DENSITY_LANDPRICE,
+        LAYER_FLOOD => DENSITY_FLOOD,
+        LAYER_ZONING => DENSITY_ZONING,
+        LAYER_STEEP_SLOPE => DENSITY_STEEP_SLOPE,
+        LAYER_SCHOOLS => DENSITY_SCHOOLS,
+        LAYER_MEDICAL => DENSITY_MEDICAL,
+        _ => DENSITY_DEFAULT,
     }
 }
 
@@ -50,7 +71,11 @@ pub fn compute_feature_limit(layer: &str, bbox_area_deg2: f64, zoom: u32) -> i64
     let density = layer_density(layer);
     let raw = (bbox_area_deg2 * density).ceil() as i64;
     let capped = raw.min(MAX_FEATURES);
-    let adjusted = if zoom < 10 { capped / 4 } else { capped };
+    let adjusted = if zoom < LOW_ZOOM_THRESHOLD {
+        capped / LOW_ZOOM_DIVISOR
+    } else {
+        capped
+    };
     adjusted.max(1)
 }
 

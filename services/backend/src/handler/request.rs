@@ -15,12 +15,9 @@ pub mod opportunities;
 pub mod transaction;
 pub mod trend;
 
-pub use appraisal::AppraisalsQuery;
 pub use area_data::AreaDataQuery;
 pub use area_stats::AreaStatsQuery;
 pub use bbox::{BBoxQuery, CoordQuery};
 pub use land_price::{LandPriceByYearRangeQuery, LandPriceQuery};
-pub use municipality::MunicipalitiesQuery;
-pub use opportunities::{OpportunitiesFilters, OpportunitiesQuery};
-pub use transaction::{TransactionSummaryQuery, TransactionsQuery};
+pub use opportunities::OpportunitiesQuery;
 pub use trend::TrendQuery;

@@ -7,7 +7,7 @@ use serde::Serialize;
 use crate::domain::entity::LayerResult;
 use crate::domain::value_object::LayerType;
 
-pub use realestate_api_core::response::{FeatureCollectionDto, FeatureDto};
+pub use realestate_api_core::response::FeatureDto;
 
 /// GeoJSON FeatureCollection response with truncation metadata.
 ///
@@ -57,6 +57,17 @@ impl LayerResponseDto {
     }
 }
 
+/// Extract `(longitude, latitude)` from a GeoJSON Point feature's coordinates.
+///
+/// Returns `None` if the coordinates array is missing or cannot be parsed as two
+/// finite `f64` values.
+fn extract_point_coords(feature: &FeatureDto) -> Option<(f64, f64)> {
+    let coords = feature.geometry.coordinates.as_array()?;
+    let lng = coords.first()?.as_f64()?;
+    let lat = coords.get(1)?.as_f64()?;
+    Some((lng, lat))
+}
+
 /// Convert a `Point` geometry inside a [`FeatureDto`] to a small `Polygon` square.
 ///
 /// Land price data is stored as point geometries. For better visual discoverability
@@ -70,14 +81,8 @@ pub fn point_feature_to_polygon_owned(mut feature: FeatureDto) -> FeatureDto {
         return feature;
     }
 
-    // Coordinates for a Point are a JSON array [lng, lat].
-    let coords = feature.geometry.coordinates.as_array();
-    let (lng, lat) = match coords {
-        Some(arr) if arr.len() >= 2 => match (arr[0].as_f64(), arr[1].as_f64()) {
-            (Some(lng), Some(lat)) => (lng, lat),
-            _ => return feature,
-        },
-        _ => return feature,
+    let Some((lng, lat)) = extract_point_coords(&feature) else {
+        return feature;
     };
 
     let ring = point_to_polygon(lng, lat);

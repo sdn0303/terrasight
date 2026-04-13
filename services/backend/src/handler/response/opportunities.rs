@@ -7,8 +7,7 @@
 
 use serde::Serialize;
 
-use crate::domain::entity::Opportunity;
-use crate::infra::opportunities_cache::CachedOpportunitiesResponse;
+use crate::domain::entity::{CachedOpportunitiesResponse, Opportunity};
 
 /// Nearest-station metadata attached to an [`OpportunityDto`].
 #[derive(Debug, Clone, Serialize)]

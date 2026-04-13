@@ -26,23 +26,6 @@ impl LogFormat {
     }
 }
 
-/// Default env filter when `RUST_LOG` is not set.
-///
-/// - Application crates at `info`
-/// - SQLx internal noise at `warn`
-/// - tower-http request tracing at `debug`
-const DEFAULT_FILTER: &str = "\
-    realestate_api=info,\
-    realestate_api_core=info,\
-    realestate_db=debug,\
-    realestate_telemetry=info,\
-    realestate_geo_math=debug,\
-    mlit_client=info,\
-    sqlx=warn,\
-    tower_http=debug,\
-    hyper=warn\
-";
-
 /// Initialize the global tracing subscriber.
 ///
 /// Must be called **once** at application startup before any `tracing` macros
@@ -51,15 +34,19 @@ const DEFAULT_FILTER: &str = "\
 /// # Arguments
 ///
 /// * `format` — Log output format (see [`LogFormat`]).
+/// * `default_filter` — Filter directive string used when `RUST_LOG` is not
+///   set.  Pass the crate-specific filter from the application entry point so
+///   this library crate is not coupled to concrete crate names.  Falls back to
+///   `"info"` when `None`.
 ///
 /// # Panics
 ///
 /// Panics if constructing the `EnvFilter` from `RUST_LOG` fails with an
 /// invalid directive.  This is intentional — misconfigured logging should
 /// be caught at startup, not silently ignored.
-pub fn init_global_logger(format: LogFormat) {
-    let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
+pub fn init_global_logger(format: LogFormat, default_filter: Option<&str>) {
+    let fallback = default_filter.unwrap_or("info");
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(fallback));
 
     let result = match format {
         LogFormat::Pretty => tracing_subscriber::registry()

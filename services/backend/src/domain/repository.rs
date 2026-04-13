@@ -3,11 +3,17 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 
 use crate::domain::appraisal::AppraisalDetail;
-use crate::domain::entity::{LayerResult, MedicalStats, SchoolStats, ZScoreResult, *};
+use crate::domain::entity::{
+    AdminAreaStats, FacilityStats, LandPriceStats, LayerResult, MedicalStats, OpportunityRecord,
+    PricePerSqm, PriceRecord, RiskStats, SchoolStats, TrendLocation, TrendPoint, ZScoreResult,
+    ZoneCode,
+};
 use crate::domain::error::DomainError;
 use crate::domain::municipality::Municipality;
 use crate::domain::transaction::{TransactionDetail, TransactionSummary};
-use crate::domain::value_object::*;
+use crate::domain::value_object::{
+    AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
+};
 
 // ─── Layer Data ──────────────────────────────────────
 // Enum-dispatched: a single `find_layer` entry point replaces the
@@ -95,7 +101,6 @@ pub trait LandPriceRepository: Send + Sync {
         &self,
         bbox: &BBox,
         limit: u32,
-        offset: u32,
         price_range: Option<(PricePerSqm, PricePerSqm)>,
         zones: &[ZoneCode],
         pref_code: Option<&PrefCode>,

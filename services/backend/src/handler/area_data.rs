@@ -16,7 +16,7 @@ use crate::usecase::get_area_data::GetAreaDataUsecase;
 /// (a GeoJSON FeatureCollection enriched with `truncated`, `count`, and `limit`
 /// metadata fields). Land price features are converted from Point to Polygon.
 #[tracing::instrument(skip(usecase), fields(endpoint = "area-data"))]
-pub async fn get_area_data(
+pub(crate) async fn get_area_data(
     State(usecase): State<Arc<GetAreaDataUsecase>>,
     Query(params): Query<AreaDataQuery>,
 ) -> Result<Json<AreaDataResponseDto>, AppError> {

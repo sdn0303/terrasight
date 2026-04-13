@@ -62,9 +62,10 @@ impl Grade {
 // Weight Presets
 // ═══════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WeightPreset {
+    #[default]
     Balance,
     Investment,
     Residential,
@@ -73,11 +74,24 @@ pub enum WeightPreset {
 
 /// Axis weights: (disaster, terrain, livability, future, price)
 pub struct AxisWeights {
-    pub disaster: f64,
-    pub terrain: f64,
-    pub livability: f64,
-    pub future: f64,
-    pub price: f64,
+    pub(crate) disaster: f64,
+    pub(crate) terrain: f64,
+    pub(crate) livability: f64,
+    pub(crate) future: f64,
+    pub(crate) price: f64,
+}
+
+impl std::str::FromStr for WeightPreset {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "investment" => Self::Investment,
+            "residential" => Self::Residential,
+            "disaster" | "disaster_focus" => Self::DisasterFocus,
+            _ => Self::Balance,
+        })
+    }
 }
 
 impl WeightPreset {
@@ -91,25 +105,25 @@ impl WeightPreset {
                 price: AXIS_WEIGHT_PRICE,
             },
             Self::Investment => AxisWeights {
-                disaster: 0.15,
-                terrain: 0.10,
-                livability: 0.20,
-                future: 0.25,
-                price: 0.30,
+                disaster: INVESTMENT_WEIGHT_DISASTER,
+                terrain: INVESTMENT_WEIGHT_TERRAIN,
+                livability: INVESTMENT_WEIGHT_LIVABILITY,
+                future: INVESTMENT_WEIGHT_FUTURE,
+                price: INVESTMENT_WEIGHT_PRICE,
             },
             Self::Residential => AxisWeights {
-                disaster: 0.25,
-                terrain: 0.15,
-                livability: 0.35,
-                future: 0.10,
-                price: 0.15,
+                disaster: RESIDENTIAL_WEIGHT_DISASTER,
+                terrain: RESIDENTIAL_WEIGHT_TERRAIN,
+                livability: RESIDENTIAL_WEIGHT_LIVABILITY,
+                future: RESIDENTIAL_WEIGHT_FUTURE,
+                price: RESIDENTIAL_WEIGHT_PRICE,
             },
             Self::DisasterFocus => AxisWeights {
-                disaster: 0.40,
-                terrain: 0.25,
-                livability: 0.20,
-                future: 0.05,
-                price: 0.10,
+                disaster: DISASTER_FOCUS_WEIGHT_DISASTER,
+                terrain: DISASTER_FOCUS_WEIGHT_TERRAIN,
+                livability: DISASTER_FOCUS_WEIGHT_LIVABILITY,
+                future: DISASTER_FOCUS_WEIGHT_FUTURE,
+                price: DISASTER_FOCUS_WEIGHT_PRICE,
             },
         }
     }
@@ -120,7 +134,14 @@ impl WeightPreset {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Compute TLS from 5 axis scores using the given weight preset.
-pub fn compute_tls(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64, preset: WeightPreset) -> f64 {
+pub(crate) fn compute_tls(
+    s1: f64,
+    s2: f64,
+    s3: f64,
+    s4: f64,
+    s5: f64,
+    preset: WeightPreset,
+) -> f64 {
     let w = preset.weights();
     let tls = w.disaster * s1 + w.terrain * s2 + w.livability * s3 + w.future * s4 + w.price * s5;
     tls.clamp(SCORE_MIN, SCORE_MAX)
@@ -131,16 +152,22 @@ pub fn compute_tls(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64, preset: WeightPr
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone)]
-pub struct CrossAnalysis {
+pub(crate) struct CrossAnalysis {
     /// Safe but cheap = market blind spot. `S1 × (100 - V_rel) / 100`
-    pub value_discovery: f64,
+    pub(crate) value_discovery: f64,
     /// High livability × growing area = strong demand. `S3 × S4 / 100`
-    pub demand_signal: f64,
+    pub(crate) demand_signal: f64,
     /// Comprehensive ground safety. `S1 × S2 / 100`
-    pub ground_safety: f64,
+    pub(crate) ground_safety: f64,
 }
 
-pub fn compute_cross_analysis(s1: f64, s2: f64, s3: f64, s4: f64, v_rel: f64) -> CrossAnalysis {
+pub(crate) fn compute_cross_analysis(
+    s1: f64,
+    s2: f64,
+    s3: f64,
+    s4: f64,
+    v_rel: f64,
+) -> CrossAnalysis {
     CrossAnalysis {
         value_discovery: (s1 * (SCORE_MAX - v_rel) / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
         demand_signal: (s3 * s4 / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
@@ -266,6 +293,41 @@ mod tests {
                 );
             }
         }
+    }
+
+    // ── WeightPreset::FromStr ──
+
+    #[test]
+    fn weight_preset_from_str_known_variants() {
+        assert_eq!(
+            "investment".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Investment
+        );
+        assert_eq!(
+            "residential".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Residential
+        );
+        assert_eq!(
+            "disaster".parse::<WeightPreset>().unwrap(),
+            WeightPreset::DisasterFocus
+        );
+        assert_eq!(
+            "disaster_focus".parse::<WeightPreset>().unwrap(),
+            WeightPreset::DisasterFocus
+        );
+    }
+
+    #[test]
+    fn weight_preset_from_str_unknown_falls_back_to_balance() {
+        assert_eq!(
+            "balance".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Balance
+        );
+        assert_eq!(
+            "unknown".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Balance
+        );
+        assert_eq!("".parse::<WeightPreset>().unwrap(), WeightPreset::Balance);
     }
 
     // ── Weight presets sum to 1.0 ──

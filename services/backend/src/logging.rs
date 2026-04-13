@@ -6,6 +6,23 @@
 use crate::config::Config;
 use realestate_telemetry::log::LogFormat;
 
+/// Default env filter when `RUST_LOG` is not set.
+///
+/// - Application crates at `info`
+/// - SQLx internal noise at `warn`
+/// - tower-http request tracing at `debug`
+const DEFAULT_FILTER: &str = "\
+    realestate_api=info,\
+    realestate_api_core=info,\
+    realestate_db=debug,\
+    realestate_telemetry=info,\
+    realestate_geo_math=debug,\
+    mlit_client=info,\
+    sqlx=warn,\
+    tower_http=debug,\
+    hyper=warn\
+";
+
 /// Initialize structured logging based on application configuration.
 ///
 /// Delegates to [`realestate_telemetry::log::init_global_logger`].
@@ -16,5 +33,5 @@ pub fn init(config: &Config) {
         .map(LogFormat::from_str_lossy)
         .unwrap_or(LogFormat::Pretty);
 
-    realestate_telemetry::log::init_global_logger(format);
+    realestate_telemetry::log::init_global_logger(format, Some(DEFAULT_FILTER));
 }

@@ -107,7 +107,7 @@ impl LayerIndex {
     /// Returns `{"type":"FeatureCollection","features":[...]}`.
     /// Indices that are out of bounds are silently skipped.
     pub(crate) fn get_features_geojson(&self, indices: &[u32]) -> String {
-        let capacity = indices.len() * 256; // rough estimate
+        let capacity = indices.len() * constants::GEOJSON_FEATURE_BYTES_ESTIMATE;
         let mut out = String::with_capacity(capacity + 40);
         out.push_str(constants::FC_HEADER);
 

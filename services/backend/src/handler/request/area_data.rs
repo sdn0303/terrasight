@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 
+use crate::domain::constants::DEFAULT_ZOOM_LEVEL;
 use crate::domain::error::DomainError;
 use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
@@ -54,7 +55,7 @@ impl AreaDataQuery {
 }
 
 pub(super) fn default_zoom() -> u32 {
-    14
+    DEFAULT_ZOOM_LEVEL
 }
 
 #[cfg(test)]

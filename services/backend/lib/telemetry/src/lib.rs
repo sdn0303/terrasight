@@ -19,7 +19,7 @@
 //! use realestate_telemetry::{log, http, metrics};
 //!
 //! // Initialize logging (call once at startup)
-//! log::init_global_logger(log::LogFormat::Pretty);
+//! log::init_global_logger(log::LogFormat::Pretty, None);
 //!
 //! // Start Prometheus metrics endpoint (background task)
 //! metrics::init_prometheus("0.0.0.0:9090").await?;

@@ -123,7 +123,7 @@ pub(crate) fn compute_tls(
 ) -> TlsResult {
     let weights = preset.weights();
 
-    let price_score = normalize_price(stats.land_price.avg_per_sqm, params);
+    let price_score = normalize_price(stats.land_price.avg_per_sqm.unwrap_or(0.0), params);
     let risk_score = 1.0 - stats.risk.composite_risk;
     let facility_score =
         normalize_facilities(stats.facilities.schools, stats.facilities.medical, params);
@@ -160,10 +160,10 @@ mod tests {
     fn sample_stats() -> AreaStats {
         AreaStats {
             land_price: LandPriceStats {
-                avg_per_sqm: 500_000.0,
-                median_per_sqm: 480_000.0,
-                min_per_sqm: 200_000.0,
-                max_per_sqm: 1_200_000.0,
+                avg_per_sqm: Some(500_000.0),
+                median_per_sqm: Some(480_000.0),
+                min_per_sqm: Some(200_000),
+                max_per_sqm: Some(1_200_000),
                 count: 42,
             },
             risk: RiskStats {
@@ -268,11 +268,11 @@ mod tests {
     fn extreme_price_normalization() {
         let mut stats = sample_stats();
         // Very low price → high score
-        stats.land_price.avg_per_sqm = 100_000.0;
+        stats.land_price.avg_per_sqm = Some(100_000.0);
         let low = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
 
         // Very high price → low score
-        stats.land_price.avg_per_sqm = 5_000_000.0;
+        stats.land_price.avg_per_sqm = Some(5_000_000.0);
         let high = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
 
         assert!(low.sub_scores.price_score > high.sub_scores.price_score);
@@ -294,10 +294,10 @@ mod tests {
     fn zero_stats_does_not_panic() {
         let stats = AreaStats {
             land_price: LandPriceStats {
-                avg_per_sqm: 0.0,
-                median_per_sqm: 0.0,
-                min_per_sqm: 0.0,
-                max_per_sqm: 0.0,
+                avg_per_sqm: None,
+                median_per_sqm: None,
+                min_per_sqm: None,
+                max_per_sqm: None,
                 count: 0,
             },
             risk: RiskStats {

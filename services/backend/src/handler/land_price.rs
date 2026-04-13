@@ -31,7 +31,7 @@ use crate::usecase::get_land_prices::GetLandPricesUsecase;
 /// - `400 Bad Request` — invalid `year` or unparseable / out-of-range `bbox`
 /// - `503 Service Unavailable` — database error
 #[tracing::instrument(skip(usecase), fields(endpoint = "v1/land-prices"))]
-pub async fn get_land_prices(
+pub(crate) async fn get_land_prices(
     State(usecase): State<Arc<GetLandPricesUsecase>>,
     Query(params): Query<LandPriceQuery>,
 ) -> Result<Json<LayerResponseDto>, AppError> {

@@ -5,6 +5,7 @@ use mlit_client::jshis::JshisClient;
 use sqlx::PgPool;
 
 use crate::config::Config;
+use crate::domain::constants::JSHIS_TIMEOUT_SECS;
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::infra::pg_admin_area_stats_repository::PgAdminAreaStatsRepository;
@@ -32,9 +33,6 @@ use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
 use crate::usecase::get_transactions::GetTransactionsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
 
-/// Timeout (seconds) for J-SHIS API requests.
-const JSHIS_TIMEOUT_SECS: u64 = 30;
-
 /// Composition root: wires Infra → Domain traits → Usecases.
 ///
 /// All dependency injection happens here. Each usecase is wrapped in `Arc`
@@ -45,25 +43,25 @@ const JSHIS_TIMEOUT_SECS: u64 = 30;
 /// from a single `.with_state(AppState::new(…))` call on the router.
 #[derive(Clone)]
 pub struct AppState {
-    pub appraisals: Arc<GetAppraisalsUsecase>,
-    pub health: Arc<CheckHealthUsecase>,
-    pub area_data: Arc<GetAreaDataUsecase>,
-    pub area_stats: Arc<GetAreaStatsUsecase>,
-    pub land_prices: Arc<GetLandPricesUsecase>,
-    pub land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
-    pub municipalities: Arc<GetMunicipalitiesUsecase>,
-    pub opportunities: Arc<GetOpportunitiesUsecase>,
-    pub score: Arc<ComputeTlsUsecase>,
-    pub stats: Arc<GetStatsUsecase>,
-    pub transaction_summary: Arc<GetTransactionSummaryUsecase>,
-    pub transactions: Arc<GetTransactionsUsecase>,
-    pub trend: Arc<GetTrendUsecase>,
+    pub(crate) appraisals: Arc<GetAppraisalsUsecase>,
+    pub(crate) health: Arc<CheckHealthUsecase>,
+    pub(crate) area_data: Arc<GetAreaDataUsecase>,
+    pub(crate) area_stats: Arc<GetAreaStatsUsecase>,
+    pub(crate) land_prices: Arc<GetLandPricesUsecase>,
+    pub(crate) land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
+    pub(crate) municipalities: Arc<GetMunicipalitiesUsecase>,
+    pub(crate) opportunities: Arc<GetOpportunitiesUsecase>,
+    pub(crate) score: Arc<ComputeTlsUsecase>,
+    pub(crate) stats: Arc<GetStatsUsecase>,
+    pub(crate) transaction_summary: Arc<GetTransactionSummaryUsecase>,
+    pub(crate) transactions: Arc<GetTransactionsUsecase>,
+    pub(crate) trend: Arc<GetTrendUsecase>,
     /// Reinfolib geospatial data source.
     ///
     /// Backed by [`PostgisFallback`] when `REINFOLIB_API_KEY` is absent, or
     /// [`LiveReinfolib`] when the key is present. Handlers that expose the
     /// reinfolib layers inject this field directly.
-    pub reinfolib: Arc<dyn ReinfolibDataSource>,
+    pub(crate) reinfolib: Arc<dyn ReinfolibDataSource>,
 }
 
 impl AppState {

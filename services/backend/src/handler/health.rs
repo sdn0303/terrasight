@@ -9,7 +9,7 @@ use crate::usecase::check_health::CheckHealthUsecase;
 ///
 /// Always returns HTTP 200. Inspect `db_connected` to detect degraded state.
 #[tracing::instrument(skip(usecase), fields(endpoint = "health"))]
-pub async fn health(State(usecase): State<Arc<CheckHealthUsecase>>) -> Json<HealthResponse> {
+pub(crate) async fn health(State(usecase): State<Arc<CheckHealthUsecase>>) -> Json<HealthResponse> {
     let status = usecase.execute().await;
     tracing::info!(
         status = status.status,

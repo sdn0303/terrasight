@@ -22,9 +22,10 @@ pub fn compute_cagr(oldest_price: f64, latest_price: f64, years: u32) -> f64 {
     (latest_price / oldest_price).powf(1.0 / years as f64) - 1.0
 }
 
-/// Estimate yield ratio.
+/// Estimate gross yield from the transaction-to-land-price ratio.
 ///
-/// Phase 1 assumes transaction price ≈ `land_price * transaction_ratio`.
+/// In the current model, gross yield equals the transaction ratio
+/// because we assume annual rental income ≈ average transaction price.
 ///
 /// # Examples
 ///
@@ -33,9 +34,8 @@ pub fn compute_cagr(oldest_price: f64, latest_price: f64, years: u32) -> f64 {
 ///
 /// assert_eq!(estimate_yield(1_000_000, 0.8), 0.8);
 /// ```
-pub fn estimate_yield(land_price: i64, transaction_ratio: f64) -> f64 {
-    let avg_transaction = land_price as f64 * transaction_ratio;
-    avg_transaction / land_price as f64
+pub fn estimate_yield(_land_price: i64, transaction_ratio: f64) -> f64 {
+    transaction_ratio
 }
 
 #[cfg(test)]

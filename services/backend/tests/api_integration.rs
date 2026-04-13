@@ -66,7 +66,7 @@ macro_rules! require_db {
 async fn health_returns_200_with_db_connected() {
     require_db!(server);
 
-    let resp = server.get("/api/health").await;
+    let resp = server.get("/api/v1/health").await;
     resp.assert_status_ok();
 
     let body: Value = resp.json();
@@ -85,7 +85,7 @@ async fn area_data_returns_landprice_features_in_bbox() {
 
     // BBox covers Marunouchi/Ginza/Kanda seed data (within 0.5° limit)
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.66")
         .add_query_param("west", "139.74")
         .add_query_param("north", "35.70")
@@ -112,7 +112,7 @@ async fn area_data_returns_multiple_layers() {
     require_db!(server);
 
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.66")
         .add_query_param("west", "139.74")
         .add_query_param("north", "35.70")
@@ -137,7 +137,7 @@ async fn area_data_returns_flood_and_steep_slope() {
     require_db!(server);
 
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.67")
         .add_query_param("west", "139.76")
         .add_query_param("north", "35.70")
@@ -161,7 +161,7 @@ async fn area_data_rejects_bbox_too_large() {
     require_db!(server);
 
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.0")
         .add_query_param("west", "139.0")
         .add_query_param("north", "35.8")
@@ -177,7 +177,7 @@ async fn area_data_rejects_missing_layers() {
     require_db!(server);
 
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.65")
         .add_query_param("west", "139.70")
         .add_query_param("north", "35.70")
@@ -197,7 +197,7 @@ async fn score_returns_tls_for_tokyo_station() {
     require_db!(server);
 
     let resp = server
-        .get("/api/score")
+        .get("/api/v1/score")
         .add_query_param("lat", "35.681")
         .add_query_param("lng", "139.767")
         .await;
@@ -242,7 +242,7 @@ async fn stats_returns_land_price_stats_in_bbox() {
     require_db!(server);
 
     let resp = server
-        .get("/api/stats")
+        .get("/api/v1/stats")
         .add_query_param("south", "35.66")
         .add_query_param("west", "139.74")
         .add_query_param("north", "35.70")
@@ -268,7 +268,7 @@ async fn trend_returns_data_near_marunouchi() {
 
     // Near Marunouchi seed data (5 years of land prices)
     let resp = server
-        .get("/api/trend")
+        .get("/api/v1/trend")
         .add_query_param("lat", "35.681")
         .add_query_param("lng", "139.767")
         .await;
@@ -297,7 +297,7 @@ async fn seed_data_has_expected_landprice_rows() {
 
     // All 3 seed locations are in this bbox
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.66")
         .add_query_param("west", "139.74")
         .add_query_param("north", "35.70")
@@ -400,7 +400,7 @@ async fn seed_data_has_expected_school_rows() {
 
     // Wide bbox covering all seed schools
     let resp = server
-        .get("/api/area-data")
+        .get("/api/v1/area-data")
         .add_query_param("south", "35.66")
         .add_query_param("west", "139.74")
         .add_query_param("north", "35.70")

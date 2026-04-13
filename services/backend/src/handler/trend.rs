@@ -14,7 +14,7 @@ use crate::usecase::get_trend::GetTrendUsecase;
 ///
 /// Returns land price trend data for the nearest observation point.
 #[tracing::instrument(skip(usecase), fields(endpoint = "trend"))]
-pub async fn get_trend(
+pub(crate) async fn get_trend(
     State(usecase): State<Arc<GetTrendUsecase>>,
     Query(params): Query<TrendQuery>,
 ) -> Result<Json<TrendResponse>, AppError> {

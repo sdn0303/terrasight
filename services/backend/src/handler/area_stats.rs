@@ -16,7 +16,7 @@ use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 /// `code` is a 2-digit prefecture code (e.g. `"13"`) or 5-digit municipality
 /// code (e.g. `"13105"` for Bunkyo-ku, Tokyo).
 #[tracing::instrument(skip(usecase), fields(endpoint = "area-stats"))]
-pub async fn get_area_stats(
+pub(crate) async fn get_area_stats(
     State(usecase): State<Arc<GetAreaStatsUsecase>>,
     Query(params): Query<AreaStatsQuery>,
 ) -> Result<Json<AreaStatsResponse>, AppError> {
@@ -29,7 +29,7 @@ pub async fn get_area_stats(
         .await
         .inspect(|stats| {
             tracing::info!(
-                code = %stats.code,
+                code = stats.code.as_str(),
                 level = %stats.level,
                 land_price_count = stats.land_price.count,
                 "area-stats response ready"

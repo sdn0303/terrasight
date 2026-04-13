@@ -49,9 +49,6 @@ const SSTRCT_VERSION: &str = "V3";
 /// J-SHIS coordinate reference system (WGS-84).
 const EPSG_WGS84: &str = "4326";
 
-/// Exponential backoff base for retry delays (seconds).
-const RETRY_BACKOFF_BASE: u64 = 2;
-
 // ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
@@ -240,7 +237,8 @@ impl JshisClient {
 
         tracing::debug!(lng, lat, "querying J-SHIS seismic hazard");
 
-        let resp = self.request_with_retry(&url, &params).await?;
+        let resp =
+            crate::retry::request_with_retry(&self.http, &url, &params, None, "jshis").await?;
         let collection: JshisFeatureCollection = resp
             .json()
             .await
@@ -295,7 +293,8 @@ impl JshisClient {
 
         tracing::debug!(lng, lat, "querying J-SHIS surface ground");
 
-        let resp = self.request_with_retry(&url, &params).await?;
+        let resp =
+            crate::retry::request_with_retry(&self.http, &url, &params, None, "jshis").await?;
         let collection: JshisFeatureCollection = resp
             .json()
             .await
@@ -345,7 +344,8 @@ impl JshisClient {
 
         tracing::debug!(lng, lat, "querying J-SHIS landslide terrain");
 
-        let resp = self.request_with_retry(&url, &params).await?;
+        let resp =
+            crate::retry::request_with_retry(&self.http, &url, &params, None, "jshis").await?;
 
         // Parse raw JSON first so we can preserve it and also decode the flag.
         let raw: serde_json::Value = resp
@@ -371,71 +371,6 @@ impl JshisClient {
             is_containing: is_containing_raw.is_containing != 0,
             raw,
         })
-    }
-
-    // -----------------------------------------------------------------------
-    // Internal helpers
-    // -----------------------------------------------------------------------
-
-    /// Make an HTTP GET request with exponential backoff retry (3 attempts).
-    ///
-    /// - HTTP 429 → waits and retries up to 3 times, then returns [`MlitError::RateLimited`].
-    /// - Non-success status → returns [`MlitError::Api`] immediately (no retry).
-    /// - Transport error → waits and retries, then returns [`MlitError::Http`].
-    async fn request_with_retry(
-        &self,
-        url: &str,
-        params: &[(String, String)],
-    ) -> Result<reqwest::Response, MlitError> {
-        const MAX_RETRIES: u32 = 3;
-
-        for attempt in 0..MAX_RETRIES {
-            let result = self.http.get(url).query(params).send().await;
-
-            match result {
-                Ok(resp) if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS => {
-                    if attempt < MAX_RETRIES - 1 {
-                        let delay = Duration::from_secs(RETRY_BACKOFF_BASE.pow(attempt));
-                        tracing::warn!(
-                            attempt = attempt + 1,
-                            delay_secs = ?delay,
-                            "J-SHIS rate limited, retrying"
-                        );
-                        tokio::time::sleep(delay).await;
-                        continue;
-                    }
-                    return Err(MlitError::RateLimited {
-                        retry_after_secs: RETRY_BACKOFF_BASE.pow(attempt),
-                    });
-                }
-                Ok(resp) if !resp.status().is_success() => {
-                    let status = resp.status().as_u16();
-                    let message = resp
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| String::from("<unreadable body>"));
-                    return Err(MlitError::Api { status, message });
-                }
-                Ok(resp) => return Ok(resp),
-                Err(e) => {
-                    if attempt < MAX_RETRIES - 1 {
-                        let delay = Duration::from_secs(RETRY_BACKOFF_BASE.pow(attempt));
-                        tracing::warn!(
-                            attempt = attempt + 1,
-                            error = %e,
-                            "J-SHIS request failed, retrying"
-                        );
-                        tokio::time::sleep(delay).await;
-                        continue;
-                    }
-                    return Err(MlitError::Http(e));
-                }
-            }
-        }
-
-        // The loop always returns before reaching this point, but the compiler
-        // cannot prove it without the unreachable guard.
-        unreachable!("retry loop always returns before exhausting MAX_RETRIES")
     }
 }
 

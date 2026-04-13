@@ -14,7 +14,7 @@ use crate::usecase::get_stats::GetStatsUsecase;
 ///
 /// Returns aggregated area statistics for the given bounding box.
 #[tracing::instrument(skip(usecase), fields(endpoint = "stats"))]
-pub async fn get_stats(
+pub(crate) async fn get_stats(
     State(usecase): State<Arc<GetStatsUsecase>>,
     Query(params): Query<BBoxQuery>,
 ) -> Result<Json<StatsResponse>, AppError> {

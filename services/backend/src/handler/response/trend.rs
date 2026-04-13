@@ -29,15 +29,15 @@ impl From<TrendAnalysis> for TrendResponse {
     fn from(t: TrendAnalysis) -> Self {
         Self {
             location: TrendLocationDto {
-                address: t.location.address,
+                address: t.location.address.as_str().to_owned(),
                 distance_m: t.location.distance_m,
             },
             data: t
                 .data
                 .into_iter()
                 .map(|p| TrendPointDto {
-                    year: p.year,
-                    price_per_sqm: p.price_per_sqm,
+                    year: p.year.value(),
+                    price_per_sqm: p.price_per_sqm.value(),
                 })
                 .collect(),
             cagr: t.cagr,
