@@ -49,7 +49,7 @@ _TABLE_SPECS: dict[str, tuple[list[str], str]] = {
         "(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
     ),
     "zoning": (
-        ["pref_code", "zone_code", "zone_type", "floor_area_ratio", "building_coverage", "geom"],
+        ["pref_code", "zone_code", "zone_type", "building_coverage", "floor_area_ratio", "geom"],
         "(%s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))",
     ),
     "admin_boundaries": (
@@ -212,8 +212,8 @@ def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> t
             pref_code,
             _prop(props, "zone_code", "A29_004", default=""),
             _prop(props, "zone_type", "A29_005", default=""),
-            _prop(props, "floor_area_ratio", "A29_006"),
-            _prop(props, "building_coverage", "A29_007"),
+            _prop(props, "building_coverage", "A29_006"),
+            _prop(props, "floor_area_ratio", "A29_007"),
             geom_wkt,
         )
     if table_name == "admin_boundaries":

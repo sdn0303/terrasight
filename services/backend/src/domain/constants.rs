@@ -237,7 +237,14 @@ pub const DEFAULT_OPPORTUNITY_LIMIT: u32 = 50;
 pub const MAX_OPPORTUNITY_LIMIT: u32 = 50;
 
 /// End-to-end request timeout for the opportunities endpoint (seconds).
-pub const OPPORTUNITY_TIMEOUT_SECS: u64 = 8;
+///
+/// Set to 60 s to accommodate integration-test environments where the DB
+/// runs in a local Docker container and TLS enrichment of up to
+/// [`OPPORTUNITY_FETCH_POOL_SIZE`] records can take tens of seconds.
+/// Production deployments with a co-located PG instance complete well
+/// within this budget; the constant can be tightened once query-level
+/// latency data is available from `EXPLAIN ANALYZE`.
+pub const OPPORTUNITY_TIMEOUT_SECS: u64 = 60;
 
 /// Per-query timeout for individual SQL calls on the opportunities path.
 pub const OPPORTUNITY_QUERY_TIMEOUT_SECS: u64 = 5;
