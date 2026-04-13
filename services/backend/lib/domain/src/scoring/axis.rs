@@ -1,18 +1,38 @@
 //! Axis composition functions (S1–S5).
 //!
-//! Each function takes sub-scores and returns `(axis_score, confidence)`.
-//! Confidence = sum of weights for sub-scores that are actually available.
+//! Each function takes sub-scores (produced by [`super::sub_scores`]) and
+//! returns `(axis_score, confidence)` where:
+//!
+//! - `axis_score` — the composed 0–100 axis score
+//! - `confidence` — fraction of total weight backed by available data (`[0.0, 1.0]`)
+//!
+//! A confidence of `1.0` means all sub-scores were based on real data;
+//! `0.0` means every sub-score was filled with [`crate::scoring::constants::UNAVAILABLE_DEFAULT`].
+//! The backend stores confidence alongside the axis score so the frontend can
+//! surface a data-availability warning in the score panel.
 
 use crate::scoring::constants::*;
 
-/// Availability flags for computing confidence.
+/// Availability descriptor for a single sub-score input to an axis.
+///
+/// Bundles the numeric score, its axis weight, and whether the underlying
+/// data source was actually present. Used by the internal weighted-average
+/// helper and by [`compute_s1`] to derive both the composite score and the
+/// confidence value in a single pass.
 pub struct SubAvailability {
+    /// Sub-score value in the range `[0.0, 100.0]`.
     pub score: f64,
+    /// Fractional weight this sub-score contributes to the axis (e.g. `0.30`).
     pub weight: f64,
+    /// `true` if the score came from real source data; `false` if it was
+    /// substituted with [`UNAVAILABLE_DEFAULT`].
     pub available: bool,
 }
 
-/// Compute weighted average and confidence from sub-score availability data.
+/// Computes a weighted average score and data-availability confidence from a
+/// slice of [`SubAvailability`] entries.
+///
+/// Returns `(0.0, 0.0)` when `subs` is empty or the total weight is zero.
 fn weighted_avg_with_confidence(subs: &[SubAvailability]) -> (f64, f64) {
     let total_weight: f64 = subs.iter().map(|s| s.weight).sum();
     if total_weight == 0.0 {
@@ -28,15 +48,27 @@ fn weighted_avg_with_confidence(subs: &[SubAvailability]) -> (f64, f64) {
     (weighted_sum / total_weight, confidence)
 }
 
-/// S1 Disaster: min-penalty composition.
+/// Computes S1 Disaster using a **min-penalty** composition.
+///
+/// The formula is:
 ///
 /// ```text
 /// S1 = min(F_flood, F_liq, F_seis, F_tsun, F_land)
 ///      × (0.30×F_flood + 0.25×F_liq + 0.25×F_seis + 0.10×F_tsun + 0.10×F_land) / 100
 /// ```
 ///
-/// `subs` order: flood, liquefaction, seismic, tsunami, landslide.
-/// Confidence = sum of available sub-score weights / total weights.
+/// The minimum factor ensures that a single catastrophic risk (e.g. flood rank 5)
+/// dominates the axis, even if all other hazards are absent. This is intentional:
+/// a single disqualifying risk should make the whole area unsafe regardless of
+/// other sub-scores.
+///
+/// `subs` must be ordered: flood, liquefaction, seismic, tsunami, landslide.
+/// Sub-score weights are sourced from [`crate::scoring::constants`] (`S1_WEIGHT_*`).
+///
+/// Confidence equals the sum of weights for sub-scores with `available = true`,
+/// divided by the total weight.
+///
+/// Returns `(0.0, 0.0)` when `subs` is empty.
 pub fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
     if subs.is_empty() {
         return (0.0, 0.0);
@@ -56,15 +88,31 @@ pub fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
     (s1, confidence)
 }
 
-/// S2 Terrain: Phase 1 = AVS30 only.
+/// Computes S2 Terrain (Phase 1: AVS30 only).
+///
+/// The axis score equals `avs` clamped to `[0.0, 100.0]`.
+/// Confidence is [`S2_WEIGHT_AVS`] (`1.0`) when `avs_avail` is `true`,
+/// otherwise `0.0`.
+///
+/// Future phases will extend this to include terrain form (G_form) and
+/// geology (G_geo) sub-scores with weights `0.50 / 0.30 / 0.20`.
 pub fn compute_s2(avs: f64, avs_avail: bool) -> (f64, f64) {
     let confidence = if avs_avail { S2_WEIGHT_AVS } else { 0.0 };
     (avs.clamp(SCORE_MIN, SCORE_MAX), confidence)
 }
 
-/// S3 Livability: weighted average with Phase 1 fallback.
+/// Computes S3 Livability with a Phase 1 fallback for missing transit data.
 ///
-/// When transit is unavailable, uses fallback weights (edu 0.45, med 0.55).
+/// When transit is available the standard weights apply:
+/// `0.45×transit + 0.25×edu + 0.30×med`.
+///
+/// When transit is unavailable the weight is redistributed to the remaining
+/// two axes using [`S3_FALLBACK_WEIGHT_EDUCATION`] (0.45) and
+/// [`S3_FALLBACK_WEIGHT_MEDICAL`] (0.55). This avoids penalising areas in
+/// Phase 1 where the transit layer has not yet been loaded.
+///
+/// All constants are from [`crate::scoring::constants`] (`S3_WEIGHT_*`,
+/// `S3_FALLBACK_WEIGHT_*`).
 pub fn compute_s3(
     transit: f64,
     edu: f64,
@@ -103,7 +151,15 @@ pub fn compute_s3(
     }
 }
 
-/// S4 Future: weighted average.
+/// Computes S4 Future potential as a weighted average of three sub-scores.
+///
+/// Weights: population trend [`S4_WEIGHT_POPULATION`] (0.40),
+/// price CAGR [`S4_WEIGHT_PRICE_TREND`] (0.35),
+/// FAR surplus [`S4_WEIGHT_FAR`] (0.25).
+///
+/// Missing sub-scores (marked `available = false`) still contribute their
+/// default score to the weighted average, but are excluded from the
+/// confidence numerator.
 pub fn compute_s4(
     pop: f64,
     price: f64,
@@ -132,7 +188,10 @@ pub fn compute_s4(
     weighted_avg_with_confidence(&subs)
 }
 
-/// S5 Price: weighted average.
+/// Computes S5 Profitability as a weighted average of two sub-scores.
+///
+/// Weights: relative value [`S5_WEIGHT_RELATIVE_VALUE`] (0.65),
+/// transaction volume [`S5_WEIGHT_VOLUME`] (0.35).
 pub fn compute_s5(rel: f64, vol: f64, rel_avail: bool, vol_avail: bool) -> (f64, f64) {
     let subs = [
         SubAvailability {

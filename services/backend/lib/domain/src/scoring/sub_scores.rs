@@ -1,7 +1,13 @@
 //! Pure sub-score mapping functions.
 //!
 //! Each function converts a raw data value into a normalised 0–100 score.
-//! Functions for unavailable data sources return [`constants::UNAVAILABLE_DEFAULT`].
+//! Functions whose data source may be absent accept `Option` inputs and return
+//! [`crate::scoring::constants::UNAVAILABLE_DEFAULT`] (100) when the value is
+//! `None` — the best-case assumption used during Phase 1 data onboarding.
+//!
+//! All output values are in the range `[0.0, 100.0]` unless stated otherwise.
+//! Lookup tables and threshold constants are defined in
+//! [`crate::scoring::constants`].
 
 use crate::scoring::constants::*;
 
@@ -9,14 +15,32 @@ use crate::scoring::constants::*;
 // S1 Disaster sub-scores
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Flood inundation score from `depth_rank` (0-5).
+/// Maps a flood inundation depth rank to a 0–100 score.
 ///
-/// - `None` or `Some(0)` = outside flood zone → 100 (safest).
-/// - `Some(1..=5)` = rank 1 (<0.5m) to rank 5 (≥10m) → mapped via `FLOOD_MAP`.
-/// - Any other value falls back to `FLOOD_DEFAULT` (100).
+/// Input `depth_rank` follows the MLIT洪水浸水想定 depth classification:
 ///
-/// The DB column `flood_risk.depth_rank` is constrained to `[0, 5]`
-/// (see migration `20260326000001_schema_redesign.sql`).
+/// | `depth_rank` | Inundation depth | Score |
+/// |---|---|---|
+/// | `None` or `Some(0)` | Outside flood zone (区域外) | 100 |
+/// | `Some(1)` | < 0.5 m | 80 |
+/// | `Some(2)` | 0.5–3 m | 50 |
+/// | `Some(3)` | 3–5 m | 20 |
+/// | `Some(4)` | 5–10 m | 5 |
+/// | `Some(5)` | ≥ 10 m | 0 |
+///
+/// Any rank not in the table falls back to [`FLOOD_DEFAULT`] (100). The
+/// DB column `flood_risk.depth_rank` is constrained to `[0, 5]`
+/// (migration `20260326000001_schema_redesign.sql`).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_flood;
+///
+/// assert_eq!(score_flood(None), 100.0);    // outside flood zone
+/// assert_eq!(score_flood(Some(1)), 80.0);  // shallow inundation
+/// assert_eq!(score_flood(Some(5)), 0.0);   // catastrophic depth
+/// ```
 pub fn score_flood(depth_rank: Option<i32>) -> f64 {
     match depth_rank {
         None => FLOOD_DEFAULT,
@@ -28,7 +52,29 @@ pub fn score_flood(depth_rank: Option<i32>) -> f64 {
     }
 }
 
-/// Liquefaction score from PL value. `None` = data unavailable = 100.
+/// Maps a liquefaction potential index (PL) to a 0–100 score.
+///
+/// Input `pl_value` is the PL index from boring survey data.
+/// `None` means survey data is unavailable and returns
+/// [`UNAVAILABLE_DEFAULT`] (100).
+///
+/// | PL range | Score |
+/// |---|---|
+/// | `None` | 100 |
+/// | PL = 0 | 100 |
+/// | 0 < PL ≤ 5 | 80 |
+/// | 5 < PL ≤ 15 | 40 |
+/// | PL > 15 | 10 (see [`LIQUEFACTION_HIGH`]) |
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_liquefaction;
+///
+/// assert_eq!(score_liquefaction(None), 100.0);
+/// assert_eq!(score_liquefaction(Some(0.0)), 100.0);
+/// assert_eq!(score_liquefaction(Some(20.0)), 10.0);
+/// ```
 pub fn score_liquefaction(pl_value: Option<f64>) -> f64 {
     match pl_value {
         None => UNAVAILABLE_DEFAULT,
@@ -46,7 +92,27 @@ pub fn score_liquefaction(pl_value: Option<f64>) -> f64 {
     }
 }
 
-/// Seismic hazard score from 30-year exceedance probability (0.0–1.0).
+/// Maps a 30-year earthquake exceedance probability (0.0–1.0) to a 0–100 score.
+///
+/// Source: National Seismic Hazard Map (J-SHIS, NIED). Higher probabilities
+/// produce lower scores because they indicate greater seismic risk.
+///
+/// | Probability | Score |
+/// |---|---|
+/// | < 0.03 (< 3%) | 100 |
+/// | 0.03–0.06 | 75 |
+/// | 0.06–0.26 | 50 |
+/// | 0.26–0.50 | 25 |
+/// | > 0.50 | 5 (see [`SEISMIC_HIGH`]) |
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_seismic;
+///
+/// assert_eq!(score_seismic(0.02), 100.0);
+/// assert_eq!(score_seismic(0.50), 5.0);
+/// ```
 pub fn score_seismic(prob_30yr: f64) -> f64 {
     for &(upper, score) in SEISMIC_MAP {
         if prob_30yr < upper {
@@ -56,7 +122,29 @@ pub fn score_seismic(prob_30yr: f64) -> f64 {
     SEISMIC_HIGH
 }
 
-/// Tsunami inundation score from depth in metres. `None` = data unavailable = 100.
+/// Maps an expected tsunami inundation depth (metres) to a 0–100 score.
+///
+/// `None` means the parcel is not in a designated tsunami hazard zone and
+/// returns [`UNAVAILABLE_DEFAULT`] (100).
+///
+/// | Depth | Score |
+/// |---|---|
+/// | `None` | 100 |
+/// | 0 m | 100 |
+/// | < 0.3 m | 85 |
+/// | 0.3–1.0 m | 60 |
+/// | 1.0–2.0 m | 35 |
+/// | > 2.0 m | 10 (see [`TSUNAMI_HIGH`]) |
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_tsunami;
+///
+/// assert_eq!(score_tsunami(None), 100.0);
+/// assert_eq!(score_tsunami(Some(0.0)), 100.0);
+/// assert_eq!(score_tsunami(Some(3.0)), 10.0);
+/// ```
 pub fn score_tsunami(depth_m: Option<f64>) -> f64 {
     match depth_m {
         None => UNAVAILABLE_DEFAULT,
@@ -71,13 +159,30 @@ pub fn score_tsunami(depth_m: Option<f64>) -> f64 {
     }
 }
 
-/// Landslide / steep-slope score.
+/// Maps steep-slope / landslide hazard presence to a 0–100 score.
 ///
-/// - `None` = no data → 100 (unavailable default)
-/// - `Some(true)` = steep slope nearby → `LANDSLIDE_WARNING` (40)
-/// - `Some(false)` = no hazard → `LANDSLIDE_NONE` (100)
+/// `None` means survey data is unavailable and returns
+/// [`UNAVAILABLE_DEFAULT`] (100). `Some(true)` means the parcel is within or
+/// adjacent to a 土砂災害警戒区域 (landslide warning zone).
 ///
-/// Future: distinguish 警戒区域 vs 特別警戒区域 when zone_class data is available.
+/// | Input | Score |
+/// |---|---|
+/// | `None` | 100 (unavailable) |
+/// | `Some(false)` | 100 (no hazard) — [`LANDSLIDE_NONE`] |
+/// | `Some(true)` | 40 (warning zone) — [`LANDSLIDE_WARNING`] |
+///
+/// Future data integration will distinguish 警戒区域 (warning, score 40) from
+/// 特別警戒区域 (special warning, planned score ≈ 10).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_landslide;
+///
+/// assert_eq!(score_landslide(None), 100.0);
+/// assert_eq!(score_landslide(Some(false)), 100.0);
+/// assert_eq!(score_landslide(Some(true)), 40.0);
+/// ```
 pub fn score_landslide(steep_nearby: Option<bool>) -> f64 {
     match steep_nearby {
         None => UNAVAILABLE_DEFAULT,
@@ -90,7 +195,30 @@ pub fn score_landslide(steep_nearby: Option<bool>) -> f64 {
 // S2 Terrain sub-scores
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// AVS30 ground quality score. `None` = data unavailable = 100.
+/// Maps an AVS30 shear-wave velocity (m/s) to a 0–100 ground-quality score.
+///
+/// `None` means survey data is unavailable and returns
+/// [`UNAVAILABLE_DEFAULT`] (100). The lookup table ([`AVS30_MAP`]) is
+/// evaluated in descending order of the lower bound.
+///
+/// | AVS30 (m/s) | Ground type | Score |
+/// |---|---|---|
+/// | `None` | Unavailable | 100 |
+/// | ≥ 400 | Rock / very firm | 100 |
+/// | 300–400 | Gravel / good | 85 |
+/// | 200–300 | Moderate | 60 |
+/// | 150–200 | Slightly soft | 35 |
+/// | < 150 | Very soft | 10 — [`AVS30_SOFT`] |
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_avs30;
+///
+/// assert_eq!(score_avs30(None), 100.0);
+/// assert_eq!(score_avs30(Some(500.0)), 100.0);
+/// assert_eq!(score_avs30(Some(100.0)), 10.0);
+/// ```
 pub fn score_avs30(avs30: Option<f64>) -> f64 {
     match avs30 {
         None => UNAVAILABLE_DEFAULT,
@@ -109,19 +237,51 @@ pub fn score_avs30(avs30: Option<f64>) -> f64 {
 // S3 Livability sub-scores
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Education accessibility score.
+/// Computes an education accessibility score from school count and type diversity.
 ///
-/// L_edu = min(100, school_count × 12 + diversity_bonus)
-/// diversity_bonus = (has_primary + has_junior_high) × 15
+/// Formula: `L_edu = min(100, school_count × 12 + diversity_bonus)`
+/// where `diversity_bonus = (has_primary + has_junior_high) × 15`.
+///
+/// Constants: [`EDU_SCORE_PER_SCHOOL`] (12), [`EDU_DIVERSITY_BONUS`] (15).
+///
+/// Output is in `[0.0, 100.0]`.
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_education;
+///
+/// // 3 schools with both primary and junior-high: 36 + 30 = 66
+/// assert_eq!(score_education(3, true, true), 66.0);
+/// // Capped at 100
+/// assert_eq!(score_education(10, true, true), 100.0);
+/// ```
 pub fn score_education(school_count: i64, has_primary: bool, has_junior_high: bool) -> f64 {
     let diversity_bonus =
         (has_primary as i64 + has_junior_high as i64) as f64 * EDU_DIVERSITY_BONUS;
     (school_count as f64 * EDU_SCORE_PER_SCHOOL + diversity_bonus).min(SCORE_MAX)
 }
 
-/// Medical accessibility score.
+/// Computes a medical accessibility score from facility counts and bed capacity.
 ///
-/// L_med = min(100, hospital×20 + clinic×5 + log10(beds+1)×10)
+/// Formula: `L_med = min(100, hospital×20 + clinic×5 + log10(beds+1)×10)`.
+///
+/// Constants: [`MED_HOSPITAL_SCORE`] (20), [`MED_CLINIC_SCORE`] (5),
+/// [`MED_BED_LOG_MULTIPLIER`] (10).
+///
+/// The logarithmic bed scaling prevents a single large hospital from
+/// completely dominating the score. Output is in `[0.0, 100.0]`.
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_medical;
+///
+/// // 2 hospitals + 5 clinics + 100 beds
+/// // = 40 + 25 + log10(101)×10 ≈ 85.04
+/// let s = score_medical(2, 5, 100);
+/// assert!((s - 85.04).abs() < 0.1);
+/// ```
 pub fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: i64) -> f64 {
     let bed_score = ((total_beds as f64 + 1.0).log10()) * MED_BED_LOG_MULTIPLIER;
     (hospital_count as f64 * MED_HOSPITAL_SCORE
@@ -134,17 +294,44 @@ pub fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: i64) ->
 // S4 Future sub-scores
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Land price trend score from CAGR.
+/// Converts a land price Compound Annual Growth Rate (CAGR) to a 0–100 score.
 ///
-/// P_price = clamp(50 + cagr × 500, 0, 100)
+/// Formula: `P_price = clamp(50 + cagr × 500, 0, 100)`.
+///
+/// A CAGR of `+0.10` (+10%/yr) maps to 100; `−0.10` maps to 0; `0.0` maps
+/// to 50. Constants: [`PRICE_TREND_OFFSET`] (50), [`PRICE_TREND_MULTIPLIER`] (500).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_price_trend;
+///
+/// assert_eq!(score_price_trend(0.0), 50.0);   // flat
+/// assert_eq!(score_price_trend(0.05), 75.0);  // +5%/yr
+/// assert_eq!(score_price_trend(-0.05), 25.0); // −5%/yr
+/// assert_eq!(score_price_trend(1.0), 100.0);  // clamped
+/// ```
 pub fn score_price_trend(cagr: f64) -> f64 {
     (PRICE_TREND_OFFSET + cagr * PRICE_TREND_MULTIPLIER).clamp(SCORE_MIN, SCORE_MAX)
 }
 
-/// Floor area ratio surplus score.
+/// Converts a designated floor area ratio (FAR) to a 0–100 development-upside score.
 ///
-/// P_far = min(100, designated_far / 8)
-/// `designated_far` is in percent (e.g. 800 = 800%).
+/// Formula: `P_far = min(100, designated_far / 8)`.
+/// `designated_far` is expressed in percent (e.g. `800` means 800% FAR).
+///
+/// `None` means the zoning FAR is unavailable and returns
+/// [`UNAVAILABLE_DEFAULT`] (100). Constant: [`FAR_DIVISOR`] (8).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_far;
+///
+/// assert_eq!(score_far(None), 100.0);
+/// assert_eq!(score_far(Some(400.0)), 50.0);  // 400% / 8 = 50
+/// assert_eq!(score_far(Some(800.0)), 100.0); // capped
+/// ```
 pub fn score_far(designated_far: Option<f64>) -> f64 {
     match designated_far {
         None => UNAVAILABLE_DEFAULT,
@@ -156,17 +343,45 @@ pub fn score_far(designated_far: Option<f64>) -> f64 {
 // S5 Price sub-scores
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Relative value score from z-score within same zoning type.
+/// Converts a z-score (relative to the zoning-type median price) to a 0–100
+/// relative-value score.
 ///
-/// V_rel = clamp(50 - z_score × 20, 0, 100)
-/// Negative z = below median = cheaper = higher score.
+/// Formula: `V_rel = clamp(50 − z_score × 20, 0, 100)`.
+/// A negative z-score means the parcel is cheaper than the median — a higher
+/// investment value — and therefore produces a score above 50.
+///
+/// Constants: [`RELATIVE_VALUE_OFFSET`] (50), [`RELATIVE_VALUE_MULTIPLIER`] (20).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_relative_value;
+///
+/// assert_eq!(score_relative_value(0.0), 50.0);   // at median price
+/// assert_eq!(score_relative_value(-1.0), 70.0);  // cheaper → higher score
+/// assert_eq!(score_relative_value(2.0), 10.0);   // expensive → lower score
+/// assert_eq!(score_relative_value(-5.0), 100.0); // clamped
+/// ```
 pub fn score_relative_value(z_score: f64) -> f64 {
     (RELATIVE_VALUE_OFFSET - z_score * RELATIVE_VALUE_MULTIPLIER).clamp(SCORE_MIN, SCORE_MAX)
 }
 
-/// Transaction volume score.
+/// Converts a transaction count to a 0–100 market-liquidity score.
 ///
-/// V_vol = min(100, tx_count × 5)
+/// Formula: `V_vol = min(100, tx_count × 5)`.
+/// Twenty or more transactions in the viewport reach the maximum, indicating
+/// an actively traded, liquid market. Constant: [`VOLUME_MULTIPLIER`] (5).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::sub_scores::score_volume;
+///
+/// assert_eq!(score_volume(0), 0.0);
+/// assert_eq!(score_volume(10), 50.0);
+/// assert_eq!(score_volume(20), 100.0);
+/// assert_eq!(score_volume(30), 100.0); // capped
+/// ```
 pub fn score_volume(tx_count: i64) -> f64 {
     (tx_count as f64 * VOLUME_MULTIPLIER).min(SCORE_MAX)
 }

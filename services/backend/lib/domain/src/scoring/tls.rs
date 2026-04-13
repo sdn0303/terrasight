@@ -1,4 +1,10 @@
 //! TLS (Total Location Score) aggregation, grading, and cross-analysis.
+//!
+//! This module is the final step in the scoring pipeline. After axis scores
+//! (S1–S5) are computed by [`super::axis`], this module blends them into a
+//! single 0–100 total using a [`WeightPreset`], converts it to a [`Grade`],
+//! and optionally computes [`CrossAnalysis`] patterns for the investment
+//! insight panel.
 
 use serde::Serialize;
 
@@ -8,17 +14,50 @@ use crate::scoring::constants::*;
 // Grade
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Letter grade derived from a TLS score.
+///
+/// Grades provide a human-readable quality tier displayed in the frontend
+/// sidebar and map popups. Thresholds are defined in
+/// [`crate::scoring::constants`] and can be tuned without touching this enum.
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::tls::Grade;
+///
+/// assert_eq!(Grade::from_score(90.0), Grade::S);
+/// assert_eq!(Grade::from_score(50.0), Grade::C);
+/// assert_eq!(Grade::from_score(10.0), Grade::E);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Grade {
+    /// Excellent — TLS ≥ 85. Exceptional investment quality on all axes.
     S,
+    /// Very Good — TLS ≥ 70. Strong location with minor weaknesses.
     A,
+    /// Good — TLS ≥ 55. Above-average location; acceptable for most buyers.
     B,
+    /// Fair — TLS ≥ 40. Notable trade-offs; requires careful due diligence.
     C,
+    /// Below Average — TLS ≥ 25. Significant risks or deficiencies present.
     D,
+    /// Poor — TLS < 25. Multiple serious concerns across several axes.
     E,
 }
 
 impl Grade {
+    /// Derives a [`Grade`] from a raw TLS score in the range `[0.0, 100.0]`.
+    ///
+    /// Thresholds (in descending order): S ≥ 85, A ≥ 70, B ≥ 55, C ≥ 40, D ≥ 25, E < 25.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use terrasight_domain::scoring::tls::Grade;
+    ///
+    /// assert_eq!(Grade::from_score(85.0), Grade::S);
+    /// assert_eq!(Grade::from_score(84.9), Grade::A);
+    /// ```
     pub fn from_score(score: f64) -> Self {
         if score >= GRADE_S_MIN {
             Self::S
@@ -35,6 +74,16 @@ impl Grade {
         }
     }
 
+    /// Returns the full English label for this grade, used in UI tooltips.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use terrasight_domain::scoring::tls::Grade;
+    ///
+    /// assert_eq!(Grade::S.label(), "Excellent");
+    /// assert_eq!(Grade::E.label(), "Poor");
+    /// ```
     pub fn label(self) -> &'static str {
         match self {
             Self::S => "Excellent",
@@ -46,6 +95,17 @@ impl Grade {
         }
     }
 
+    /// Returns the single-character grade string (e.g. `"S"`, `"A"`, …, `"E"`).
+    ///
+    /// Useful for compact display in map labels where full labels do not fit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use terrasight_domain::scoring::tls::Grade;
+    ///
+    /// assert_eq!(Grade::B.as_str(), "B");
+    /// ```
     pub fn as_str(self) -> &'static str {
         match self {
             Self::S => "S",
@@ -62,22 +122,73 @@ impl Grade {
 // Weight Presets
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Predefined axis weight configurations for the TLS formula.
+///
+/// Each preset emphasises a different investment objective. The frontend
+/// exposes these as a toggle in the score panel; the selected preset is passed
+/// through the API query string (`?preset=investment`) and parsed via
+/// [`std::str::FromStr`].
+///
+/// All presets guarantee that the five axis weights sum to exactly `1.0`
+/// (verified by the `all_presets_sum_to_one` test in [`super::tls`]).
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::tls::WeightPreset;
+///
+/// let preset: WeightPreset = "investment".parse().unwrap();
+/// assert_eq!(preset, WeightPreset::Investment);
+///
+/// // Unknown strings fall back to Balance.
+/// let fallback: WeightPreset = "unknown".parse().unwrap();
+/// assert_eq!(fallback, WeightPreset::Balance);
+/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WeightPreset {
+    /// Equal emphasis across all axes — the default for general-purpose analysis.
+    ///
+    /// Weights: disaster 0.25 · terrain 0.15 · livability 0.25 · future 0.15 · price 0.20.
     #[default]
     Balance,
+
+    /// Optimised for return-on-investment analysis.
+    ///
+    /// Up-weights price (0.30) and future potential (0.25); down-weights
+    /// disaster resilience (0.15) and terrain quality (0.10).
+    /// Use this preset when evaluating parcels primarily for rental yield or
+    /// capital appreciation.
     Investment,
+
+    /// Optimised for long-term owner-occupier decisions.
+    ///
+    /// Up-weights livability (0.35) for school and transit access; down-weights
+    /// price and future potential.
+    /// Use this preset when a buyer prioritises everyday quality of life over
+    /// investment metrics.
     Residential,
+
+    /// Maximises weight on disaster resilience and terrain quality.
+    ///
+    /// Disaster (0.40) + terrain (0.25) together account for 65% of the total,
+    /// making this the safest-first filter for post-disaster risk screening.
     DisasterFocus,
 }
 
-/// Axis weights: (disaster, terrain, livability, future, price)
+/// Resolved axis weights for a specific [`WeightPreset`].
+///
+/// Created by [`WeightPreset::weights`] and consumed directly by [`compute_tls`].
 pub struct AxisWeights {
+    /// Weight applied to the S1 Disaster axis score.
     pub disaster: f64,
+    /// Weight applied to the S2 Terrain axis score.
     pub terrain: f64,
+    /// Weight applied to the S3 Livability axis score.
     pub livability: f64,
+    /// Weight applied to the S4 Future-potential axis score.
     pub future: f64,
+    /// Weight applied to the S5 Profitability axis score.
     pub price: f64,
 }
 
@@ -95,9 +206,18 @@ impl std::str::FromStr for WeightPreset {
 }
 
 impl WeightPreset {
-    /// Return the serde snake_case serialization string for this preset.
+    /// Returns the serde `snake_case` serialisation string for this preset.
     ///
-    /// Avoids `serde_json::to_value` round-trips at the handler boundary.
+    /// Avoids a `serde_json::to_value` round-trip at the handler boundary when
+    /// the preset needs to be embedded in a response DTO.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use terrasight_domain::scoring::tls::WeightPreset;
+    ///
+    /// assert_eq!(WeightPreset::DisasterFocus.as_str(), "disaster_focus");
+    /// ```
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Balance => "balance",
@@ -107,6 +227,10 @@ impl WeightPreset {
         }
     }
 
+    /// Returns the resolved [`AxisWeights`] for this preset.
+    ///
+    /// All constants are sourced from [`crate::scoring::constants`]; no
+    /// literals appear in this function.
     pub fn weights(self) -> AxisWeights {
         match self {
             Self::Balance => AxisWeights {
@@ -145,7 +269,29 @@ impl WeightPreset {
 // TLS computation
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Compute TLS from 5 axis scores using the given weight preset.
+/// Computes the Total Location Score (TLS) from five axis scores using the
+/// given weight preset.
+///
+/// Each axis score must be in the range `[0.0, 100.0]`. The return value is
+/// clamped to `[0.0, 100.0]` regardless of input values.
+///
+/// Axis mapping:
+/// - `s1` — Disaster resilience (see [`super::axis::compute_s1`])
+/// - `s2` — Terrain quality (see [`super::axis::compute_s2`])
+/// - `s3` — Livability (see [`super::axis::compute_s3`])
+/// - `s4` — Future potential (see [`super::axis::compute_s4`])
+/// - `s5` — Profitability (see [`super::axis::compute_s5`])
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::tls::{compute_tls, WeightPreset};
+///
+/// let tls = compute_tls(80.0, 75.0, 90.0, 60.0, 55.0, WeightPreset::Balance);
+/// // 0.25×80 + 0.15×75 + 0.25×90 + 0.15×60 + 0.20×55
+/// // = 20 + 11.25 + 22.5 + 9 + 11 = 73.75
+/// assert!((tls - 73.75).abs() < 0.01);
+/// ```
 pub fn compute_tls(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64, preset: WeightPreset) -> f64 {
     let w = preset.weights();
     let tls = w.disaster * s1 + w.terrain * s2 + w.livability * s3 + w.future * s4 + w.price * s5;
@@ -156,16 +302,55 @@ pub fn compute_tls(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64, preset: WeightPr
 // Cross-analysis patterns
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Investment insight signals derived by combining axis scores.
+///
+/// These cross-axis composites highlight patterns that a single axis cannot
+/// capture alone. They are displayed in the frontend insight panel as
+/// secondary indicators beneath the main TLS score.
 #[derive(Debug, Clone)]
 pub struct CrossAnalysis {
-    /// Safe but cheap = market blind spot. `S1 × (100 - V_rel) / 100`
+    /// Safe but underpriced — a market blind spot indicator.
+    ///
+    /// Computed as `S1 × (100 − V_rel) / 100`.
+    /// A high score flags parcels with strong disaster resilience that the
+    /// market has not yet priced in.
     pub value_discovery: f64,
-    /// High livability × growing area = strong demand. `S3 × S4 / 100`
+
+    /// Strong livability in a growing area — demand concentration signal.
+    ///
+    /// Computed as `S3 × S4 / 100`.
+    /// High scores indicate areas where quality of life and population /
+    /// price growth are simultaneously strong, driving rental demand.
     pub demand_signal: f64,
-    /// Comprehensive ground safety. `S1 × S2 / 100`
+
+    /// Comprehensive ground safety combining disaster resilience and terrain quality.
+    ///
+    /// Computed as `S1 × S2 / 100`.
+    /// Used as a conservative filter for buyers who prioritise structural and
+    /// geological safety above all other location factors.
     pub ground_safety: f64,
 }
 
+/// Computes cross-axis investment insight signals from five axis scores.
+///
+/// - `s1` — Disaster resilience axis score (0–100)
+/// - `s2` — Terrain quality axis score (0–100)
+/// - `s3` — Livability axis score (0–100)
+/// - `s4` — Future-potential axis score (0–100)
+/// - `v_rel` — Relative value sub-score from S5 (0–100); higher means cheaper
+///   than the zoning-type median
+///
+/// All output fields are clamped to `[0.0, 100.0]`.
+///
+/// # Examples
+///
+/// ```
+/// use terrasight_domain::scoring::tls::compute_cross_analysis;
+///
+/// // S1=80, V_rel=30 → value_discovery = 80 × (100−30)/100 = 56
+/// let ca = compute_cross_analysis(80.0, 60.0, 82.0, 58.0, 30.0);
+/// assert!((ca.value_discovery - 56.0).abs() < 0.01);
+/// ```
 pub fn compute_cross_analysis(s1: f64, s2: f64, s3: f64, s4: f64, v_rel: f64) -> CrossAnalysis {
     CrossAnalysis {
         value_discovery: (s1 * (SCORE_MAX - v_rel) / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
