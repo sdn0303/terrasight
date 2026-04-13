@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use realestate_api_core::error::{ApiError, ErrorMapping};
+use terrasight_server::http::error::{ApiError, ErrorMapping};
 
 use crate::domain::error::DomainError;
 

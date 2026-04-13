@@ -7,7 +7,7 @@ use serde::Serialize;
 use crate::domain::entity::LayerResult;
 use crate::domain::value_object::LayerType;
 
-pub use realestate_api_core::response::FeatureDto;
+pub use terrasight_server::http::response::FeatureDto;
 
 /// GeoJSON FeatureCollection response with truncation metadata.
 ///

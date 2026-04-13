@@ -7,7 +7,7 @@ pub(crate) fn to_geo_feature(
     geojson: serde_json::Value,
     properties: serde_json::Value,
 ) -> GeoFeature {
-    let raw = realestate_db::geo::to_raw_geo_feature(geojson, properties);
+    let raw = terrasight_server::db::geo::to_raw_geo_feature(geojson, properties);
     GeoFeature {
         geometry: GeoJsonGeometry {
             r#type: raw.geo_type,

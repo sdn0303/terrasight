@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use realestate_db::spatial::bind_bbox;
 use sqlx::PgPool;
+use terrasight_server::db::spatial::bind_bbox;
 use tokio::time::timeout;
 
 use super::map_db_err;

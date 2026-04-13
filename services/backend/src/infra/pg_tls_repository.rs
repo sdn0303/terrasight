@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use realestate_db::spatial::bind_coord;
 use sqlx::{FromRow, PgPool};
+use terrasight_server::db::spatial::bind_coord;
 use tokio::time::timeout;
 
 use super::map_db_err;

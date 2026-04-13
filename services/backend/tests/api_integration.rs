@@ -30,7 +30,7 @@ use serde_json::Value;
 async fn test_server() -> Option<TestServer> {
     dotenvy::dotenv().ok();
     let db_url = std::env::var("DATABASE_URL").ok()?;
-    let pool = realestate_db::pool::create_pool(&db_url, 5)
+    let pool = terrasight_server::db::pool::create_pool(&db_url, 5)
         .await
         .expect("failed to connect to test database");
     // No API key in tests — PostgisFallback is selected automatically.

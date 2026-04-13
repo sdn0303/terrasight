@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "lib/telemetry", "lib/geo-math", "lib/mlit-client", "lib/db", "lib/api-core", "lib/domain"]
+members = [".", "lib/telemetry", "lib/geo-math", "lib/mlit-client", "lib/db", "lib/api-core", "lib/domain", "lib/server"]
 resolver = "3"
 
 [package]
@@ -9,10 +9,8 @@ edition = "2024"
 rust-version = "1.94"
 
 [dependencies]
-realestate-telemetry = { path = "lib/telemetry", features = ["log", "metrics", "http"] }
+terrasight-server = { path = "lib/server" }
 realestate-geo-math = { path = "lib/geo-math" }
-realestate-db = { path = "lib/db" }
-realestate-api-core = { path = "lib/api-core" }
 terrasight-domain = { path = "lib/domain" }
 mlit-client = { path = "lib/mlit-client", features = ["jshis"] }
 axum = "0.8"
