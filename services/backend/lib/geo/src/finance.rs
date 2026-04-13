@@ -1,3 +1,10 @@
+//! Financial computation utilities for real estate investment metrics.
+//!
+//! Currently exposes [`compute_cagr`], which calculates the Compound Annual
+//! Growth Rate from a pair of land prices and an elapsed year count. This is
+//! the primary metric surfaced to users on the Terrasight map as an indicator
+//! of long-term investment performance.
+
 /// Compute Compound Annual Growth Rate (CAGR).
 ///
 /// `CAGR = (latest / oldest)^(1/years) - 1`

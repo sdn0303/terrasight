@@ -10,7 +10,7 @@
 
 /// XYZ slippy map tile coordinate.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use terrasight_geo::tile::TileCoord;
@@ -32,7 +32,7 @@ const WGS84_LNG_OFFSET: f64 = 180.0;
 
 /// Convert longitude (degrees) to tile X coordinate at zoom level `z`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use terrasight_geo::tile::lng_to_tile_x;
@@ -49,7 +49,7 @@ pub fn lng_to_tile_x(lng: f64, z: u8) -> u32 {
 ///
 /// Y increases southward: north latitudes produce smaller Y values.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use terrasight_geo::tile::lat_to_tile_y;

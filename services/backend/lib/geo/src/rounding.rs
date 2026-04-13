@@ -1,3 +1,10 @@
+//! Decimal-place rounding for display and serialisation.
+//!
+//! [`round_dp`] is a thin wrapper around `f64::round` that avoids repeated
+//! inline `10_f64.powi(…)` expressions throughout the codebase. Use it
+//! whenever a computed value (price, CAGR, area) must be rounded before
+//! being written into a response DTO or a GeoJSON property.
+
 /// Round a floating-point value to the specified number of decimal places.
 ///
 /// # Examples

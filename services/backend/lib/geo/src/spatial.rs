@@ -1,3 +1,15 @@
+//! Spatial query support functions for bounding-box filtering and feature-count limits.
+//!
+//! These utilities sit between the HTTP handler layer (which parses raw bbox
+//! parameters) and the database layer (which executes the query). They answer
+//! two questions:
+//!
+//! 1. **How large is the requested area?** — [`bbox_area_deg2`] returns the
+//!    approximate area in square degrees for metrics and limit calculations.
+//! 2. **How many features should the query return?** — [`compute_feature_limit`]
+//!    caps the row count per layer type and zoom level, preventing runaway
+//!    queries over dense datasets such as [`LayerKind::Flood`].
+
 /// Calculate bounding box area in square degrees (approximate).
 ///
 /// Used for metrics tracking (`spatial.bbox.area_deg2`).
@@ -19,8 +31,11 @@ pub fn bbox_area_deg2(south: f64, west: f64, north: f64, east: f64) -> f64 {
 /// Buffer size in degrees (~15m at Tokyo latitude 35.68°).
 pub const BUFFER_DEG: f64 = 0.00015;
 
+// Hard cap on the number of features returned by any single query.
 const MAX_FEATURES: i64 = 10_000;
+// Zoom levels below this threshold are coarser; the feature limit is reduced.
 const LOW_ZOOM_THRESHOLD: u32 = 10;
+// Divisor applied to the feature limit when zoom < LOW_ZOOM_THRESHOLD.
 const LOW_ZOOM_DIVISOR: i64 = 4;
 
 // ── Layer density (features per square degree at zoom 14) ──
@@ -35,16 +50,48 @@ const DENSITY_DEFAULT: f64 = 30_000.0;
 /// Typed enum identifying the GIS data layers served by the backend.
 ///
 /// Using an enum instead of a raw `&str` at call sites encodes the set of
-/// valid layer names in the type system and lets `compute_feature_limit`
+/// valid layer names in the type system and lets [`compute_feature_limit`]
 /// dispatch on density without string comparison.
+///
+/// Each variant carries an implicit *features-per-square-degree* density used
+/// to estimate query result size at zoom 14. Denser layers (e.g. [`LayerKind::Flood`])
+/// reach the hard cap sooner than sparse ones (e.g. [`LayerKind::Schools`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerKind {
+    /// Published land price survey points (地価公示).
+    ///
+    /// Moderate density (~50 000 points/deg²). Points are irregularly spaced
+    /// and concentrated in urban areas.
     LandPrice,
+    /// Flood hazard zone polygons (洪水浸水想定区域).
+    ///
+    /// Highest density (~150 000 features/deg²). Fine-grained polygon meshes
+    /// covering river basins reach the feature cap even at small bounding boxes.
     Flood,
+    /// Urban planning use-zone polygons (用途地域).
+    ///
+    /// High density (~100 000 features/deg²). Covers all designated urban areas
+    /// in Japan with polygon boundaries delineating zoning categories.
     Zoning,
+    /// Steep slope disaster-risk zones (急傾斜地崩壊危険区域).
+    ///
+    /// Moderate-high density (~80 000 features/deg²). Polygons are concentrated
+    /// in mountainous and hilly terrain; sparse in flat urban plains.
     SteepSlope,
+    /// Public school locations (学校).
+    ///
+    /// Low density (~30 000 points/deg²). Point features; density scales
+    /// linearly with residential population.
     Schools,
+    /// Medical facility locations (医療施設).
+    ///
+    /// Moderate-high density (~80 000 points/deg²). Includes hospitals,
+    /// clinics, and pharmacies; dense in commercial and mixed-use areas.
     Medical,
+    /// Fallback for any layer not explicitly enumerated.
+    ///
+    /// Uses the default density (~30 000 features/deg²), which matches the
+    /// conservative lower bound of the known layers.
     Other,
 }
 
