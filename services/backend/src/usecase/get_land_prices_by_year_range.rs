@@ -11,12 +11,12 @@ use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 /// The response contains every row with its `properties.year` populated so the
 /// frontend can drive a MapLibre `setFilter` slider without additional
 /// round-trips.
-pub struct GetLandPricesByYearRangeUsecase {
+pub(crate) struct GetLandPricesByYearRangeUsecase {
     land_price_repo: Arc<dyn LandPriceRepository>,
 }
 
 impl GetLandPricesByYearRangeUsecase {
-    pub fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
+    pub(crate) fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
         Self { land_price_repo }
     }
 
@@ -26,7 +26,7 @@ impl GetLandPricesByYearRangeUsecase {
     ///
     /// Propagates [`DomainError`] from the repository.
     #[tracing::instrument(skip(self), fields(usecase = "get_land_prices_by_year_range"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         from_year: Year,
         to_year: Year,

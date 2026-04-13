@@ -8,10 +8,9 @@ use crate::error::MlitError;
 /// Base URL: `https://nlftp.mlit.go.jp/ksj/api/1.0b/index.php/app`
 ///
 /// No authentication required.
-#[allow(dead_code)]
 pub struct KsjClient {
-    http: reqwest::Client,
-    base_url: String,
+    _http: reqwest::Client,
+    _base_url: String,
 }
 
 const DEFAULT_BASE_URL: &str = "https://nlftp.mlit.go.jp/ksj/api/1.0b/index.php/app";
@@ -29,8 +28,8 @@ impl KsjClient {
             .map_err(MlitError::Http)?;
 
         Ok(Self {
-            http,
-            base_url: DEFAULT_BASE_URL.to_string(),
+            _http: http,
+            _base_url: DEFAULT_BASE_URL.to_string(),
         })
     }
 }

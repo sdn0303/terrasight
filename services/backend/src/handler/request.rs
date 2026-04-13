@@ -16,5 +16,5 @@ pub use area_data::AreaDataQuery;
 pub use area_stats::AreaStatsQuery;
 pub use bbox::{BBoxQuery, CoordQuery};
 pub use land_price::{LandPriceByYearRangeQuery, LandPriceQuery};
-pub use opportunities::{OpportunitiesFilters, OpportunitiesQuery};
+pub use opportunities::OpportunitiesQuery;
 pub use trend::TrendQuery;

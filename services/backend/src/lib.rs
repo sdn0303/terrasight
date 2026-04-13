@@ -6,10 +6,10 @@
 pub mod app_state;
 pub mod config;
 pub mod domain;
-pub mod handler;
-pub mod infra;
+pub(crate) mod handler;
+pub(crate) mod infra;
 pub mod logging;
-pub mod usecase;
+pub(crate) mod usecase;
 
 use axum::{Router, routing::get};
 use realestate_api_core::middleware::{request_id, response_time};
@@ -28,9 +28,12 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
     let state = AppState::new(pool, config);
 
     Router::new()
-        .route("/api/health", get(handler::health::health))
-        .route("/api/area-data", get(handler::area_data::get_area_data))
-        .route("/api/area-stats", get(handler::area_stats::get_area_stats))
+        .route("/api/v1/health", get(handler::health::health))
+        .route("/api/v1/area-data", get(handler::area_data::get_area_data))
+        .route(
+            "/api/v1/area-stats",
+            get(handler::area_stats::get_area_stats),
+        )
         .route(
             "/api/v1/land-prices",
             get(handler::land_price::get_land_prices),
@@ -43,9 +46,9 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
             "/api/v1/opportunities",
             get(handler::opportunities::get_opportunities),
         )
-        .route("/api/score", get(handler::score::get_score))
-        .route("/api/stats", get(handler::stats::get_stats))
-        .route("/api/trend", get(handler::trend::get_trend))
+        .route("/api/v1/score", get(handler::score::get_score))
+        .route("/api/v1/stats", get(handler::stats::get_stats))
+        .route("/api/v1/trend", get(handler::trend::get_trend))
         .layer(response_time::response_time_layer())
         .layer(request_id::request_id_layer())
         .with_state(state)

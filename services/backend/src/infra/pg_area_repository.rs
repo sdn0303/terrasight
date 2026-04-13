@@ -8,10 +8,11 @@ use sqlx::{FromRow, PgPool};
 use tokio::time::timeout;
 
 use super::map_db_err;
-use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
+use crate::domain::entity::{GeoFeature, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
 use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
+use crate::infra::geo_convert::to_geo_feature;
 
 /// Maximum time to wait for any single layer query before returning an error.
 const LAYER_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -143,12 +144,12 @@ impl From<MedicalFacilityRow> for GeoFeature {
     }
 }
 
-pub struct PgAreaRepository {
+pub(crate) struct PgAreaRepository {
     pool: PgPool,
 }
 
 impl PgAreaRepository {
-    pub fn new(pool: PgPool) -> Self {
+    pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -400,17 +401,5 @@ impl PgAreaRepository {
         let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
 
         Ok(apply_limit(features, limit))
-    }
-}
-
-/// Parse PostGIS `ST_AsGeoJSON` output into domain [`GeoFeature`].
-fn to_geo_feature(geojson: serde_json::Value, properties: serde_json::Value) -> GeoFeature {
-    let raw = realestate_db::geo::to_raw_geo_feature(geojson, properties);
-    GeoFeature {
-        geometry: GeoJsonGeometry {
-            r#type: raw.geo_type,
-            coordinates: raw.coordinates,
-        },
-        properties: raw.properties,
     }
 }

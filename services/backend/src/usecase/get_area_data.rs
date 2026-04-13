@@ -6,12 +6,12 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
 use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
-pub struct GetAreaDataUsecase {
+pub(crate) struct GetAreaDataUsecase {
     layer_repo: Arc<dyn LayerRepository>,
 }
 
 impl GetAreaDataUsecase {
-    pub fn new(layer_repo: Arc<dyn LayerRepository>) -> Self {
+    pub(crate) fn new(layer_repo: Arc<dyn LayerRepository>) -> Self {
         Self { layer_repo }
     }
 
@@ -20,7 +20,7 @@ impl GetAreaDataUsecase {
     /// Layers are queried in parallel via `futures::future::try_join_all` so
     /// that the total latency is `max(layer_latency)` rather than `sum`.
     #[tracing::instrument(skip(self), fields(usecase = "get_area_data", layer_count = layers.len()))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         bbox: &BBox,
         layers: &[LayerType],

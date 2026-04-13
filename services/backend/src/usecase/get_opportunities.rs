@@ -16,7 +16,7 @@
 //! after cache retrieval. This means every paginated view into the
 //! same filter set hits the same cache slot.
 //!
-//! Pagination is bounded by [`OPPORTUNITY_FETCH_POOL_SIZE`]: `offset`
+//! Pagination is bounded by [`OPPORTUNITY_FETCH_POOL_SIZE`]: offset
 //! values beyond the filtered pool size return empty results.
 //!
 //! ## Layering
@@ -41,26 +41,23 @@ use tokio::time::timeout;
 use crate::domain::constants::{
     OPPORTUNITY_FETCH_POOL_SIZE, OPPORTUNITY_TIMEOUT_SECS, OPPORTUNITY_TLS_CONCURRENCY,
 };
-use crate::domain::entity::{Opportunity, OpportunityRecord, Percent};
+use crate::domain::entity::{CachedOpportunitiesResponse, Opportunity, OpportunityRecord, Percent};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{OpportunitySignal, RiskLevel, TlsScore};
-use crate::handler::request::OpportunitiesFilters;
-use crate::infra::opportunities_cache::{OpportunitiesCache, OpportunitiesCacheKey};
+use crate::domain::value_object::{
+    OpportunitiesCacheKey, OpportunitiesFilters, OpportunitySignal, RiskLevel, TlsScore,
+};
+use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
 
-/// Re-export the cached response type from its canonical location in
-/// the infra layer so call sites can import it from either module.
-pub use crate::infra::opportunities_cache::CachedOpportunitiesResponse;
-
-pub struct GetOpportunitiesUsecase {
+pub(crate) struct GetOpportunitiesUsecase {
     land_repo: Arc<dyn LandPriceRepository>,
     compute_tls: Arc<ComputeTlsUsecase>,
     cache: Arc<OpportunitiesCache>,
 }
 
 impl GetOpportunitiesUsecase {
-    pub fn new(
+    pub(crate) fn new(
         land_repo: Arc<dyn LandPriceRepository>,
         compute_tls: Arc<ComputeTlsUsecase>,
         cache: Arc<OpportunitiesCache>,
@@ -79,20 +76,18 @@ impl GetOpportunitiesUsecase {
     /// that survived TLS enrichment and `tls_min`/`risk_max` filtering.
     /// The handler applies pagination to this pool afterwards.
     #[tracing::instrument(skip(self), fields(usecase = "get_opportunities"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         filters: OpportunitiesFilters,
     ) -> Result<Arc<CachedOpportunitiesResponse>, DomainError> {
         // Fetch BEFORE the cache so DB errors propagate and only
         // successful results get cached. Always request the full fetch
-        // pool with offset=0; user pagination is applied after cache
-        // retrieval by the handler.
+        // pool; user pagination is applied after cache retrieval by the handler.
         let records = self
             .land_repo
             .find_for_opportunities(
                 &filters.bbox,
                 OPPORTUNITY_FETCH_POOL_SIZE,
-                0,
                 filters.price_range,
                 &filters.zones,
                 filters.pref_code.as_ref(),

@@ -27,6 +27,9 @@ pub struct TileCoord {
     pub y: u32,
 }
 
+const WGS84_LNG_RANGE: f64 = 360.0;
+const WGS84_LNG_OFFSET: f64 = 180.0;
+
 /// Convert longitude (degrees) to tile X coordinate at zoom level `z`.
 ///
 /// # Example
@@ -39,7 +42,7 @@ pub struct TileCoord {
 /// ```
 pub fn lng_to_tile_x(lng: f64, z: u8) -> u32 {
     let n = 2_f64.powi(i32::from(z));
-    ((lng + 180.0) / 360.0 * n).floor() as u32
+    ((lng + WGS84_LNG_OFFSET) / WGS84_LNG_RANGE * n).floor() as u32
 }
 
 /// Convert latitude (degrees) to tile Y coordinate at zoom level `z`.

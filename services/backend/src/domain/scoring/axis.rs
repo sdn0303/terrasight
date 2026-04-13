@@ -6,10 +6,10 @@
 use super::constants::*;
 
 /// Availability flags for computing confidence.
-pub struct SubAvailability {
-    pub score: f64,
-    pub weight: f64,
-    pub available: bool,
+pub(crate) struct SubAvailability {
+    pub(crate) score: f64,
+    pub(crate) weight: f64,
+    pub(crate) available: bool,
 }
 
 /// Compute weighted average and confidence from sub-score availability data.
@@ -37,7 +37,7 @@ fn weighted_avg_with_confidence(subs: &[SubAvailability]) -> (f64, f64) {
 ///
 /// `subs` order: flood, liquefaction, seismic, tsunami, landslide.
 /// Confidence = sum of available sub-score weights / total weights.
-pub fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
+pub(crate) fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
     if subs.is_empty() {
         return (0.0, 0.0);
     }
@@ -57,7 +57,7 @@ pub fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
 }
 
 /// S2 Terrain: Phase 1 = AVS30 only.
-pub fn compute_s2(avs: f64, avs_avail: bool) -> (f64, f64) {
+pub(crate) fn compute_s2(avs: f64, avs_avail: bool) -> (f64, f64) {
     let confidence = if avs_avail { S2_WEIGHT_AVS } else { 0.0 };
     (avs.clamp(SCORE_MIN, SCORE_MAX), confidence)
 }
@@ -65,7 +65,7 @@ pub fn compute_s2(avs: f64, avs_avail: bool) -> (f64, f64) {
 /// S3 Livability: weighted average with Phase 1 fallback.
 ///
 /// When transit is unavailable, uses fallback weights (edu 0.45, med 0.55).
-pub fn compute_s3(
+pub(crate) fn compute_s3(
     transit: f64,
     edu: f64,
     med: f64,
@@ -104,7 +104,7 @@ pub fn compute_s3(
 }
 
 /// S4 Future: weighted average.
-pub fn compute_s4(
+pub(crate) fn compute_s4(
     pop: f64,
     price: f64,
     far: f64,
@@ -133,7 +133,7 @@ pub fn compute_s4(
 }
 
 /// S5 Price: weighted average.
-pub fn compute_s5(rel: f64, vol: f64, rel_avail: bool, vol_avail: bool) -> (f64, f64) {
+pub(crate) fn compute_s5(rel: f64, vol: f64, rel_avail: bool, vol_avail: bool) -> (f64, f64) {
     let subs = [
         SubAvailability {
             score: rel,

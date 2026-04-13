@@ -244,7 +244,6 @@ impl LandPriceRepository for MockLandPriceRepository {
         &self,
         _bbox: &BBox,
         _limit: u32,
-        _offset: u32,
         _price_range: Option<(PricePerSqm, PricePerSqm)>,
         _zones: &[ZoneCode],
         _pref_code: Option<&PrefCode>,

@@ -15,7 +15,7 @@ use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
 use crate::domain::scoring::tls::WeightPreset;
 use crate::domain::value_object::{
-    BBox, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel, TlsScore,
+    BBox, OpportunitiesFilters, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel, TlsScore,
 };
 
 /// Raw query string parameters for `GET /api/v1/opportunities`.
@@ -59,23 +59,6 @@ fn default_preset() -> String {
     "balance".into()
 }
 
-/// Validated, domain-typed filter set passed to
-/// [`GetOpportunitiesUsecase`].
-#[derive(Debug, Clone)]
-pub struct OpportunitiesFilters {
-    pub bbox: BBox,
-    pub limit: OpportunityLimit,
-    pub offset: OpportunityOffset,
-    pub tls_min: Option<TlsScore>,
-    pub risk_max: Option<RiskLevel>,
-    pub zones: Vec<ZoneCode>,
-    pub station_max: Option<Meters>,
-    pub price_range: Option<(PricePerSqm, PricePerSqm)>,
-    pub preset: WeightPreset,
-    pub pref_code: Option<PrefCode>,
-    pub cities: Vec<String>,
-}
-
 impl OpportunitiesQuery {
     /// Validate and convert the raw query into [`OpportunitiesFilters`].
     ///
@@ -100,7 +83,7 @@ impl OpportunitiesQuery {
         let zones = parse_zones_csv(self.zones.as_deref())?;
         let station_max = self.station_max.map(Meters::new);
         let price_range = parse_price_range(self.price_min, self.price_max)?;
-        let preset = parse_preset(&self.preset);
+        let preset: WeightPreset = self.preset.parse().unwrap(); // Infallible
         let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
         let cities = self
             .cities
@@ -202,15 +185,6 @@ fn parse_price_range(
     }
 
     Ok(Some((PricePerSqm::new(lo_raw)?, PricePerSqm::new(hi_raw)?)))
-}
-
-fn parse_preset(raw: &str) -> WeightPreset {
-    match raw {
-        "investment" => WeightPreset::Investment,
-        "residential" => WeightPreset::Residential,
-        "disaster" | "disaster_focus" => WeightPreset::DisasterFocus,
-        _ => WeightPreset::Balance,
-    }
 }
 
 #[cfg(test)]

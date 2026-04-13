@@ -54,12 +54,7 @@ impl CoordQuery {
     ///
     /// Unknown strings fall back to [`WeightPreset::Balance`].
     pub fn parse_preset(&self) -> WeightPreset {
-        match self.preset.as_str() {
-            "investment" => WeightPreset::Investment,
-            "residential" => WeightPreset::Residential,
-            "disaster" | "disaster_focus" => WeightPreset::DisasterFocus,
-            _ => WeightPreset::Balance,
-        }
+        self.preset.parse().unwrap() // Infallible
     }
 }
 

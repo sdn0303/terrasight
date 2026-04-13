@@ -24,7 +24,7 @@ use crate::domain::scoring::tls::{
 };
 use crate::domain::value_object::Coord;
 
-pub struct ComputeTlsUsecase {
+pub(crate) struct ComputeTlsUsecase {
     repo: Arc<dyn TlsRepository>,
     /// J-SHIS seismic hazard client.
     ///
@@ -41,7 +41,7 @@ impl ComputeTlsUsecase {
     /// - `repo`: PostGIS-backed TLS repository for spatial queries.
     /// - `jshis`: Optional J-SHIS client. Pass `None` to skip live seismic
     ///   and ground data (useful in tests or when network access is unavailable).
-    pub fn new(repo: Arc<dyn TlsRepository>, jshis: Option<Arc<JshisClient>>) -> Self {
+    pub(crate) fn new(repo: Arc<dyn TlsRepository>, jshis: Option<Arc<JshisClient>>) -> Self {
         Self { repo, jshis }
     }
 
@@ -56,7 +56,7 @@ impl ComputeTlsUsecase {
     /// [`RawInputs`] method, and the final aggregation + grade + cross
     /// analysis is composed from the resulting [`AxisOutput`]s.
     #[tracing::instrument(skip(self), fields(usecase = "compute_tls", preset = ?preset))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         coord: &Coord,
         preset: WeightPreset,
@@ -539,38 +539,38 @@ impl RawInputs {
 // ─── Output types ────────────────────────────────────────────────────────────
 
 /// Full TLS result returned by [`ComputeTlsUsecase::execute`].
-pub struct TlsOutput {
-    pub score: f64,
-    pub grade: Grade,
-    pub axes: AxesOutput,
-    pub cross_analysis: CrossAnalysis,
-    pub weight_preset: WeightPreset,
-    pub data_freshness: String,
+pub(crate) struct TlsOutput {
+    pub(crate) score: f64,
+    pub(crate) grade: Grade,
+    pub(crate) axes: AxesOutput,
+    pub(crate) cross_analysis: CrossAnalysis,
+    pub(crate) weight_preset: WeightPreset,
+    pub(crate) data_freshness: String,
 }
 
 /// Five-axis breakdown of the TLS.
-pub struct AxesOutput {
-    pub disaster: AxisOutput,
-    pub terrain: AxisOutput,
-    pub livability: AxisOutput,
-    pub future: AxisOutput,
-    pub price: AxisOutput,
+pub(crate) struct AxesOutput {
+    pub(crate) disaster: AxisOutput,
+    pub(crate) terrain: AxisOutput,
+    pub(crate) livability: AxisOutput,
+    pub(crate) future: AxisOutput,
+    pub(crate) price: AxisOutput,
 }
 
 /// Single axis with its score, weight, confidence, and sub-score detail.
-pub struct AxisOutput {
-    pub score: f64,
-    pub weight: f64,
-    pub confidence: f64,
-    pub sub_scores: Vec<SubScoreOutput>,
+pub(crate) struct AxisOutput {
+    pub(crate) score: f64,
+    pub(crate) weight: f64,
+    pub(crate) confidence: f64,
+    pub(crate) sub_scores: Vec<SubScoreOutput>,
 }
 
 /// One sub-score within an axis.
-pub struct SubScoreOutput {
-    pub id: &'static str,
-    pub score: f64,
-    pub available: bool,
-    pub detail: serde_json::Value,
+pub(crate) struct SubScoreOutput {
+    pub(crate) id: &'static str,
+    pub(crate) score: f64,
+    pub(crate) available: bool,
+    pub(crate) detail: serde_json::Value,
 }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -608,14 +608,10 @@ mod tests {
                 PriceRecord {
                     year: 2019,
                     price_per_sqm: 1000,
-                    address: "A".into(),
-                    distance_m: 10.0,
                 },
                 PriceRecord {
                     year: 2023,
                     price_per_sqm: 1200,
-                    address: "A".into(),
-                    distance_m: 10.0,
                 },
             ])
         };

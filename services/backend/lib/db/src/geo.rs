@@ -35,7 +35,10 @@ pub fn to_raw_geo_feature(
     let geo_type = geojson
         .get("type")
         .and_then(|v| v.as_str())
-        .unwrap_or("Point")
+        .unwrap_or_else(|| {
+            tracing::warn!("PostGIS ST_AsGeoJSON missing 'type' field, defaulting to Point");
+            "Point"
+        })
         .to_string();
     let coordinates = geojson
         .get("coordinates")

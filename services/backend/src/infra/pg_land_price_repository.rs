@@ -10,12 +10,13 @@ use tokio::time::timeout;
 use super::map_db_err;
 use crate::domain::constants::OPPORTUNITY_QUERY_TIMEOUT_SECS;
 use crate::domain::entity::{
-    Address, BuildingCoverageRatio, FloorAreaRatio, GeoFeature, GeoJsonGeometry, LayerResult,
-    OpportunityRecord, PricePerSqm, ZoneCode,
+    Address, BuildingCoverageRatio, FloorAreaRatio, GeoFeature, LayerResult, OpportunityRecord,
+    PricePerSqm, ZoneCode,
 };
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
 use crate::domain::value_object::{BBox, Coord, PrefCode, Year, ZoomLevel};
+use crate::infra::geo_convert::to_geo_feature;
 
 /// Maximum time to wait for the land price query before returning an error.
 const LAND_PRICE_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -82,12 +83,12 @@ impl TryFrom<OpportunityRow> for OpportunityRecord {
 }
 
 /// PostgreSQL + PostGIS implementation of [`LandPriceRepository`].
-pub struct PgLandPriceRepository {
+pub(crate) struct PgLandPriceRepository {
     pool: PgPool,
 }
 
 impl PgLandPriceRepository {
-    pub fn new(pool: PgPool) -> Self {
+    pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -234,7 +235,6 @@ impl LandPriceRepository for PgLandPriceRepository {
         &self,
         bbox: &BBox,
         limit: u32,
-        offset: u32,
         price_range: Option<(PricePerSqm, PricePerSqm)>,
         zones: &[ZoneCode],
         pref_code: Option<&PrefCode>,
@@ -305,9 +305,7 @@ impl LandPriceRepository for PgLandPriceRepository {
 
         builder
             .push(" ORDER BY lp.price_per_sqm DESC LIMIT ")
-            .push_bind(i64::from(limit))
-            .push(" OFFSET ")
-            .push_bind(i64::from(offset));
+            .push_bind(i64::from(limit));
 
         timeout(
             Duration::from_secs(OPPORTUNITY_QUERY_TIMEOUT_SECS),
@@ -322,18 +320,6 @@ impl LandPriceRepository for PgLandPriceRepository {
         .map(OpportunityRecord::try_from)
         .collect::<Result<Vec<_>, _>>()
         .inspect(|records| tracing::debug!(count = records.len(), "opportunities rows mapped"))
-    }
-}
-
-/// Parse PostGIS `ST_AsGeoJSON` output into a domain [`GeoFeature`].
-fn to_geo_feature(geojson: serde_json::Value, properties: serde_json::Value) -> GeoFeature {
-    let raw = realestate_db::geo::to_raw_geo_feature(geojson, properties);
-    GeoFeature {
-        geometry: GeoJsonGeometry {
-            r#type: raw.geo_type,
-            coordinates: raw.coordinates,
-        },
-        properties: raw.properties,
     }
 }
 

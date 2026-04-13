@@ -48,7 +48,7 @@ pub async fn init_prometheus(addr: SocketAddr) -> Result<(), MetricsError> {
     let (recorder, exporter) = builder
         .with_http_listener(addr)
         .build()
-        .expect("PrometheusBuilder::build is infallible with default settings");
+        .expect("INVARIANT: PrometheusBuilder::build is infallible with default settings");
 
     metrics::set_global_recorder(recorder)?;
 

@@ -26,20 +26,17 @@ const PARAM_RESPONSE_FORMAT: &str = "response_format";
 /// Query parameter: GeoJSON response format value.
 const PARAM_VALUE_GEOJSON: &str = "geojson";
 
-/// Exponential backoff base for retry delays.
-const RETRY_BACKOFF_BASE: u64 = 2;
-
 impl ReinfolibClient {
     /// Create a new client with the given configuration.
     ///
     /// # Errors
     ///
-    /// Returns [`MlitError::Parse`] if the API key is not configured.
+    /// Returns [`MlitError::Config`] if the API key is not configured.
     pub fn new(config: &MlitConfig) -> Result<Self, MlitError> {
         let api_key = config
             .reinfolib_api_key
             .clone()
-            .ok_or_else(|| MlitError::Parse("REINFOLIB_API_KEY is required".into()))?;
+            .ok_or_else(|| MlitError::Config("REINFOLIB_API_KEY is required".into()))?;
 
         let http = reqwest::Client::builder()
             .timeout(Duration::from_secs(config.request_timeout_secs))
@@ -103,7 +100,14 @@ impl ReinfolibClient {
                 params.push(((*k).to_string(), (*v).to_string()));
             }
 
-            let response = self.request_with_retry(&url, &params).await?;
+            let response = crate::retry::request_with_retry(
+                &self.http,
+                &url,
+                &params,
+                Some((API_KEY_HEADER, &self.api_key)),
+                "reinfolib",
+            )
+            .await?;
             let geojson: GeoJsonResponse = response
                 .json()
                 .await
@@ -132,70 +136,6 @@ impl ReinfolibClient {
             "tile features merged"
         );
         Ok(all_features)
-    }
-
-    /// Make an HTTP GET request with exponential backoff retry (3 attempts: 0s, 1s, 2s).
-    ///
-    /// - HTTP 429 → waits and retries up to 3 times, then returns [`MlitError::RateLimited`].
-    /// - Non-success status → returns [`MlitError::Api`] immediately (no retry).
-    /// - Transport error → waits and retries, then returns [`MlitError::Http`].
-    async fn request_with_retry(
-        &self,
-        url: &str,
-        params: &[(String, String)],
-    ) -> Result<reqwest::Response, MlitError> {
-        const MAX_RETRIES: u32 = 3;
-
-        for attempt in 0..MAX_RETRIES {
-            let result = self
-                .http
-                .get(url)
-                .query(params)
-                .header(API_KEY_HEADER, &self.api_key)
-                .send()
-                .await;
-
-            match result {
-                Ok(resp) if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS => {
-                    if attempt < MAX_RETRIES - 1 {
-                        let delay = Duration::from_secs(RETRY_BACKOFF_BASE.pow(attempt));
-                        tracing::warn!(
-                            attempt = attempt + 1,
-                            delay_secs = ?delay,
-                            "Rate limited, retrying"
-                        );
-                        tokio::time::sleep(delay).await;
-                        continue;
-                    }
-                    return Err(MlitError::RateLimited {
-                        retry_after_secs: RETRY_BACKOFF_BASE.pow(attempt),
-                    });
-                }
-                Ok(resp) if !resp.status().is_success() => {
-                    let status = resp.status().as_u16();
-                    let message = resp.text().await.unwrap_or_default();
-                    return Err(MlitError::Api { status, message });
-                }
-                Ok(resp) => return Ok(resp),
-                Err(e) => {
-                    if attempt < MAX_RETRIES - 1 {
-                        let delay = Duration::from_secs(RETRY_BACKOFF_BASE.pow(attempt));
-                        tracing::warn!(
-                            attempt = attempt + 1,
-                            error = %e,
-                            "Request failed, retrying"
-                        );
-                        tokio::time::sleep(delay).await;
-                        continue;
-                    }
-                    return Err(MlitError::Http(e));
-                }
-            }
-        }
-
-        // The loop always returns before reaching this point, but the compiler
-        // cannot prove it without the unreachable guard.
-        unreachable!("retry loop always returns before exhausting MAX_RETRIES")
     }
 
     // -----------------------------------------------------------------------
@@ -282,7 +222,14 @@ impl ReinfolibClient {
             ("quarter".to_string(), quarter.to_string()),
             ("area".to_string(), area.to_string()),
         ];
-        let resp = self.request_with_retry(&url, &params).await?;
+        let resp = crate::retry::request_with_retry(
+            &self.http,
+            &url,
+            &params,
+            Some((API_KEY_HEADER, &self.api_key)),
+            "reinfolib",
+        )
+        .await?;
         let data: serde_json::Value = resp
             .json()
             .await

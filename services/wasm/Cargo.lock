@@ -511,6 +511,7 @@ dependencies = [
  "js-sys",
  "realestate-geo-math",
  "rstar",
+ "serde",
  "serde_json",
  "wasm-bindgen",
 ]

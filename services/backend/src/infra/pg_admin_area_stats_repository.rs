@@ -1,45 +1,25 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use sqlx::{FromRow, PgPool};
+use sqlx::PgPool;
 use tokio::time::timeout;
 
 use super::map_db_err;
-use crate::domain::entity::{AdminAreaStats, FacilityStats, LandPriceStats, RiskStats};
+use crate::domain::entity::{AdminAreaStats, AreaName, FacilityStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::AdminAreaStatsRepository;
 use crate::domain::value_object::{AreaCode, AreaCodeLevel};
+use crate::infra::row_types::{CountRow, LandPriceStatsRow};
 
 /// Maximum time to wait for any admin-area stats query.
 const ADMIN_STATS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[derive(Debug, FromRow)]
-struct AdminLandPriceStatsRow {
-    avg_price: Option<f64>,
-    median_price: Option<f64>,
-    min_price: Option<i64>,
-    max_price: Option<i64>,
-    count: i64,
-}
-
-impl From<AdminLandPriceStatsRow> for LandPriceStats {
-    fn from(row: AdminLandPriceStatsRow) -> Self {
-        LandPriceStats {
-            avg_per_sqm: row.avg_price,
-            median_per_sqm: row.median_price,
-            min_per_sqm: row.min_price,
-            max_per_sqm: row.max_price,
-            count: row.count,
-        }
-    }
-}
-
-pub struct PgAdminAreaStatsRepository {
+pub(crate) struct PgAdminAreaStatsRepository {
     pool: PgPool,
 }
 
 impl PgAdminAreaStatsRepository {
-    pub fn new(pool: PgPool) -> Self {
+    pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -62,7 +42,7 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
         // Land price stats — global aggregate (placeholder until admin_boundaries exists).
         let lp_row = timeout(
             ADMIN_STATS_QUERY_TIMEOUT,
-            sqlx::query_as::<_, AdminLandPriceStatsRow>(
+            sqlx::query_as::<_, LandPriceStatsRow>(
                 r#"
             SELECT
                 AVG(price_per_sqm)::float8 AS avg_price,
@@ -84,31 +64,35 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
         // Facility counts — global aggregate (placeholder until admin_boundaries exists).
         let schools_row = timeout(
             ADMIN_STATS_QUERY_TIMEOUT,
-            sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM schools").fetch_one(&self.pool),
+            sqlx::query_as::<_, CountRow>("SELECT COUNT(*) AS count FROM schools")
+                .fetch_one(&self.pool),
         )
         .await
         .map_err(|_| DomainError::Timeout("admin_area schools_count query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(count = r.count, "admin_area schools_count fetched"))?;
 
         let medical_row = timeout(
             ADMIN_STATS_QUERY_TIMEOUT,
-            sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM medical_facilities")
+            sqlx::query_as::<_, CountRow>("SELECT COUNT(*) AS count FROM medical_facilities")
                 .fetch_one(&self.pool),
         )
         .await
         .map_err(|_| DomainError::Timeout("admin_area medical_count query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(count = r.count, "admin_area medical_count fetched"))?;
 
         tracing::debug!(
-            schools = schools_row.0,
-            medical = medical_row.0,
+            schools = schools_row.count,
+            medical = medical_row.count,
             "admin_area facility_counts fetched"
         );
 
         Ok(AdminAreaStats {
-            code: code.as_str().to_string(),
+            code: code.clone(),
             // Placeholder name until admin_boundaries table is populated.
-            name: format!("Area {}", code.as_str()),
+            name: AreaName::parse(&format!("Area {}", code.as_str()))
+                .expect("INVARIANT: placeholder area name is non-empty"),
             level: level.to_string(),
             land_price: lp_row.into(),
             risk: RiskStats {
@@ -117,8 +101,8 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
                 composite_risk: 0.0,
             },
             facilities: FacilityStats {
-                schools: schools_row.0,
-                medical: medical_row.0,
+                schools: schools_row.count,
+                medical: medical_row.count,
             },
         })
     }

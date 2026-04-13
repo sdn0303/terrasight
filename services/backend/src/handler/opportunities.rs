@@ -30,7 +30,7 @@ use crate::usecase::get_opportunities::GetOpportunitiesUsecase;
 /// - `408 Request Timeout` — the response exceeded the 8-second budget.
 /// - `503 Service Unavailable` — database failure during the flat fetch.
 #[tracing::instrument(skip(usecase), fields(endpoint = "v1/opportunities"))]
-pub async fn get_opportunities(
+pub(crate) async fn get_opportunities(
     State(usecase): State<Arc<GetOpportunitiesUsecase>>,
     Query(params): Query<OpportunitiesQuery>,
 ) -> Result<Json<OpportunitiesResponseDto>, AppError> {

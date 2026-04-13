@@ -14,21 +14,21 @@ use geozero::geojson::GeoJsonWriter;
 /// A single feature extracted from a FlatGeobuf file.
 ///
 /// Coordinates follow RFC 7946: `[longitude, latitude]`.
-pub struct ParsedFeature {
+pub(crate) struct ParsedFeature {
     /// Western boundary (minimum longitude).
-    pub min_x: f64,
+    pub(crate) min_x: f64,
     /// Southern boundary (minimum latitude).
-    pub min_y: f64,
+    pub(crate) min_y: f64,
     /// Eastern boundary (maximum longitude).
-    pub max_x: f64,
+    pub(crate) max_x: f64,
     /// Northern boundary (maximum latitude).
-    pub max_y: f64,
+    pub(crate) max_y: f64,
     /// Complete GeoJSON `Feature` string, e.g. `{"type":"Feature","geometry":{...},"properties":{...}}`.
-    pub geojson: String,
+    pub(crate) geojson: String,
     /// Parsed `geo` geometry for spatial computations. `None` if parsing fails.
-    pub geometry_geo: Option<geo::Geometry<f64>>,
+    pub(crate) geometry_geo: Option<geo::Geometry<f64>>,
     /// Feature properties extracted from the GeoJSON. `None` if parsing fails.
-    pub properties: Option<serde_json::Map<String, serde_json::Value>>,
+    pub(crate) properties: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// Parse raw FlatGeobuf bytes into a vector of [`ParsedFeature`] records.
@@ -43,7 +43,7 @@ pub struct ParsedFeature {
 ///
 /// Returns `Err(String)` if the FGB header cannot be read, the feature stream
 /// fails mid-way, or a feature cannot be serialised to GeoJSON.
-pub fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, String> {
+pub(crate) fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, String> {
     let mut cursor = Cursor::new(bytes);
     let reader = FgbReader::open(&mut cursor).map_err(|e| format!("FGB open error: {e}"))?;
 
@@ -192,6 +192,35 @@ fn json_to_coord_vec(arr: &serde_json::Value) -> Option<Vec<Coord<f64>>> {
     }
 }
 
+/// Accumulates bounding-box extents while walking a GeoJSON coordinate tree.
+struct BboxAccumulator {
+    min_x: f64,
+    min_y: f64,
+    max_x: f64,
+    max_y: f64,
+    found: bool,
+}
+
+impl BboxAccumulator {
+    fn new() -> Self {
+        Self {
+            min_x: f64::MAX,
+            min_y: f64::MAX,
+            max_x: f64::MIN,
+            max_y: f64::MIN,
+            found: false,
+        }
+    }
+
+    fn accumulate(&mut self, x: f64, y: f64) {
+        self.min_x = self.min_x.min(x);
+        self.min_y = self.min_y.min(y);
+        self.max_x = self.max_x.max(x);
+        self.max_y = self.max_y.max(y);
+        self.found = true;
+    }
+}
+
 /// Walk the `"coordinates"` subtree of a GeoJSON `Feature` string and return
 /// `(min_x, min_y, max_x, max_y)` (i.e. west, south, east, north).
 ///
@@ -206,45 +235,33 @@ fn extract_bbox(geojson: &str) -> Result<(f64, f64, f64, f64), String> {
     let value: serde_json::Value =
         serde_json::from_str(geojson).map_err(|e| format!("JSON parse error: {e}"))?;
 
-    let mut min_x = f64::MAX;
-    let mut min_y = f64::MAX;
-    let mut max_x = f64::MIN;
-    let mut max_y = f64::MIN;
-    let mut found = false;
-
+    let mut acc = BboxAccumulator::new();
     let geometry = value.get("geometry").ok_or("missing 'geometry' key")?;
-    collect_coords(geometry, &mut min_x, &mut min_y, &mut max_x, &mut max_y, &mut found);
+    collect_coords(geometry, &mut acc);
 
-    if found {
-        Ok((min_x, min_y, max_x, max_y))
+    if acc.found {
+        Ok((acc.min_x, acc.min_y, acc.max_x, acc.max_y))
     } else {
         Err("no coordinate pairs found in geometry".to_string())
     }
 }
 
 /// Recursively collect coordinate values from a GeoJSON geometry node.
-fn collect_coords(
-    node: &serde_json::Value,
-    min_x: &mut f64,
-    min_y: &mut f64,
-    max_x: &mut f64,
-    max_y: &mut f64,
-    found: &mut bool,
-) {
+fn collect_coords(node: &serde_json::Value, acc: &mut BboxAccumulator) {
     match node {
         serde_json::Value::Object(map) => {
             // GeometryCollection: iterate `"geometries"` array
             if let Some(geoms) = map.get("geometries") {
                 if let Some(arr) = geoms.as_array() {
                     for g in arr {
-                        collect_coords(g, min_x, min_y, max_x, max_y, found);
+                        collect_coords(g, acc);
                     }
                 }
                 return;
             }
             // Normal geometry: descend into `"coordinates"`
             if let Some(coords) = map.get("coordinates") {
-                collect_coords(coords, min_x, min_y, max_x, max_y, found);
+                collect_coords(coords, acc);
             }
         }
         serde_json::Value::Array(arr) => {
@@ -252,24 +269,12 @@ fn collect_coords(
             if arr.len() >= 2
                 && let (Some(x), Some(y)) = (arr[0].as_f64(), arr[1].as_f64())
             {
-                if x < *min_x {
-                    *min_x = x;
-                }
-                if x > *max_x {
-                    *max_x = x;
-                }
-                if y < *min_y {
-                    *min_y = y;
-                }
-                if y > *max_y {
-                    *max_y = y;
-                }
-                *found = true;
+                acc.accumulate(x, y);
                 return; // leaf node, no further recursion needed
             }
             // Nested arrays (rings, multi-geometries): recurse
             for item in arr {
-                collect_coords(item, min_x, min_y, max_x, max_y, found);
+                collect_coords(item, acc);
             }
         }
         // Numbers, strings, booleans, null: ignore

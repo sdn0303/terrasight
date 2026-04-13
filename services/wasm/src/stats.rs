@@ -4,29 +4,34 @@
 //! within WASM, matching the backend `/api/stats` response shape.
 
 use geo::{Area, BooleanOps, Coord, Polygon, Rect};
+use serde::Serialize;
 
 use crate::spatial_index::LayerStatsData;
 
 /// Computed land price statistics for a queried area.
-pub struct LandPriceStats {
-    pub avg_per_sqm: f64,
-    pub median_per_sqm: f64,
-    pub min_per_sqm: f64,
-    pub max_per_sqm: f64,
-    pub count: u32,
+///
+/// All aggregation fields are `None` when no valid price data exists in the
+/// queried area, matching the backend `/api/stats` nullable contract.
+#[derive(Debug, Serialize)]
+pub(crate) struct LandPriceStats {
+    pub(crate) avg_per_sqm: Option<f64>,
+    pub(crate) median_per_sqm: Option<f64>,
+    pub(crate) min_per_sqm: Option<i64>,
+    pub(crate) max_per_sqm: Option<i64>,
+    pub(crate) count: i64,
 }
 
 /// Compute land price statistics from a `PricePoints` layer for the given indices.
 ///
 /// Filters out zero prices (features with missing `price_per_sqm`). Returns all
 /// zeros if no valid prices are found.
-pub fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) -> LandPriceStats {
+pub(crate) fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) -> LandPriceStats {
     let LayerStatsData::PricePoints(prices) = stats_data else {
         return LandPriceStats {
-            avg_per_sqm: 0.0,
-            median_per_sqm: 0.0,
-            min_per_sqm: 0.0,
-            max_per_sqm: 0.0,
+            avg_per_sqm: None,
+            median_per_sqm: None,
+            min_per_sqm: None,
+            max_per_sqm: None,
             count: 0,
         };
     };
@@ -41,10 +46,10 @@ pub fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) ->
 
     if values.is_empty() {
         return LandPriceStats {
-            avg_per_sqm: 0.0,
-            median_per_sqm: 0.0,
-            min_per_sqm: 0.0,
-            max_per_sqm: 0.0,
+            avg_per_sqm: None,
+            median_per_sqm: None,
+            min_per_sqm: None,
+            max_per_sqm: None,
             count: 0,
         };
     }
@@ -58,15 +63,16 @@ pub fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) ->
     } else {
         values[count / 2]
     };
-    let min = values[0];
-    let max = values[count - 1];
+    // SAFETY: values is non-empty (checked above), so first/last always exist.
+    let min = values[0] as i64;
+    let max = values[count - 1] as i64;
 
     LandPriceStats {
-        avg_per_sqm: avg,
-        median_per_sqm: median,
-        min_per_sqm: min,
-        max_per_sqm: max,
-        count: count as u32,
+        avg_per_sqm: Some(avg),
+        median_per_sqm: Some(median),
+        min_per_sqm: Some(min),
+        max_per_sqm: Some(max),
+        count: count as i64,
     }
 }
 
@@ -74,7 +80,7 @@ pub fn compute_land_price_stats(stats_data: &LayerStatsData, indices: &[u32]) ->
 ///
 /// Returns a value in `[0.0, 1.0]`. Returns `0.0` if `stats_data` is not
 /// `AreaPolygons` or if no geometries are present.
-pub fn compute_area_ratio(
+pub(crate) fn compute_area_ratio(
     bbox_rect: &Rect<f64>,
     stats_data: &LayerStatsData,
     indices: &[u32],
@@ -112,7 +118,7 @@ pub fn compute_area_ratio(
 /// where ratio is the fraction of the bbox area covered by that zone type.
 ///
 /// Returns an empty vector if `stats_data` is not `ZoningPolygons`.
-pub fn compute_zoning_distribution(
+pub(crate) fn compute_zoning_distribution(
     bbox_rect: &Rect<f64>,
     stats_data: &LayerStatsData,
     indices: &[u32],
@@ -225,10 +231,12 @@ mod tests {
         let stats = compute_land_price_stats(&data, &indices);
 
         assert_eq!(stats.count, 5);
-        assert!((stats.avg_per_sqm - 300.0).abs() < 1e-9, "avg should be 300");
-        assert!((stats.median_per_sqm - 300.0).abs() < 1e-9, "median should be 300");
-        assert!((stats.min_per_sqm - 100.0).abs() < 1e-9);
-        assert!((stats.max_per_sqm - 500.0).abs() < 1e-9);
+        let avg = stats.avg_per_sqm.expect("avg should be Some for non-empty data");
+        assert!((avg - 300.0).abs() < 1e-9, "avg should be 300");
+        let median = stats.median_per_sqm.expect("median should be Some for non-empty data");
+        assert!((median - 300.0).abs() < 1e-9, "median should be 300");
+        assert_eq!(stats.min_per_sqm, Some(100));
+        assert_eq!(stats.max_per_sqm, Some(500));
     }
 
     #[test]
@@ -240,7 +248,8 @@ mod tests {
 
         assert_eq!(stats.count, 4);
         // Median of [100, 200, 300, 400] = (200 + 300) / 2 = 250
-        assert!((stats.median_per_sqm - 250.0).abs() < 1e-9, "median should be 250");
+        let median = stats.median_per_sqm.expect("median should be Some for non-empty data");
+        assert!((median - 250.0).abs() < 1e-9, "median should be 250");
     }
 
     #[test]
@@ -252,24 +261,30 @@ mod tests {
         let stats = compute_land_price_stats(&data, &indices);
 
         assert_eq!(stats.count, 2, "zero-price features should be excluded");
-        assert!((stats.min_per_sqm - 100.0).abs() < 1e-9);
-        assert!((stats.max_per_sqm - 300.0).abs() < 1e-9);
+        assert_eq!(stats.min_per_sqm, Some(100));
+        assert_eq!(stats.max_per_sqm, Some(300));
     }
 
     #[test]
-    fn test_land_price_stats_empty_returns_zeros() {
+    fn test_land_price_stats_empty_returns_none() {
         let data = LayerStatsData::PricePoints(vec![]);
         let stats = compute_land_price_stats(&data, &[]);
         assert_eq!(stats.count, 0);
-        assert_eq!(stats.avg_per_sqm, 0.0);
+        assert_eq!(stats.avg_per_sqm, None);
+        assert_eq!(stats.median_per_sqm, None);
+        assert_eq!(stats.min_per_sqm, None);
+        assert_eq!(stats.max_per_sqm, None);
     }
 
     #[test]
-    fn test_land_price_stats_non_price_data_returns_zeros() {
+    fn test_land_price_stats_non_price_data_returns_none() {
         let data = LayerStatsData::None;
         let stats = compute_land_price_stats(&data, &[0, 1]);
         assert_eq!(stats.count, 0);
-        assert_eq!(stats.avg_per_sqm, 0.0);
+        assert_eq!(stats.avg_per_sqm, None);
+        assert_eq!(stats.median_per_sqm, None);
+        assert_eq!(stats.min_per_sqm, None);
+        assert_eq!(stats.max_per_sqm, None);
     }
 
     // -----------------------------------------------------------------------

@@ -30,10 +30,15 @@ use std::collections::HashMap;
 use geo::{Coord, Rect};
 use wasm_bindgen::prelude::*;
 
+mod constants;
 mod fgb_reader;
 mod spatial_index;
 mod stats;
 
+use constants::{
+    LAYER_FLOOD, LAYER_FLOOD_HISTORY, LAYER_LANDPRICE, LAYER_MEDICAL, LAYER_SCHOOLS,
+    LAYER_STEEP_SLOPE, LAYER_ZONING, RISK_WEIGHT_FLOOD, RISK_WEIGHT_STEEP,
+};
 use fgb_reader::parse_fgb;
 use spatial_index::{LayerIndex, LayerStatsData};
 use stats::{
@@ -136,9 +141,13 @@ impl SpatialEngine {
 
     /// Return the number of features in the specified layer, or `0` if the
     /// layer has not been loaded.
+    ///
+    /// The `layer_id` is normalised before lookup — both `"land-price"` and
+    /// `"landprice"` resolve to the same layer.
     pub fn feature_count(&self, layer_id: &str) -> u32 {
+        let layer_id = constants::canonical_layer_id(layer_id);
         self.layers
-            .get(layer_id)
+            .get(&layer_id)
             .map(LayerIndex::feature_count)
             .unwrap_or(0)
     }
@@ -198,20 +207,21 @@ impl SpatialEngine {
 impl SpatialEngine {
     /// Internal load implementation returning `Result<_, String>` for testability
     /// without `JsValue` (which panics on non-wasm32 targets).
-    pub fn load_layer_inner(
+    pub(crate) fn load_layer_inner(
         &mut self,
         layer_id: &str,
         fgb_bytes: &[u8],
     ) -> Result<u32, String> {
+        let layer_id = constants::canonical_layer_id(layer_id);
         let features = parse_fgb(fgb_bytes)?;
         let count = features.len() as u32;
-        let index = LayerIndex::from_parsed(features, layer_id);
-        self.layers.insert(layer_id.to_string(), index);
+        let index = LayerIndex::from_parsed(features, &layer_id);
+        self.layers.insert(layer_id, index);
         Ok(count)
     }
 
     /// Internal query implementation returning `Result<_, String>`.
-    pub fn query_inner(
+    pub(crate) fn query_inner(
         &self,
         layer_id: &str,
         south: f64,
@@ -219,9 +229,10 @@ impl SpatialEngine {
         north: f64,
         east: f64,
     ) -> Result<String, String> {
+        let layer_id = constants::canonical_layer_id(layer_id);
         let index = self
             .layers
-            .get(layer_id)
+            .get(&layer_id)
             .ok_or_else(|| format!("layer not found: {layer_id}"))?;
 
         let indices = index.query_bbox(south, west, north, east);
@@ -229,7 +240,7 @@ impl SpatialEngine {
     }
 
     /// Internal query_layers implementation returning `Result<_, String>`.
-    pub fn query_layers_inner(
+    pub(crate) fn query_layers_inner(
         &self,
         layer_ids: &str,
         south: f64,
@@ -237,10 +248,11 @@ impl SpatialEngine {
         north: f64,
         east: f64,
     ) -> Result<String, String> {
-        let mut result: HashMap<&str, serde_json::Value> = HashMap::new();
+        let mut result: HashMap<String, serde_json::Value> = HashMap::new();
 
-        for layer_id in layer_ids.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-            if let Some(index) = self.layers.get(layer_id) {
+        for raw_id in layer_ids.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+            let layer_id = constants::canonical_layer_id(raw_id);
+            if let Some(index) = self.layers.get(&layer_id) {
                 let indices = index.query_bbox(south, west, north, east);
                 result.insert(layer_id, index.get_features_as_value(&indices));
             }
@@ -251,7 +263,7 @@ impl SpatialEngine {
     }
 
     /// Internal compute_stats implementation returning `Result<_, String>`.
-    pub fn compute_stats_inner(
+    pub(crate) fn compute_stats_inner(
         &self,
         south: f64,
         west: f64,
@@ -266,7 +278,7 @@ impl SpatialEngine {
         // --- Land price ---
         let lp_stats = self
             .layers
-            .get("landprice")
+            .get(LAYER_LANDPRICE)
             .map(|idx| {
                 let indices = idx.query_bbox(south, west, north, east);
                 compute_land_price_stats(&idx.stats_data, &indices)
@@ -277,11 +289,11 @@ impl SpatialEngine {
 
         // --- Flood risk ---
         let flood_ratio = self
-            .find_layer_ratio(&bbox_rect, south, west, north, east, &["flood-history", "flood"]);
+            .find_layer_ratio(&bbox_rect, south, west, north, east, &[LAYER_FLOOD_HISTORY, LAYER_FLOOD]);
 
         // --- Steep slope risk ---
         let steep_ratio = self
-            .find_layer_ratio(&bbox_rect, south, west, north, east, &["steep-slope", "steep_slope"]);
+            .find_layer_ratio(&bbox_rect, south, west, north, east, &[LAYER_STEEP_SLOPE]);
 
         // --- Composite risk ---
         let composite = (flood_ratio * RISK_WEIGHT_FLOOD + steep_ratio * RISK_WEIGHT_STEEP)
@@ -290,21 +302,21 @@ impl SpatialEngine {
         // --- Schools ---
         let schools = self
             .layers
-            .get("schools")
+            .get(LAYER_SCHOOLS)
             .map(|idx| idx.query_bbox(south, west, north, east).len() as u32)
             .unwrap_or(0);
 
         // --- Medical ---
         let medical = self
             .layers
-            .get("medical")
+            .get(LAYER_MEDICAL)
             .map(|idx| idx.query_bbox(south, west, north, east).len() as u32)
             .unwrap_or(0);
 
         // --- Zoning distribution ---
         let zoning_dist = self
             .layers
-            .get("zoning")
+            .get(LAYER_ZONING)
             .map(|idx| {
                 let indices = idx.query_bbox(south, west, north, east);
                 compute_zoning_distribution(&bbox_rect, &idx.stats_data, &indices)
@@ -362,12 +374,6 @@ impl SpatialEngine {
         0.0
     }
 }
-
-/// Risk weight for flood area ratio (mirrors backend `domain/constants.rs`).
-const RISK_WEIGHT_FLOOD: f64 = 0.6;
-
-/// Risk weight for steep-slope area ratio (mirrors backend `domain/constants.rs`).
-const RISK_WEIGHT_STEEP: f64 = 0.4;
 
 impl Default for SpatialEngine {
     fn default() -> Self {
@@ -583,7 +589,7 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         assert_eq!(v["land_price"]["count"], 0);
-        assert_eq!(v["land_price"]["avg_per_sqm"], 0.0);
+        assert!(v["land_price"]["avg_per_sqm"].is_null(), "avg_per_sqm should be null when no data");
         assert_eq!(v["risk"]["flood_area_ratio"], 0.0);
         assert_eq!(v["risk"]["steep_slope_area_ratio"], 0.0);
         assert_eq!(v["risk"]["composite_risk"], 0.0);

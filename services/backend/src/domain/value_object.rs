@@ -1,5 +1,10 @@
-use crate::domain::constants::{BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX, YEAR_MAX, YEAR_MIN};
+use crate::domain::constants::{
+    BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX, PREF_CODE_LEN, PREF_CODE_MAX, PREF_CODE_MIN, YEAR_MAX,
+    YEAR_MIN,
+};
+use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
+use crate::domain::scoring::tls::WeightPreset;
 
 /// Bounding box with enforced invariants:
 /// - `south < north`, `west < east`
@@ -38,7 +43,9 @@ impl BBox {
             ));
         }
         if (north - south) > BBOX_MAX_SIDE_DEG || (east - west) > BBOX_MAX_SIDE_DEG {
-            return Err(DomainError::BBoxTooLarge);
+            return Err(DomainError::BBoxTooLarge {
+                max_deg: BBOX_MAX_SIDE_DEG,
+            });
         }
         Ok(Self {
             south,
@@ -367,11 +374,11 @@ pub struct PrefCode(String);
 impl PrefCode {
     pub fn new(code: &str) -> Result<Self, DomainError> {
         let code = code.trim();
-        if code.len() == 2 && code.chars().all(|c| c.is_ascii_digit()) {
+        if code.len() == PREF_CODE_LEN && code.chars().all(|c| c.is_ascii_digit()) {
             let num: u8 = code
                 .parse()
                 .map_err(|_| DomainError::InvalidPrefCode(code.to_string()))?;
-            if (1..=47).contains(&num) {
+            if (PREF_CODE_MIN..=PREF_CODE_MAX).contains(&num) {
                 return Ok(Self(code.to_string()));
             }
         }
@@ -480,6 +487,40 @@ impl TrendDirection {
             Self::Down => "down",
         }
     }
+}
+
+/// Validated filter set for opportunity queries.
+///
+/// Constructed by the handler layer from raw query parameters;
+/// consumed by the usecase layer.
+#[derive(Debug, Clone)]
+pub struct OpportunitiesFilters {
+    pub bbox: BBox,
+    pub limit: OpportunityLimit,
+    pub offset: OpportunityOffset,
+    pub tls_min: Option<TlsScore>,
+    pub risk_max: Option<RiskLevel>,
+    pub zones: Vec<ZoneCode>,
+    pub station_max: Option<Meters>,
+    pub price_range: Option<(PricePerSqm, PricePerSqm)>,
+    pub preset: WeightPreset,
+    pub pref_code: Option<PrefCode>,
+    pub cities: Vec<String>,
+}
+
+/// Cache key fingerprint for opportunities requests.
+///
+/// Excludes `limit`/`offset` so all paginated views of the same
+/// filter set share a cache slot.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OpportunitiesCacheKey {
+    pub bbox_microdeg: (i64, i64, i64, i64),
+    pub tls_min: Option<u8>,
+    pub risk_max: Option<RiskLevel>,
+    pub zones: Vec<String>,
+    pub station_max: Option<u32>,
+    pub price_range: Option<(i64, i64)>,
+    pub preset: WeightPreset,
 }
 
 #[cfg(test)]

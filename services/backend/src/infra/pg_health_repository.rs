@@ -8,12 +8,12 @@ use crate::domain::repository::HealthRepository;
 /// Maximum time to wait for the health check query before declaring degraded.
 const HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(3);
 
-pub struct PgHealthRepository {
+pub(crate) struct PgHealthRepository {
     pool: PgPool,
 }
 
 impl PgHealthRepository {
-    pub fn new(pool: PgPool) -> Self {
+    pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }

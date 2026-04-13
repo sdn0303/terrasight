@@ -41,8 +41,8 @@ pub struct AreaFacilitiesDto {
 impl From<AdminAreaStats> for AreaStatsResponse {
     fn from(stats: AdminAreaStats) -> Self {
         Self {
-            code: stats.code,
-            name: stats.name,
+            code: stats.code.as_str().to_owned(),
+            name: stats.name.as_str().to_owned(),
             level: stats.level,
             land_price: AreaLandPriceDto {
                 avg_per_sqm: stats.land_price.avg_per_sqm,

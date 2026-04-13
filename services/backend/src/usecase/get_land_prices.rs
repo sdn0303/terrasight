@@ -6,12 +6,12 @@ use crate::domain::repository::LandPriceRepository;
 use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 
 /// Fetch land price GeoJSON features for a given year, bounding box, and zoom level.
-pub struct GetLandPricesUsecase {
+pub(crate) struct GetLandPricesUsecase {
     land_price_repo: Arc<dyn LandPriceRepository>,
 }
 
 impl GetLandPricesUsecase {
-    pub fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
+    pub(crate) fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
         Self { land_price_repo }
     }
 
@@ -25,7 +25,7 @@ impl GetLandPricesUsecase {
     ///
     /// Propagates [`DomainError`] from the repository (typically a database error).
     #[tracing::instrument(skip(self), fields(usecase = "get_land_prices"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         year: Year,
         bbox: BBox,

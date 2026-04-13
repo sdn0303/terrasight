@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 
+use crate::domain::constants::{DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR};
 use crate::domain::error::DomainError;
 use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 use crate::handler::request::area_data::default_zoom;
@@ -79,11 +80,11 @@ pub struct LandPriceByYearRangeQuery {
 }
 
 fn default_from_year() -> i32 {
-    2019
+    DEFAULT_FROM_YEAR
 }
 
 fn default_to_year() -> i32 {
-    2024
+    DEFAULT_TO_YEAR
 }
 
 impl LandPriceByYearRangeQuery {

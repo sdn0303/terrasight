@@ -28,7 +28,7 @@ use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUseca
 /// - `400 Bad Request` — invalid year range, unparseable / out-of-range `bbox`
 /// - `503 Service Unavailable` — database error
 #[tracing::instrument(skip(usecase), fields(endpoint = "v1/land-prices/all-years"))]
-pub async fn get_land_prices_by_year_range(
+pub(crate) async fn get_land_prices_by_year_range(
     State(usecase): State<Arc<GetLandPricesByYearRangeUsecase>>,
     Query(params): Query<LandPriceByYearRangeQuery>,
 ) -> Result<Json<LayerResponseDto>, AppError> {

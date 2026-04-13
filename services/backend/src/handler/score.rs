@@ -15,7 +15,7 @@ use crate::usecase::compute_tls::ComputeTlsUsecase;
 /// Computes a Total Location Score (0–100) from five axes:
 /// disaster risk, terrain quality, livability, future potential, and price value.
 #[tracing::instrument(skip(usecase), fields(endpoint = "score"))]
-pub async fn get_score(
+pub(crate) async fn get_score(
     State(usecase): State<Arc<ComputeTlsUsecase>>,
     Query(params): Query<CoordQuery>,
 ) -> Result<Json<TlsResponse>, AppError> {

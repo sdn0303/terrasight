@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use realestate_db::spatial::bind_bbox;
-use sqlx::{FromRow, PgPool};
+use sqlx::PgPool;
 use tokio::time::timeout;
 
 use super::map_db_err;
@@ -12,37 +12,23 @@ use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::StatsRepository;
 use crate::domain::value_object::{BBox, PrefCode};
+use crate::infra::row_types::{AreaRow, CountRow, LandPriceStatsRow};
 
 /// Maximum time to wait for a single stats aggregation query.
 const STATS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[derive(Debug, FromRow)]
-struct LandPriceStatsRow {
-    avg_price: Option<f64>,
-    median_price: Option<f64>,
-    min_price: Option<i64>,
-    max_price: Option<i64>,
-    count: i64,
+#[derive(Debug, sqlx::FromRow)]
+struct ZoneDistRow {
+    zone_type: String,
+    ratio: f64,
 }
 
-impl From<LandPriceStatsRow> for LandPriceStats {
-    fn from(row: LandPriceStatsRow) -> Self {
-        LandPriceStats {
-            avg_per_sqm: row.avg_price,
-            median_per_sqm: row.median_price,
-            min_per_sqm: row.min_price,
-            max_per_sqm: row.max_price,
-            count: row.count,
-        }
-    }
-}
-
-pub struct PgStatsRepository {
+pub(crate) struct PgStatsRepository {
     pool: PgPool,
 }
 
 impl PgStatsRepository {
-    pub fn new(pool: PgPool) -> Self {
+    pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -89,8 +75,8 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<RiskStats, DomainError> {
-        let bbox_area_query = sqlx::query_as::<_, (f64,)>(
-            "SELECT ST_Area(ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography)",
+        let bbox_area_query = sqlx::query_as::<_, AreaRow>(
+            "SELECT ST_Area(ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography) AS area",
         );
         let bbox_area_row = timeout(
             STATS_QUERY_TIMEOUT,
@@ -105,9 +91,10 @@ impl StatsRepository for PgStatsRepository {
         )
         .await
         .map_err(|_| DomainError::Timeout("bbox_area query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(area = r.area, "bbox_area fetched"))?;
 
-        let bbox_area = bbox_area_row.0;
+        let bbox_area = bbox_area_row.area;
         if bbox_area == 0.0 {
             return Ok(RiskStats {
                 flood_area_ratio: 0.0,
@@ -116,9 +103,9 @@ impl StatsRepository for PgStatsRepository {
             });
         }
 
-        let flood_query = sqlx::query_as::<_, (f64,)>(
+        let flood_query = sqlx::query_as::<_, AreaRow>(
             r#"
-            SELECT COALESCE(SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography)), 0)
+            SELECT COALESCE(SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography)), 0) AS area
             FROM flood_risk
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
               AND ($5::text IS NULL OR pref_code = $5)
@@ -138,11 +125,12 @@ impl StatsRepository for PgStatsRepository {
         )
         .await
         .map_err(|_| DomainError::Timeout("flood_area_sum query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(area = r.area, "flood_area_sum fetched"))?;
 
-        let slope_query = sqlx::query_as::<_, (f64,)>(
+        let slope_query = sqlx::query_as::<_, AreaRow>(
             r#"
-            SELECT COALESCE(SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography)), 0)
+            SELECT COALESCE(SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography)), 0) AS area
             FROM steep_slope
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
               AND ($5::text IS NULL OR pref_code = $5)
@@ -162,10 +150,11 @@ impl StatsRepository for PgStatsRepository {
         )
         .await
         .map_err(|_| DomainError::Timeout("steep_slope_area_sum query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(area = r.area, "steep_slope_area_sum fetched"))?;
 
-        let flood_ratio = flood_row.0 / bbox_area;
-        let slope_ratio = slope_row.0 / bbox_area;
+        let flood_ratio = flood_row.area / bbox_area;
+        let slope_ratio = slope_row.area / bbox_area;
         let composite =
             flood_ratio * STATS_RISK_WEIGHT_FLOOD + slope_ratio * STATS_RISK_WEIGHT_STEEP;
         tracing::debug!(flood_ratio = %format!("{:.4}", flood_ratio), slope_ratio = %format!("{:.4}", slope_ratio), "risk_stats computed");
@@ -183,8 +172,8 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<FacilityStats, DomainError> {
-        let schools_query = sqlx::query_as::<_, (i64,)>(
-            "SELECT COUNT(*) FROM schools WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
+        let schools_query = sqlx::query_as::<_, CountRow>(
+            "SELECT COUNT(*) AS count FROM schools WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
         );
         let schools = timeout(
             STATS_QUERY_TIMEOUT,
@@ -200,10 +189,11 @@ impl StatsRepository for PgStatsRepository {
         )
         .await
         .map_err(|_| DomainError::Timeout("schools_count query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(count = r.count, "schools_count fetched"))?;
 
-        let medical_query = sqlx::query_as::<_, (i64,)>(
-            "SELECT COUNT(*) FROM medical_facilities WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
+        let medical_query = sqlx::query_as::<_, CountRow>(
+            "SELECT COUNT(*) AS count FROM medical_facilities WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
         );
         let medical = timeout(
             STATS_QUERY_TIMEOUT,
@@ -219,16 +209,18 @@ impl StatsRepository for PgStatsRepository {
         )
         .await
         .map_err(|_| DomainError::Timeout("medical_count query".into()))?
-        .map_err(map_db_err)?;
+        .map_err(map_db_err)
+        .inspect(|r| tracing::debug!(count = r.count, "medical_count fetched"))?;
+
         tracing::debug!(
-            schools = schools.0,
-            medical = medical.0,
+            schools = schools.count,
+            medical = medical.count,
             "facility_counts fetched"
         );
 
         Ok(FacilityStats {
-            schools: schools.0,
-            medical: medical.0,
+            schools: schools.count,
+            medical: medical.count,
         })
     }
 
@@ -238,7 +230,7 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<HashMap<String, f64>, DomainError> {
-        let query = sqlx::query_as::<_, (String, f64)>(
+        let query = sqlx::query_as::<_, ZoneDistRow>(
             r#"
             SELECT zone_type,
                    SUM(ST_Area(ST_Intersection(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))::geography))
@@ -262,6 +254,6 @@ impl StatsRepository for PgStatsRepository {
         .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(zone_types = rows.len(), "zoning_distribution fetched"))?;
 
-        Ok(rows.into_iter().collect())
+        Ok(rows.into_iter().map(|r| (r.zone_type, r.ratio)).collect())
     }
 }

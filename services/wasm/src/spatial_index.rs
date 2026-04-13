@@ -6,13 +6,18 @@
 
 use rstar::{AABB, PointDistance, RTree, RTreeObject};
 
+use crate::constants::{
+    GEOJSON_FEATURE_BYTES_ESTIMATE, LAYER_FLOOD, LAYER_FLOOD_HISTORY, LAYER_LANDPRICE,
+    LAYER_MEDICAL, LAYER_SCHOOLS, LAYER_STEEP_SLOPE, LAYER_ZONING, PROP_PRICE_PER_SQM,
+    PROP_ZONE_TYPE,
+};
 use crate::fgb_reader::ParsedFeature;
 
 /// Statistics data associated with a layer, extracted during loading.
 ///
 /// The variant chosen depends on `layer_id` and determines what kind of
 /// spatial computation can be performed on the layer's features.
-pub enum LayerStatsData {
+pub(crate) enum LayerStatsData {
     /// No stats-relevant data available for this layer.
     None,
     /// Land price points: price-per-sqm values indexed by feature position.
@@ -52,12 +57,12 @@ impl PointDistance for IndexedFeature {
 ///
 /// Build with [`LayerIndex::from_parsed`]; query with [`LayerIndex::query_bbox`]
 /// + [`LayerIndex::get_features_geojson`].
-pub struct LayerIndex {
+pub(crate) struct LayerIndex {
     tree: RTree<IndexedFeature>,
     /// Parallel storage of GeoJSON Feature strings, indexed by [`IndexedFeature::index`].
     features_json: Vec<String>,
     /// Statistics data extracted at load time, keyed by feature index.
-    pub stats_data: LayerStatsData,
+    pub(crate) stats_data: LayerStatsData,
 }
 
 impl LayerIndex {
@@ -67,7 +72,7 @@ impl LayerIndex {
     /// than repeated insertions when all features are known upfront.
     ///
     /// The `layer_id` determines which [`LayerStatsData`] variant is extracted.
-    pub fn from_parsed(features: Vec<ParsedFeature>, layer_id: &str) -> Self {
+    pub(crate) fn from_parsed(features: Vec<ParsedFeature>, layer_id: &str) -> Self {
         let mut features_json: Vec<String> = Vec::with_capacity(features.len());
         let stats_data = extract_stats_data(&features, layer_id);
 
@@ -93,7 +98,7 @@ impl LayerIndex {
     /// Return the indices of features whose envelopes intersect `[west, south, east, north]`.
     ///
     /// Coordinates follow RFC 7946 (`[longitude, latitude]`).
-    pub fn query_bbox(&self, south: f64, west: f64, north: f64, east: f64) -> Vec<u32> {
+    pub(crate) fn query_bbox(&self, south: f64, west: f64, north: f64, east: f64) -> Vec<u32> {
         let query_envelope = AABB::from_corners([west, south], [east, north]);
         self.tree
             .locate_in_envelope_intersecting(&query_envelope)
@@ -105,8 +110,8 @@ impl LayerIndex {
     ///
     /// Returns `{"type":"FeatureCollection","features":[...]}`.
     /// Indices that are out of bounds are silently skipped.
-    pub fn get_features_geojson(&self, indices: &[u32]) -> String {
-        let capacity = indices.len() * 256; // rough estimate
+    pub(crate) fn get_features_geojson(&self, indices: &[u32]) -> String {
+        let capacity = indices.len() * GEOJSON_FEATURE_BYTES_ESTIMATE;
         let mut out = String::with_capacity(capacity + 40);
         out.push_str(r#"{"type":"FeatureCollection","features":["#);
 
@@ -129,7 +134,7 @@ impl LayerIndex {
     ///
     /// Unlike [`get_features_geojson`] which returns a String, this returns
     /// a structured Value — avoiding double-serialization in `query_layers`.
-    pub fn get_features_as_value(&self, indices: &[u32]) -> serde_json::Value {
+    pub(crate) fn get_features_as_value(&self, indices: &[u32]) -> serde_json::Value {
         let features: Vec<serde_json::Value> = indices
             .iter()
             .filter_map(|&idx| {
@@ -146,7 +151,7 @@ impl LayerIndex {
     }
 
     /// Total number of features stored in this index.
-    pub fn feature_count(&self) -> u32 {
+    pub(crate) fn feature_count(&self) -> u32 {
         self.features_json.len() as u32
     }
 }
@@ -155,34 +160,34 @@ impl LayerIndex {
 /// based on the `layer_id`.
 fn extract_stats_data(features: &[ParsedFeature], layer_id: &str) -> LayerStatsData {
     match layer_id {
-        "landprice" => {
+        LAYER_LANDPRICE => {
             let prices: Vec<f64> = features
                 .iter()
                 .map(|f| {
                     f.properties
                         .as_ref()
-                        .and_then(|p| p.get("price_per_sqm"))
+                        .and_then(|p| p.get(PROP_PRICE_PER_SQM))
                         .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0)
                 })
                 .collect();
             LayerStatsData::PricePoints(prices)
         }
-        "flood-history" | "flood" | "steep-slope" | "steep_slope" => {
+        LAYER_FLOOD_HISTORY | LAYER_FLOOD | LAYER_STEEP_SLOPE => {
             let geoms: Vec<Option<geo::Geometry<f64>>> = features
                 .iter()
                 .map(|f| f.geometry_geo.clone())
                 .collect();
             LayerStatsData::AreaPolygons(geoms)
         }
-        "zoning" => {
+        LAYER_ZONING => {
             let pairs: Vec<(String, Option<geo::Geometry<f64>>)> = features
                 .iter()
                 .map(|f| {
                     let zone_type = f
                         .properties
                         .as_ref()
-                        .and_then(|p| p.get("zone_type"))
+                        .and_then(|p| p.get(PROP_ZONE_TYPE))
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or("")
                         .to_string();
@@ -191,7 +196,7 @@ fn extract_stats_data(features: &[ParsedFeature], layer_id: &str) -> LayerStatsD
                 .collect();
             LayerStatsData::ZoningPolygons(pairs)
         }
-        "schools" | "medical" => LayerStatsData::PointCount,
+        LAYER_SCHOOLS | LAYER_MEDICAL => LayerStatsData::PointCount,
         _ => LayerStatsData::None,
     }
 }

@@ -120,6 +120,9 @@ impl TlsResponse {
             metadata: TlsMetadataDto {
                 calculated_at: chrono::Utc::now().to_rfc3339(),
                 weight_preset: serde_json::to_value(t.weight_preset)
+                    .inspect_err(
+                        |e| tracing::warn!(error = %e, "WeightPreset serialization failed"),
+                    )
                     .ok()
                     .and_then(|v| v.as_str().map(String::from))
                     .unwrap_or_else(|| "balance".to_string()),

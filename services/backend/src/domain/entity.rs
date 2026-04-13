@@ -1,5 +1,6 @@
+use crate::domain::constants::{BCR_MAX, BCR_MIN, FAR_MAX, FAR_MIN};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{Coord, OpportunitySignal, RiskLevel, TlsScore, Year};
+use crate::domain::value_object::{AreaCode, Coord, OpportunitySignal, RiskLevel, TlsScore, Year};
 
 /// Human-readable name for an administrative area.
 ///
@@ -50,9 +51,9 @@ pub struct BuildingCoverageRatio(i32);
 
 impl BuildingCoverageRatio {
     pub fn new(value: i32) -> Result<Self, DomainError> {
-        if !(0..=100).contains(&value) {
+        if !(BCR_MIN..=BCR_MAX).contains(&value) {
             return Err(DomainError::Validation(format!(
-                "building coverage ratio must be in 0..=100, got {value}"
+                "building coverage ratio must be in {BCR_MIN}..={BCR_MAX}, got {value}"
             )));
         }
         Ok(Self(value))
@@ -69,9 +70,9 @@ pub struct FloorAreaRatio(i32);
 
 impl FloorAreaRatio {
     pub fn new(value: i32) -> Result<Self, DomainError> {
-        if !(0..=2000).contains(&value) {
+        if !(FAR_MIN..=FAR_MAX).contains(&value) {
             return Err(DomainError::Validation(format!(
-                "floor area ratio must be in 0..=2000, got {value}"
+                "floor area ratio must be in {FAR_MIN}..={FAR_MAX}, got {value}"
             )));
         }
         Ok(Self(value))
@@ -194,25 +195,19 @@ pub struct GeoJsonGeometry {
 pub struct PriceRecord {
     pub year: i32,
     pub price_per_sqm: i64,
-    /// Nearest observation point address (used in future score detail response).
-    #[allow(dead_code)]
-    pub address: String,
-    /// Distance in meters to the observation point (used in future score detail response).
-    #[allow(dead_code)]
-    pub distance_m: f64,
 }
 
 /// Single data point in a price trend time series.
 #[derive(Debug, Clone)]
 pub struct TrendPoint {
-    pub year: i32,
-    pub price_per_sqm: i64,
+    pub year: Year,
+    pub price_per_sqm: PricePerSqm,
 }
 
 /// Nearest observation point metadata for trend data.
 #[derive(Debug, Clone)]
 pub struct TrendLocation {
-    pub address: String,
+    pub address: Address,
     pub distance_m: f64,
 }
 
@@ -306,8 +301,8 @@ pub struct ZScoreResult {
 /// Phase 5 data pipeline — callers should treat it as informational only for now.
 #[derive(Debug, Clone)]
 pub struct AdminAreaStats {
-    pub code: String,
-    pub name: String,
+    pub code: AreaCode,
+    pub name: AreaName,
     pub level: String,
     pub land_price: LandPriceStats,
     pub risk: RiskStats,
@@ -349,6 +344,16 @@ pub struct Opportunity {
     pub signal: OpportunitySignal,
     pub trend_pct: Percent,
     pub station: Option<StationHint>,
+}
+
+/// Cached result of opportunity TLS enrichment and filtering.
+///
+/// Holds the full filtered pool; the handler applies pagination
+/// (`limit`/`offset`) after cache retrieval.
+#[derive(Debug, Clone, Default)]
+pub struct CachedOpportunitiesResponse {
+    pub items: Vec<Opportunity>,
+    pub total: usize,
 }
 
 #[cfg(test)]

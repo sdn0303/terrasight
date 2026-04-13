@@ -7,8 +7,8 @@ pub enum DomainError {
     #[error("Invalid coordinate: {0}")]
     InvalidCoordinate(String),
 
-    #[error("Bounding box exceeds maximum allowed area (0.5 degrees per side)")]
-    BBoxTooLarge,
+    #[error("Bounding box exceeds maximum allowed area ({max_deg} degrees per side)")]
+    BBoxTooLarge { max_deg: f64 },
 
     #[error("Invalid year: {0}")]
     InvalidYear(String),

@@ -4,13 +4,13 @@ use crate::domain::constants::{HEALTH_STATUS_DEGRADED, HEALTH_STATUS_OK};
 use crate::domain::entity::HealthStatus;
 use crate::domain::repository::HealthRepository;
 
-pub struct CheckHealthUsecase {
+pub(crate) struct CheckHealthUsecase {
     health_repo: Arc<dyn HealthRepository>,
     reinfolib_key_set: bool,
 }
 
 impl CheckHealthUsecase {
-    pub fn new(health_repo: Arc<dyn HealthRepository>, reinfolib_key_set: bool) -> Self {
+    pub(crate) fn new(health_repo: Arc<dyn HealthRepository>, reinfolib_key_set: bool) -> Self {
         Self {
             health_repo,
             reinfolib_key_set,
@@ -18,7 +18,7 @@ impl CheckHealthUsecase {
     }
 
     #[tracing::instrument(skip(self), fields(usecase = "check_health"))]
-    pub async fn execute(&self) -> HealthStatus {
+    pub(crate) async fn execute(&self) -> HealthStatus {
         let db_connected = self.health_repo.check_connection().await;
 
         if !db_connected {
