@@ -1,3 +1,28 @@
+//! Axum application state and dependency injection container.
+//!
+//! [`AppState`] is the single composition root for the service. It wires every
+//! infra repository implementation to the domain trait it implements, constructs
+//! all usecases, and hands them to the Axum router via
+//! [`axum::extract::FromRef`] impls.
+//!
+//! ## Dependency injection pattern
+//!
+//! Every usecase is wrapped in `Arc<…>` so that Axum can clone the state into
+//! each handler task without copying the underlying objects. The `FromRef` impls
+//! at the bottom of this file allow handlers to extract only the usecase they
+//! need with `State<Arc<FooUsecase>>` rather than extracting the entire
+//! `AppState`.
+//!
+//! ```text
+//! AppState::new(pool, config)
+//!   ├─ PgAreaRepository ──────────→ GetAreaDataUsecase
+//!   ├─ PgLandPriceRepository ─────→ GetLandPricesUsecase (shared)
+//!   │                            └→ GetOpportunitiesUsecase
+//!   ├─ PgTlsRepository ───────────→ ComputeTlsUsecase (shared)
+//!   │                            └→ GetOpportunitiesUsecase
+//!   └─ …
+//! ```
+
 use std::sync::Arc;
 
 use axum::extract::FromRef;
@@ -43,18 +68,31 @@ use crate::usecase::get_trend::GetTrendUsecase;
 /// from a single `.with_state(AppState::new(…))` call on the router.
 #[derive(Clone)]
 pub struct AppState {
+    /// Handles `GET /api/v1/appraisals`.
     pub(crate) appraisals: Arc<GetAppraisalsUsecase>,
+    /// Handles `GET /api/v1/health`.
     pub(crate) health: Arc<CheckHealthUsecase>,
+    /// Handles `GET /api/v1/area-data`.
     pub(crate) area_data: Arc<GetAreaDataUsecase>,
+    /// Handles `GET /api/v1/area-stats`.
     pub(crate) area_stats: Arc<GetAreaStatsUsecase>,
+    /// Handles `GET /api/v1/land-prices`.
     pub(crate) land_prices: Arc<GetLandPricesUsecase>,
+    /// Handles `GET /api/v1/land-prices/all-years`.
     pub(crate) land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
+    /// Handles `GET /api/v1/municipalities`.
     pub(crate) municipalities: Arc<GetMunicipalitiesUsecase>,
+    /// Handles `GET /api/v1/opportunities`. Reuses `score` internally.
     pub(crate) opportunities: Arc<GetOpportunitiesUsecase>,
+    /// Handles `GET /api/v1/score`. Shared with `opportunities`.
     pub(crate) score: Arc<ComputeTlsUsecase>,
+    /// Handles `GET /api/v1/stats`.
     pub(crate) stats: Arc<GetStatsUsecase>,
+    /// Handles `GET /api/v1/transactions/summary`.
     pub(crate) transaction_summary: Arc<GetTransactionSummaryUsecase>,
+    /// Handles `GET /api/v1/transactions`.
     pub(crate) transactions: Arc<GetTransactionsUsecase>,
+    /// Handles `GET /api/v1/trend`.
     pub(crate) trend: Arc<GetTrendUsecase>,
     /// Reinfolib geospatial data source.
     ///

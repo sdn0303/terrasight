@@ -1,3 +1,21 @@
+//! PostgreSQL + PostGIS implementation of [`LandPriceRepository`].
+//!
+//! Implements [`LandPriceRepository`](crate::domain::repository::LandPriceRepository)
+//! for three distinct access patterns:
+//!
+//! 1. **Single-year spatial query** — `find_by_year_and_bbox`: filters by
+//!    `survey_year = $5` then `ST_Intersects` with `ST_MakeEnvelope`.
+//! 2. **Multi-year range query** — `find_all_years_by_bbox`: `survey_year BETWEEN $5 AND $6`
+//!    for the time machine animation endpoint. The feature limit is scaled by the
+//!    year count so each year gets roughly the same budget.
+//! 3. **Opportunity fetch** — `find_for_opportunities`: `INNER JOIN zoning` via
+//!    `ST_Within` so that `building_coverage_ratio` and `floor_area_ratio` are
+//!    always populated. Dynamic filters (`price_range`, `zones`) are appended
+//!    with [`sqlx::QueryBuilder`] to avoid string concatenation.
+//!
+//! All queries use `ST_MakeEnvelope($1, $2, $3, $4, 4326)` (SRID 4326, WGS84).
+//! Timeouts are enforced via [`run_query`](crate::infra::query_helpers::run_query).
+
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -54,12 +72,13 @@ impl TryFrom<OpportunityRow> for OpportunityRecord {
     }
 }
 
-/// PostgreSQL + PostGIS implementation of [`LandPriceRepository`].
+/// PostgreSQL + PostGIS implementation of [`LandPriceRepository`](crate::domain::repository::LandPriceRepository).
 pub(crate) struct PgLandPriceRepository {
     pool: PgPool,
 }
 
 impl PgLandPriceRepository {
+    /// Create a new repository backed by the given connection pool.
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }

@@ -1,3 +1,21 @@
+//! PostgreSQL + PostGIS implementation of [`TrendRepository`].
+//!
+//! Implements [`TrendRepository`](crate::domain::repository::TrendRepository)
+//! which serves the `/api/v1/trend` endpoint. The implementation issues three
+//! sequential queries:
+//!
+//! 1. **Nearest location** — `ST_DWithin` proximity search to find the
+//!    closest land-price observation address within
+//!    [`RADIUS_TREND_SEARCH_M`](crate::domain::constants::RADIUS_TREND_SEARCH_M).
+//! 2. **Max year** — `COALESCE(MAX(survey_year::int), 0)` for that address to
+//!    anchor the lookback window.
+//! 3. **Trend data** — all `(survey_year, price_per_sqm)` rows for that address
+//!    where `survey_year >= max_year - years + 1`, ordered ascending for CAGR
+//!    computation in the usecase layer.
+//!
+//! Queries enforce [`TREND_QUERY_TIMEOUT`] via
+//! [`run_query`](crate::infra::query_helpers::run_query).
+
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -42,11 +60,13 @@ struct MaxYearRow {
     max_year: i32,
 }
 
+/// PostgreSQL + PostGIS implementation of [`TrendRepository`](crate::domain::repository::TrendRepository).
 pub(crate) struct PgTrendRepository {
     pool: PgPool,
 }
 
 impl PgTrendRepository {
+    /// Create a new repository backed by the given connection pool.
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -54,6 +74,15 @@ impl PgTrendRepository {
 
 #[async_trait]
 impl TrendRepository for PgTrendRepository {
+    /// Fetch the nearest land-price location and its historical price series.
+    ///
+    /// Returns `None` when no observation point exists within
+    /// [`RADIUS_TREND_SEARCH_M`](crate::domain::constants::RADIUS_TREND_SEARCH_M).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`] if any of
+    /// the three sequential queries fails.
     #[tracing::instrument(skip(self))]
     async fn find_trend(
         &self,

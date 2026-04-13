@@ -50,6 +50,7 @@ use crate::domain::value_object::{
 use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
 
+/// Usecase for `GET /api/v1/opportunities`.
 pub(crate) struct GetOpportunitiesUsecase {
     land_repo: Arc<dyn LandPriceRepository>,
     compute_tls: Arc<ComputeTlsUsecase>,
@@ -57,6 +58,11 @@ pub(crate) struct GetOpportunitiesUsecase {
 }
 
 impl GetOpportunitiesUsecase {
+    /// Construct the usecase with its three dependencies.
+    ///
+    /// - `land_repo` — fetches raw opportunity records from PostGIS.
+    /// - `compute_tls` — enriches each record with a TLS score (shared with `/api/v1/score`).
+    /// - `cache` — in-memory TTL cache keyed by the filter fingerprint.
     pub(crate) fn new(
         land_repo: Arc<dyn LandPriceRepository>,
         compute_tls: Arc<ComputeTlsUsecase>,
@@ -69,12 +75,19 @@ impl GetOpportunitiesUsecase {
         }
     }
 
-    /// Fetch + enrich + cache the full filtered opportunity pool for
-    /// the given filters.
+    /// Fetch, enrich, and cache the full filtered opportunity pool.
     ///
     /// The returned [`CachedOpportunitiesResponse`] holds every record
     /// that survived TLS enrichment and `tls_min`/`risk_max` filtering.
-    /// The handler applies pagination to this pool afterwards.
+    /// The handler applies `limit`/`offset` pagination to this pool after
+    /// cache retrieval, so all paginated views of the same filter set share
+    /// one cache slot.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] if the initial DB fetch fails, or
+    /// [`DomainError::Timeout`] if the full enrichment pipeline exceeds
+    /// [`OPPORTUNITY_TIMEOUT_SECS`](crate::domain::constants::OPPORTUNITY_TIMEOUT_SECS).
     #[tracing::instrument(skip(self), fields(usecase = "get_opportunities"))]
     pub(crate) async fn execute(
         &self,

@@ -1,3 +1,8 @@
+//! Usecase: fetch individual transaction records for a city.
+//!
+//! Delegates to [`TransactionRepository::find_transactions`] with a
+//! clamped `limit`. Called by `GET /api/v1/transactions`.
+
 use std::sync::Arc;
 
 use crate::domain::constants::{DEFAULT_TRANSACTION_LIMIT, MAX_TRANSACTION_LIMIT};
@@ -6,16 +11,22 @@ use crate::domain::repository::TransactionRepository;
 use crate::domain::transaction::TransactionDetail;
 use crate::domain::value_object::Year;
 
+/// Usecase for `GET /api/v1/transactions`.
 pub struct GetTransactionsUsecase {
     repo: Arc<dyn TransactionRepository>,
 }
 
 impl GetTransactionsUsecase {
+    /// Construct the usecase with the given repository.
     pub fn new(repo: Arc<dyn TransactionRepository>) -> Self {
         Self { repo }
     }
 
     /// Fetch individual transaction records for the given city code.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
     ///
     /// `limit` is clamped to `[1, MAX_TRANSACTION_LIMIT]`; `0` or `None`
     /// falls back to `DEFAULT_TRANSACTION_LIMIT`.

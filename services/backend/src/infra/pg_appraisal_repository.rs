@@ -1,3 +1,15 @@
+//! PostgreSQL implementation of [`AppraisalRepository`].
+//!
+//! Implements [`AppraisalRepository`](crate::domain::repository::AppraisalRepository)
+//! for the `/api/v1/appraisals` endpoint. Queries the `land_appraisals` table
+//! which holds MLIT official appraisal records (`地価公示` / `地価調査`).
+//!
+//! ## SQL strategy
+//!
+//! Filters by `pref_code = $1` (required) and optionally `city_code = $2`
+//! using the `$2::text IS NULL OR city_code = $2` pattern to avoid dynamic
+//! SQL construction. Results are ordered by `city_code, price_per_sqm DESC`.
+
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
@@ -47,12 +59,13 @@ impl From<AppraisalDetailRow> for AppraisalDetail {
     }
 }
 
-/// PostgreSQL implementation of [`AppraisalRepository`].
+/// PostgreSQL implementation of [`AppraisalRepository`](crate::domain::repository::AppraisalRepository).
 pub struct PgAppraisalRepository {
     pool: PgPool,
 }
 
 impl PgAppraisalRepository {
+    /// Create a new repository backed by the given connection pool.
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -61,6 +74,10 @@ impl PgAppraisalRepository {
 #[async_trait]
 impl AppraisalRepository for PgAppraisalRepository {
     /// Fetch appraisal records from `land_appraisals`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on a PostgreSQL error.
     ///
     /// Always filters by `pref_code`. Optional `city_code` narrows results to
     /// a single municipality using the `$2::text IS NULL OR city_code = $2` pattern.

@@ -1,7 +1,40 @@
-//! Real Estate Investment API — library entry point.
+//! # terrasight-api
+//!
+//! Real estate investment data API for the Terrasight platform.
 //!
 //! Exposes [`build_router`] so that both `main.rs` and integration tests
-//! can construct the same Axum router against a real database pool.
+//! can construct the same Axum router against a real PostgreSQL/PostGIS pool.
+//!
+//! ## Architecture
+//!
+//! ```text
+//! handler → usecase → domain ← infra
+//! ```
+//!
+//! | Layer | Location | Role |
+//! |-------|----------|------|
+//! | Handler | `src/handler/` | HTTP, request validation, `DomainError → AppError` |
+//! | Usecase | `src/usecase/` | Business logic, parallel queries with `tokio::join!` |
+//! | Domain | `src/domain/` | Entities, value objects, repository traits (no I/O) |
+//! | Infra | `src/infra/` | PostgreSQL + PostGIS repository implementations |
+//!
+//! ## API Endpoints
+//!
+//! | Method | Path | Usecase |
+//! |--------|------|---------|
+//! | `GET` | `/api/v1/health` | `check_health` |
+//! | `GET` | `/api/v1/area-data` | `get_area_data` |
+//! | `GET` | `/api/v1/area-stats` | `get_area_stats` |
+//! | `GET` | `/api/v1/land-prices` | `get_land_prices` |
+//! | `GET` | `/api/v1/land-prices/all-years` | `get_land_prices_by_year_range` |
+//! | `GET` | `/api/v1/opportunities` | `get_opportunities` |
+//! | `GET` | `/api/v1/score` | `compute_tls` |
+//! | `GET` | `/api/v1/stats` | `get_stats` |
+//! | `GET` | `/api/v1/trend` | `get_trend` |
+//! | `GET` | `/api/v1/transactions/summary` | `get_transaction_summary` |
+//! | `GET` | `/api/v1/transactions` | `get_transactions` |
+//! | `GET` | `/api/v1/appraisals` | `get_appraisals` |
+//! | `GET` | `/api/v1/municipalities` | `get_municipalities` |
 
 pub mod app_state;
 pub mod config;

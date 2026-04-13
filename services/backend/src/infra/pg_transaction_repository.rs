@@ -1,3 +1,22 @@
+//! PostgreSQL implementation of [`TransactionRepository`].
+//!
+//! Implements [`TransactionRepository`](crate::domain::repository::TransactionRepository)
+//! for the `/api/v1/transactions/summary` and `/api/v1/transactions` endpoints.
+//!
+//! ## Tables
+//!
+//! | Table / View | Purpose |
+//! |---|---|
+//! | `mv_transaction_summary` | Materialized view: aggregated stats per `(city_code, year, property_type)` |
+//! | `transaction_prices` | Raw MLIT transaction price records (国土交通省 不動産取引価格情報) |
+//!
+//! ## SQL strategy
+//!
+//! Both methods use the `$N::type IS NULL OR column = $N` pattern so that
+//! optional `year_from` and `property_type` filters can be applied without
+//! dynamic SQL. Summary results are ordered `city_code, transaction_year DESC`;
+//! detail results are ordered `transaction_year DESC, transaction_q DESC`.
+
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
@@ -75,12 +94,13 @@ impl From<TransactionDetailRow> for TransactionDetail {
     }
 }
 
-/// PostgreSQL implementation of [`TransactionRepository`].
+/// PostgreSQL implementation of [`TransactionRepository`](crate::domain::repository::TransactionRepository).
 pub struct PgTransactionRepository {
     pool: PgPool,
 }
 
 impl PgTransactionRepository {
+    /// Create a new repository backed by the given connection pool.
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -89,6 +109,10 @@ impl PgTransactionRepository {
 #[async_trait]
 impl TransactionRepository for PgTransactionRepository {
     /// Fetch aggregated transaction summaries from `mv_transaction_summary`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on a PostgreSQL error.
     ///
     /// Optional `year_from` adds an `AND transaction_year >= $2` clause.
     /// Optional `property_type` adds an `AND property_type = $3` clause.
@@ -137,6 +161,10 @@ impl TransactionRepository for PgTransactionRepository {
     }
 
     /// Fetch individual transaction records for a given city code.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on a PostgreSQL error.
     ///
     /// Optional `year_from` restricts results to records on or after that year.
     /// Results are ordered by `transaction_year DESC, transaction_q DESC` and

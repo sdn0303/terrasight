@@ -1,3 +1,22 @@
+//! PostgreSQL + PostGIS implementation of [`StatsRepository`].
+//!
+//! Implements [`StatsRepository`](crate::domain::repository::StatsRepository)
+//! which aggregates four distinct statistics for a bounding box:
+//!
+//! - **Land price stats** — `AVG`, `PERCENTILE_CONT(0.5)`, `MIN`, `MAX`, `COUNT`
+//!   on `land_prices` for the latest `survey_year` in the bbox.
+//! - **Risk stats** — `ST_Area(ST_Intersection(geom, envelope))` for the `flood_risk`
+//!   and `steep_slope` tables, normalised by the bbox area
+//!   (`ST_Area(ST_MakeEnvelope(...)::geography)`). The composite risk score is
+//!   a weighted sum using [`STATS_RISK_WEIGHT_FLOOD`](crate::domain::constants::STATS_RISK_WEIGHT_FLOOD)
+//!   and [`STATS_RISK_WEIGHT_STEEP`](crate::domain::constants::STATS_RISK_WEIGHT_STEEP).
+//! - **Facility counts** — `COUNT(*)` on `schools` and `medical_facilities`.
+//! - **Zoning distribution** — area-weighted `ratio` per `zone_type` using a
+//!   window-function `SUM OVER ()` pattern (single-pass, no subquery needed).
+//!
+//! All queries enforce [`STATS_QUERY_TIMEOUT`] via
+//! [`run_query`](crate::infra::query_helpers::run_query).
+
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -22,11 +41,13 @@ struct ZoneDistRow {
     ratio: f64,
 }
 
+/// PostgreSQL + PostGIS implementation of [`StatsRepository`](crate::domain::repository::StatsRepository).
 pub(crate) struct PgStatsRepository {
     pool: PgPool,
 }
 
 impl PgStatsRepository {
+    /// Create a new repository backed by the given connection pool.
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -34,6 +55,14 @@ impl PgStatsRepository {
 
 #[async_trait]
 impl StatsRepository for PgStatsRepository {
+    /// Compute land price aggregates (`avg`, `median`, `min`, `max`, `count`)
+    /// for the latest `survey_year` that falls within the bounding box.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] if the query exceeds
+    /// [`STATS_QUERY_TIMEOUT`], or [`DomainError::Database`] on a
+    /// PostgreSQL error.
     #[tracing::instrument(skip(self))]
     async fn calc_land_price_stats(
         &self,
@@ -72,6 +101,15 @@ impl StatsRepository for PgStatsRepository {
         Ok(row.into())
     }
 
+    /// Compute flood-risk and steep-slope area ratios for the bounding box.
+    ///
+    /// Uses `ST_Area(ST_Intersection(...))` to measure the overlap area
+    /// between each hazard layer and the bbox, then divides by the total
+    /// bbox area. Returns early with zero ratios if the bbox has zero area.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn calc_risk_stats(
         &self,
@@ -163,6 +201,14 @@ impl StatsRepository for PgStatsRepository {
         })
     }
 
+    /// Count schools and medical facilities within the bounding box.
+    ///
+    /// Runs two `COUNT(*)` queries in sequence against the `schools` and
+    /// `medical_facilities` tables. Both are bounded by [`STATS_QUERY_TIMEOUT`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn count_facilities(
         &self,
@@ -217,6 +263,15 @@ impl StatsRepository for PgStatsRepository {
         })
     }
 
+    /// Compute the area-weighted zoning distribution within the bounding box.
+    ///
+    /// Uses a window-function ratio:
+    /// `SUM(area) / SUM(SUM(area)) OVER ()` per `zone_type` so that the entire
+    /// distribution is computed in a single pass. Returns a `HashMap<zone_type, ratio>`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn calc_zoning_distribution(
         &self,

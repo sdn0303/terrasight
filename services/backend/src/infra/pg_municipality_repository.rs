@@ -1,3 +1,17 @@
+//! PostgreSQL implementation of [`MunicipalityRepository`].
+//!
+//! Implements [`MunicipalityRepository`](crate::domain::repository::MunicipalityRepository)
+//! for the `/api/v1/municipalities` endpoint. Queries the `admin_boundaries` table
+//! which stores both prefecture-level and municipality-level administrative
+//! boundary rows.
+//!
+//! ## SQL strategy
+//!
+//! Filters to `level = 'municipality'` and `city_code IS NOT NULL` to exclude
+//! prefecture-level rows. Uses `SELECT DISTINCT` to deduplicate rows that arise
+//! from geometry partitioning (multi-polygon boundaries stored as separate rows).
+//! Results are ordered by `city_code` for deterministic output.
+
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
@@ -20,12 +34,13 @@ struct MunicipalityRow {
     pref_code: String,
 }
 
-/// PostgreSQL implementation of [`MunicipalityRepository`].
+/// PostgreSQL implementation of [`MunicipalityRepository`](crate::domain::repository::MunicipalityRepository).
 pub struct PgMunicipalityRepository {
     pool: PgPool,
 }
 
 impl PgMunicipalityRepository {
+    /// Create a new repository backed by the given connection pool.
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -34,6 +49,10 @@ impl PgMunicipalityRepository {
 #[async_trait]
 impl MunicipalityRepository for PgMunicipalityRepository {
     /// Fetch all municipalities for the given prefecture from `admin_boundaries`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on a PostgreSQL error.
     ///
     /// Filters to `level = 'municipality'` rows where `city_code IS NOT NULL`.
     /// Uses `SELECT DISTINCT` to deduplicate geometry-partitioned rows.

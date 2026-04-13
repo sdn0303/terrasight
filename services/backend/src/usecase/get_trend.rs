@@ -1,3 +1,10 @@
+//! Usecase: compute the land price trend for a coordinate.
+//!
+//! Fetches the nearest land-price observation series from
+//! [`TrendRepository::find_trend`], then computes the Compound Annual Growth
+//! Rate (CAGR) and direction in the usecase layer rather than in the handler.
+//! Called by `GET /api/v1/trend`.
+
 use std::sync::Arc;
 
 use terrasight_geo::{finance::compute_cagr, rounding::round_dp};
@@ -7,16 +14,24 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::TrendRepository;
 use crate::domain::value_object::{Coord, TrendAnalysis, TrendDirection, YearsLookback};
 
+/// Usecase for `GET /api/v1/trend`.
 pub(crate) struct GetTrendUsecase {
     trend_repo: Arc<dyn TrendRepository>,
 }
 
 impl GetTrendUsecase {
+    /// Construct the usecase with the given trend repository.
     pub(crate) fn new(trend_repo: Arc<dyn TrendRepository>) -> Self {
         Self { trend_repo }
     }
 
-    /// Retrieve price trend data for the nearest observation point and compute CAGR.
+    /// Retrieve the price trend for the nearest observation point and compute CAGR.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::NotFound`] when no observation point is found within
+    /// the search radius, or [`DomainError::Database`] / [`DomainError::Timeout`]
+    /// on repository failure.
     ///
     /// Business logic (CAGR calculation, direction determination) lives here
     /// rather than in the handler layer (P1 review fix).

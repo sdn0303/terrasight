@@ -1,3 +1,9 @@
+//! Usecase: fetch MLIT appraisal records for a prefecture.
+//!
+//! Delegates to [`AppraisalRepository::find_appraisals`] and returns a list
+//! of [`AppraisalDetail`] records optionally narrowed to a single municipality.
+//! Called by `GET /api/v1/appraisals`.
+
 use std::sync::Arc;
 
 use crate::domain::appraisal::AppraisalDetail;
@@ -5,16 +11,22 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::AppraisalRepository;
 use crate::domain::value_object::PrefCode;
 
+/// Usecase for `GET /api/v1/appraisals`.
 pub struct GetAppraisalsUsecase {
     appraisal_repo: Arc<dyn AppraisalRepository>,
 }
 
 impl GetAppraisalsUsecase {
+    /// Construct the usecase with the given appraisal repository.
     pub fn new(appraisal_repo: Arc<dyn AppraisalRepository>) -> Self {
         Self { appraisal_repo }
     }
 
     /// Fetch appraisal records for the given prefecture, optionally filtered by city code.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
     #[tracing::instrument(skip(self), fields(usecase = "get_appraisals"))]
     pub async fn execute(
         &self,

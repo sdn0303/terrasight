@@ -1,3 +1,20 @@
+//! PostgreSQL + PostGIS implementation of [`LayerRepository`].
+//!
+//! Implements [`LayerRepository`](crate::domain::repository::LayerRepository)
+//! by dispatching over [`LayerType`] to six private query methods, each of
+//! which queries a distinct PostGIS table.
+//!
+//! ## SQL strategy
+//!
+//! All spatial queries use `ST_Intersects(geom, ST_MakeEnvelope($1,$2,$3,$4, 4326))`
+//! for bounding-box filtering. Feature counts are bounded by
+//! [`compute_feature_limit`](terrasight_geo::spatial::compute_feature_limit) —
+//! the repository requests `limit + 1` rows and [`apply_limit`](crate::infra::query_helpers::apply_limit)
+//! uses the N+1 pattern to detect truncation without a separate `COUNT(*)` query.
+//!
+//! All queries are wrapped with [`run_query`](crate::infra::query_helpers::run_query)
+//! which enforces [`LAYER_QUERY_TIMEOUT`] via `tokio::time::timeout`.
+
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -119,11 +136,13 @@ impl From<MedicalFacilityRow> for GeoFeature {
     }
 }
 
+/// PostgreSQL + PostGIS implementation of [`LayerRepository`].
 pub(crate) struct PgAreaRepository {
     pool: PgPool,
 }
 
 impl PgAreaRepository {
+    /// Create a new repository backed by the given connection pool.
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -131,6 +150,13 @@ impl PgAreaRepository {
 
 #[async_trait]
 impl LayerRepository for PgAreaRepository {
+    /// Dispatch to the per-layer query method matching `layer`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] if the query exceeds
+    /// [`LAYER_QUERY_TIMEOUT`], or [`DomainError::Database`] on a
+    /// PostgreSQL error.
     #[tracing::instrument(skip(self), fields(layer = ?layer))]
     async fn find_layer(
         &self,

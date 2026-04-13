@@ -1,3 +1,25 @@
+//! Usecase: compute the Total Location Score (TLS) for a coordinate.
+//!
+//! Orchestrates all PostGIS proximity queries (via [`TlsRepository`]) and
+//! optional J-SHIS API calls (seismic hazard, ground quality) to produce a
+//! five-axis TLS score with grade, cross-analysis, and per-sub-score detail.
+//!
+//! ## Parallelism
+//!
+//! PostGIS queries are issued with `tokio::try_join!` (8 concurrent queries).
+//! J-SHIS calls (seismic + surface ground) run in a second `tokio::join!`.
+//! Both sets execute in parallel with each other via an outer `tokio::join!`.
+//!
+//! J-SHIS failures degrade gracefully — affected sub-scores receive their
+//! unavailable-default value (100) rather than failing the entire request.
+//!
+//! ## Reuse
+//!
+//! [`ComputeTlsUsecase`] is shared between the `/api/v1/score` single-point
+//! endpoint and the `/api/v1/opportunities` batch pipeline (see
+//! [`GetOpportunitiesUsecase`](crate::usecase::get_opportunities::GetOpportunitiesUsecase)).
+//! It is therefore wrapped in `Arc` in [`AppState`](crate::app_state::AppState).
+
 use std::sync::Arc;
 
 use serde_json::json;
@@ -24,6 +46,7 @@ use terrasight_domain::scoring::tls::{
     CrossAnalysis, Grade, WeightPreset, compute_cross_analysis, compute_tls,
 };
 
+/// Usecase for `GET /api/v1/score` and the opportunity-enrichment pipeline.
 pub(crate) struct ComputeTlsUsecase {
     repo: Arc<dyn TlsRepository>,
     /// J-SHIS seismic hazard client.

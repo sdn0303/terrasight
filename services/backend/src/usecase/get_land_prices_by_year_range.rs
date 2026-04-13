@@ -1,3 +1,10 @@
+//! Usecase: fetch land price GeoJSON features across a year range.
+//!
+//! Delegates to [`LandPriceRepository::find_all_years_by_bbox`]. Returns
+//! all features with `properties.year` populated so the MapLibre frontend
+//! can drive a time-slider without additional round-trips. Called by
+//! `GET /api/v1/land-prices/all-years`.
+
 use std::sync::Arc;
 
 use crate::domain::entity::LayerResult;
@@ -5,17 +12,13 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
 use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 
-/// Fetch land price GeoJSON features across a `[from_year..=to_year]` range
-/// for the time machine animation endpoint.
-///
-/// The response contains every row with its `properties.year` populated so the
-/// frontend can drive a MapLibre `setFilter` slider without additional
-/// round-trips.
+/// Usecase for `GET /api/v1/land-prices/all-years`.
 pub(crate) struct GetLandPricesByYearRangeUsecase {
     land_price_repo: Arc<dyn LandPriceRepository>,
 }
 
 impl GetLandPricesByYearRangeUsecase {
+    /// Construct the usecase with the given repository.
     pub(crate) fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
         Self { land_price_repo }
     }

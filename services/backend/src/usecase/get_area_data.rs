@@ -1,3 +1,10 @@
+//! Usecase: fetch GeoJSON feature layers for a bounding box.
+//!
+//! Orchestrates [`LayerRepository::find_layer`] for each requested
+//! [`LayerType`] in parallel via `futures::future::try_join_all`. Returns a
+//! `HashMap<LayerType, LayerResult>` so the handler can compose a single
+//! JSON response. Called by `GET /api/v1/area-data`.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -6,16 +13,23 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
 use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
+/// Usecase for `GET /api/v1/area-data`.
 pub(crate) struct GetAreaDataUsecase {
     layer_repo: Arc<dyn LayerRepository>,
 }
 
 impl GetAreaDataUsecase {
+    /// Construct the usecase with the given layer repository.
     pub(crate) fn new(layer_repo: Arc<dyn LayerRepository>) -> Self {
         Self { layer_repo }
     }
 
     /// Fetch GeoJSON features for the requested layers within the bounding box.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::MissingParameter`] when `layers` is empty.
+    /// Propagates [`DomainError`] from the repository for any failing layer query.
     ///
     /// Layers are queried in parallel via `futures::future::try_join_all` so
     /// that the total latency is `max(layer_latency)` rather than `sum`.

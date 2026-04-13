@@ -1,3 +1,9 @@
+//! Usecase: fetch aggregated transaction summaries for a prefecture.
+//!
+//! Delegates to [`TransactionRepository::find_transaction_summary`] and
+//! returns a list of [`TransactionSummary`] records. Called by
+//! `GET /api/v1/transactions/summary`.
+
 use std::sync::Arc;
 
 use crate::domain::error::DomainError;
@@ -5,16 +11,22 @@ use crate::domain::repository::TransactionRepository;
 use crate::domain::transaction::TransactionSummary;
 use crate::domain::value_object::{PrefCode, Year};
 
+/// Usecase for `GET /api/v1/transactions/summary`.
 pub struct GetTransactionSummaryUsecase {
     repo: Arc<dyn TransactionRepository>,
 }
 
 impl GetTransactionSummaryUsecase {
+    /// Construct the usecase with the given repository.
     pub fn new(repo: Arc<dyn TransactionRepository>) -> Self {
         Self { repo }
     }
 
     /// Fetch aggregated transaction summaries for the given prefecture.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
     #[tracing::instrument(skip(self), fields(usecase = "get_transaction_summary"))]
     pub async fn execute(
         &self,

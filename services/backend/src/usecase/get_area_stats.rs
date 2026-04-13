@@ -1,3 +1,8 @@
+//! Usecase: fetch aggregated statistics for an administrative area code.
+//!
+//! Delegates to [`AdminAreaStatsRepository::get_area_stats`] and returns an
+//! [`AdminAreaStats`] aggregate. Called by `GET /api/v1/area-stats`.
+
 use std::sync::Arc;
 
 use crate::domain::entity::AdminAreaStats;
@@ -5,17 +10,22 @@ use crate::domain::error::DomainError;
 use crate::domain::repository::AdminAreaStatsRepository;
 use crate::domain::value_object::AreaCode;
 
-/// Usecase: fetch aggregated statistics for an administrative area.
+/// Usecase for `GET /api/v1/area-stats`.
 pub(crate) struct GetAreaStatsUsecase {
     repo: Arc<dyn AdminAreaStatsRepository>,
 }
 
 impl GetAreaStatsUsecase {
+    /// Construct the usecase with the given repository.
     pub(crate) fn new(repo: Arc<dyn AdminAreaStatsRepository>) -> Self {
         Self { repo }
     }
 
-    /// Execute the area-stats query for the given administrative area code.
+    /// Fetch aggregated statistics for the given administrative area code.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
     #[tracing::instrument(skip(self), fields(usecase = "get_area_stats"))]
     pub(crate) async fn execute(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError> {
         self.repo.get_area_stats(code).await.inspect(|stats| {

@@ -1,3 +1,26 @@
+//! PostgreSQL + PostGIS implementation of [`TlsRepository`].
+//!
+//! Implements [`TlsRepository`](crate::domain::repository::TlsRepository),
+//! which supplies all PostGIS-sourced inputs for the Total Location Score (TLS)
+//! computation. Every method issues a proximity search around a coordinate
+//! using `ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1,$2),4326)::geography, $3)`.
+//!
+//! ## Query patterns
+//!
+//! | Method | PostGIS pattern | Radius constant |
+//! |--------|----------------|-----------------|
+//! | `find_nearest_prices` | CTE nearest-address join | [`TLS_PRICE_SEARCH_RADIUS_M`](crate::domain::constants::TLS_PRICE_SEARCH_RADIUS_M) |
+//! | `find_flood_depth_rank` | `MAX(depth_rank::int)` | [`TLS_RISK_SEARCH_RADIUS_M`](crate::domain::constants::TLS_RISK_SEARCH_RADIUS_M) |
+//! | `has_steep_slope_nearby` | `EXISTS(SELECT 1 …)` | [`TLS_RISK_SEARCH_RADIUS_M`](crate::domain::constants::TLS_RISK_SEARCH_RADIUS_M) |
+//! | `find_schools_nearby` | `COUNT(*)` + `bool_or` | [`TLS_SCHOOL_SEARCH_RADIUS_M`](crate::domain::constants::TLS_SCHOOL_SEARCH_RADIUS_M) |
+//! | `find_medical_nearby` | `COUNT(*) FILTER (WHERE …)` | [`TLS_PRICE_SEARCH_RADIUS_M`](crate::domain::constants::TLS_PRICE_SEARCH_RADIUS_M) |
+//! | `find_zoning_far` | `ST_Contains` point-in-polygon | — |
+//! | `calc_price_z_score` | CTE nearest + zone_stats z-score | [`TLS_PRICE_SEARCH_RADIUS_M`](crate::domain::constants::TLS_PRICE_SEARCH_RADIUS_M) |
+//! | `count_recent_transactions` | `survey_year >= max_year - 1` | [`TLS_TRANSACTION_SEARCH_RADIUS_M`](crate::domain::constants::TLS_TRANSACTION_SEARCH_RADIUS_M) |
+//!
+//! All queries share [`TLS_QUERY_TIMEOUT`] enforced by
+//! [`run_query`](crate::infra::query_helpers::run_query).
+
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -104,11 +127,13 @@ struct OptionalF64Row {
     value: Option<f64>,
 }
 
+/// PostgreSQL + PostGIS implementation of [`TlsRepository`](crate::domain::repository::TlsRepository).
 pub(crate) struct PgTlsRepository {
     pool: PgPool,
 }
 
 impl PgTlsRepository {
+    /// Create a new repository backed by the given connection pool.
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -116,6 +141,15 @@ impl PgTlsRepository {
 
 #[async_trait]
 impl TlsRepository for PgTlsRepository {
+    /// Fetch all historical price records for the nearest land-price observation point.
+    ///
+    /// Uses a two-step CTE: first, find the closest address within
+    /// [`TLS_PRICE_SEARCH_RADIUS_M`](crate::domain::constants::TLS_PRICE_SEARCH_RADIUS_M);
+    /// then, return all yearly records for that address ordered by `survey_year`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn find_nearest_prices(&self, coord: &Coord) -> Result<Vec<PriceRecord>, DomainError> {
         // Search radius: TLS_PRICE_SEARCH_RADIUS_M, SRID: 4326
@@ -151,6 +185,15 @@ impl TlsRepository for PgTlsRepository {
         Ok(rows.into_iter().map(PriceRecord::from).collect())
     }
 
+    /// Return the maximum flood depth rank within the risk search radius, or `None` if no
+    /// flood zone intersects.
+    ///
+    /// `depth_rank` is stored as `text`; numeric values are extracted with a safe
+    /// `CASE WHEN depth_rank ~ '^\d+$' THEN depth_rank::int END` cast.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError> {
         // MAX depth_rank within TLS_RISK_SEARCH_RADIUS_M buffer. Returns NULL when no flood zone intersects.
@@ -178,6 +221,13 @@ impl TlsRepository for PgTlsRepository {
         Ok(row.depth_rank)
     }
 
+    /// Return `true` if any steep-slope hazard polygon falls within the risk search radius.
+    ///
+    /// Uses `EXISTS(SELECT 1 …)` to short-circuit on the first matching row.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn has_steep_slope_nearby(&self, coord: &Coord) -> Result<bool, DomainError> {
         // TLS_RISK_SEARCH_RADIUS_M buffer, SRID: 4326
@@ -207,6 +257,13 @@ impl TlsRepository for PgTlsRepository {
         Ok(row.exists)
     }
 
+    /// Count schools within the school search radius and detect primary / junior-high presence.
+    ///
+    /// Uses `COUNT(*)` and `bool_or(school_type = '小学校' | '中学校')` in a single query.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn find_schools_nearby(&self, coord: &Coord) -> Result<SchoolStats, DomainError> {
         // TLS_SCHOOL_SEARCH_RADIUS_M radius, SRID: 4326
@@ -242,6 +299,14 @@ impl TlsRepository for PgTlsRepository {
         Ok(row.into())
     }
 
+    /// Count hospitals and clinics within the price search radius, summing bed counts.
+    ///
+    /// Splits facility types with `COUNT(*) FILTER (WHERE facility_type = '病院')` for hospitals
+    /// and `!= '病院'` for clinics in a single aggregate query.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn find_medical_nearby(&self, coord: &Coord) -> Result<MedicalStats, DomainError> {
         // TLS_PRICE_SEARCH_RADIUS_M radius, SRID: 4326
@@ -277,6 +342,14 @@ impl TlsRepository for PgTlsRepository {
         Ok(row.into())
     }
 
+    /// Return the floor-area ratio of the zoning polygon that contains `coord`, or `None`.
+    ///
+    /// Uses `ST_Contains(geom, ST_SetSRID(ST_MakePoint($1,$2), 4326))` for a point-in-polygon
+    /// lookup. Returns `None` when no zoning polygon covers the coordinate.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn find_zoning_far(&self, coord: &Coord) -> Result<Option<f64>, DomainError> {
         // Find the zoning polygon that contains the point; return its floor_area_ratio.
@@ -303,6 +376,17 @@ impl TlsRepository for PgTlsRepository {
         Ok(row.and_then(|r| r.value))
     }
 
+    /// Compute the price z-score of the nearest land-price point relative to its zone cohort.
+    ///
+    /// Uses a two-CTE approach: `nearest` finds the closest point within the price search
+    /// radius; `zone_stats` computes mean and stddev across the zone in the latest year.
+    /// Uses the denormalised `zone_type` column on `land_prices` (avoids a slow
+    /// `ST_Contains` join against the `zoning` table that caused 503 errors in earlier
+    /// revisions).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn calc_price_z_score(&self, coord: &Coord) -> Result<ZScoreResult, DomainError> {
         // Uses the denormalized zone_type column on land_prices to avoid the slow
@@ -358,6 +442,14 @@ impl TlsRepository for PgTlsRepository {
         Ok(row.into())
     }
 
+    /// Count land-price records within the transaction search radius from the latest two survey years.
+    ///
+    /// Filters `survey_year >= (SELECT MAX(survey_year) - 1 FROM land_prices)` to capture
+    /// the two most-recent complete years, giving a recency signal without a hard-coded year.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Timeout`] or [`DomainError::Database`].
     #[tracing::instrument(skip(self))]
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError> {
         // Count land_prices within TLS_TRANSACTION_SEARCH_RADIUS_M where year >= (max_year - 1).

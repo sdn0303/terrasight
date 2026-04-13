@@ -1,3 +1,9 @@
+//! Usecase: fetch municipalities for a prefecture.
+//!
+//! Delegates to [`MunicipalityRepository::find_municipalities`]. Returns a
+//! list of [`Municipality`] records ordered by `city_code`. Called by
+//! `GET /api/v1/municipalities`.
+
 use std::sync::Arc;
 
 use crate::domain::error::DomainError;
@@ -5,16 +11,22 @@ use crate::domain::municipality::Municipality;
 use crate::domain::repository::MunicipalityRepository;
 use crate::domain::value_object::PrefCode;
 
+/// Usecase for `GET /api/v1/municipalities`.
 pub struct GetMunicipalitiesUsecase {
     municipality_repo: Arc<dyn MunicipalityRepository>,
 }
 
 impl GetMunicipalitiesUsecase {
+    /// Construct the usecase with the given repository.
     pub fn new(municipality_repo: Arc<dyn MunicipalityRepository>) -> Self {
         Self { municipality_repo }
     }
 
     /// Fetch all municipalities for the given prefecture.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
     #[tracing::instrument(skip(self), fields(usecase = "get_municipalities"))]
     pub async fn execute(&self, pref_code: &PrefCode) -> Result<Vec<Municipality>, DomainError> {
         self.municipality_repo

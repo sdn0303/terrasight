@@ -1,3 +1,23 @@
+//! PostgreSQL implementation of [`AdminAreaStatsRepository`].
+//!
+//! Implements [`AdminAreaStatsRepository`](crate::domain::repository::AdminAreaStatsRepository)
+//! which serves the `/api/v1/area-stats` endpoint.
+//!
+//! ## Current state (placeholder)
+//!
+//! The implementation currently returns **global** aggregates because the
+//! `admin_boundaries` PostGIS table (populated by the Phase 5 data pipeline)
+//! does not yet exist. Once that table is available, queries should be narrowed
+//! with a `WHERE ST_Intersects(geom, (SELECT geom FROM admin_boundaries WHERE code = $1))`
+//! predicate so results reflect only the requested administrative area.
+//!
+//! Risk stats (flood ratio, slope ratio, composite) are returned as zeros for
+//! the same reason — the spatial join against hazard layers cannot be scoped
+//! until the boundary geometry is present.
+//!
+//! All queries enforce [`ADMIN_STATS_QUERY_TIMEOUT`] via
+//! [`run_query`](crate::infra::query_helpers::run_query).
+
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -13,11 +33,13 @@ use crate::infra::row_types::{CountRow, LandPriceStatsRow};
 /// Maximum time to wait for any admin-area stats query.
 const ADMIN_STATS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// PostgreSQL implementation of [`AdminAreaStatsRepository`](crate::domain::repository::AdminAreaStatsRepository).
 pub(crate) struct PgAdminAreaStatsRepository {
     pool: PgPool,
 }
 
 impl PgAdminAreaStatsRepository {
+    /// Create a new repository backed by the given connection pool.
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
