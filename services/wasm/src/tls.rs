@@ -1,4 +1,11 @@
-//! Total Location Score (TLS) computation.
+//! Total Location Score (TLS) computation for a query area.
+//!
+//! The TLS is a composite investment-readiness score in `[0.0, 1.0]` derived
+//! from five sub-scores: land price affordability, disaster risk, facility
+//! accessibility, zoning suitability, and transport convenience.
+//!
+//! Each sub-score is normalized to `[0.0, 1.0]` using [`NormalizationParams`]
+//! and then weighted according to the selected [`WeightPreset`].
 
 use crate::constants;
 use crate::stats::{AreaStats, ZoningEntry};
@@ -6,19 +13,23 @@ use crate::stats::{AreaStats, ZoningEntry};
 // ── Normalization parameters ──
 
 /// Per-prefecture normalization parameters for TLS sub-score computation.
+///
+/// These bounds define the expected data range within a prefecture.
+/// Values outside `[price_floor, price_ceiling]` are clamped before
+/// normalization, and facility counts are capped at their respective cap.
 pub(crate) struct NormalizationParams {
-    /// Land price floor (yen/m²) — below this gets maximum score.
+    /// Land price floor (yen/m²) — at or below this receives the maximum price score.
     pub price_floor: f64,
-    /// Land price ceiling (yen/m²) — above this gets minimum score.
+    /// Land price ceiling (yen/m²) — at or above this receives the minimum price score.
     pub price_ceiling: f64,
-    /// Facility count cap — at or above this gets maximum score.
+    /// Facility count cap — at or above this total (schools + medical) receives maximum score.
     pub facility_cap: u32,
-    /// Station count cap — at or above this gets maximum score.
+    /// Station count cap — at or above this count receives the maximum transport score.
     pub station_cap: u32,
 }
 
 impl NormalizationParams {
-    /// Tokyo defaults.
+    /// Default normalization parameters calibrated for the Tokyo metropolitan area.
     pub const TOKYO: Self = Self {
         price_floor: 300_000.0,
         price_ceiling: 3_000_000.0,
@@ -29,32 +40,52 @@ impl NormalizationParams {
 
 // ── TLS result types ──
 
+/// The result of a TLS computation for a query area.
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct TlsResult {
+    /// Weighted composite score in `[0.0, 1.0]`. Higher is better for investment.
     pub total_score: f64,
+    /// Breakdown of the five individual sub-scores that make up `total_score`.
     pub sub_scores: SubScores,
 }
 
+/// Normalized sub-scores `[0.0, 1.0]` that contribute to the TLS total.
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct SubScores {
+    /// Land price affordability score: `1.0` means cheap, `0.0` means expensive.
     pub price_score: f64,
+    /// Disaster safety score: `1.0` means no risk, `0.0` means maximum risk.
     pub risk_score: f64,
+    /// Facility accessibility score: `1.0` means at or above the facility cap.
     pub facility_score: f64,
+    /// Commercial zoning score: fraction of the query area covered by commercial zones.
     pub zoning_score: f64,
+    /// Transport convenience score: `1.0` means at or above the station cap.
     pub transport_score: f64,
 }
 
 // ── Weight presets ──
 
+/// Predefined weight distributions across the five TLS sub-scores.
+///
+/// Each variant represents a different investment or living priority.
+/// The weight order is `[price, risk, facility, zoning, transport]`.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum WeightPreset {
+    /// Equal weights across all five sub-scores (`0.20` each).
     Balance,
+    /// Emphasises price affordability (`0.35`) and zoning (`0.25`) for yield-focused investors.
     Investment,
+    /// Emphasises safety (`0.25`) and facility access (`0.25`) for end-user buyers.
     Residential,
+    /// Heavily emphasises disaster risk (`0.40`) for disaster-preparedness analysis.
     Disaster,
 }
 
 impl WeightPreset {
+    /// Returns the five weights `[price, risk, facility, zoning, transport]` for this preset.
+    ///
+    /// All weights sum to `1.0`.
     pub fn weights(&self) -> [f64; 5] {
         match self {
             Self::Balance => [0.20, 0.20, 0.20, 0.20, 0.20],
@@ -81,6 +112,11 @@ impl std::str::FromStr for WeightPreset {
 
 // ── Normalization functions ──
 
+/// Normalize an average land price to a `[0.0, 1.0]` score.
+///
+/// A price at or below `params.price_floor` returns `1.0` (most affordable).
+/// A price at or above `params.price_ceiling` returns `0.0` (least affordable).
+/// Returns `0.5` if `price_floor == price_ceiling` (degenerate range).
 fn normalize_price(avg_per_sqm: f64, params: &NormalizationParams) -> f64 {
     let range = params.price_ceiling - params.price_floor;
     if range <= 0.0 {
@@ -90,6 +126,9 @@ fn normalize_price(avg_per_sqm: f64, params: &NormalizationParams) -> f64 {
     1.0 - (clamped - params.price_floor) / range
 }
 
+/// Normalize combined school and medical counts to a `[0.0, 1.0]` score.
+///
+/// Returns `0.0` if `params.facility_cap` is zero to avoid division by zero.
 fn normalize_facilities(schools: u32, medical: u32, params: &NormalizationParams) -> f64 {
     if params.facility_cap == 0 {
         return 0.0;
@@ -98,6 +137,9 @@ fn normalize_facilities(schools: u32, medical: u32, params: &NormalizationParams
     total / params.facility_cap as f64
 }
 
+/// Normalize a station count to a `[0.0, 1.0]` transport score.
+///
+/// Returns `0.0` if `params.station_cap` is zero to avoid division by zero.
 fn normalize_transport(stations: u32, params: &NormalizationParams) -> f64 {
     if params.station_cap == 0 {
         return 0.0;
@@ -106,6 +148,10 @@ fn normalize_transport(stations: u32, params: &NormalizationParams) -> f64 {
     capped / params.station_cap as f64
 }
 
+/// Compute a zoning score from the distribution by summing commercial zone ratios.
+///
+/// Sums the `ratio` field of all entries whose `zone` string contains
+/// [`crate::constants::COMMERCIAL_ZONE_KEYWORD`], then clamps to `[0.0, 1.0]`.
 fn compute_zoning_score(dist: &[ZoningEntry]) -> f64 {
     dist.iter()
         .filter(|e| e.zone.contains(constants::COMMERCIAL_ZONE_KEYWORD))
@@ -116,6 +162,14 @@ fn compute_zoning_score(dist: &[ZoningEntry]) -> f64 {
 
 // ── Main TLS computation ──
 
+/// Compute the Total Location Score for a query area.
+///
+/// Each sub-score is independently normalized to `[0.0, 1.0]` using `params`,
+/// then combined as a weighted sum using the weights from `preset`. The final
+/// `total_score` is clamped to `[0.0, 1.0]`.
+///
+/// A higher score indicates a more investment-ready location given the
+/// selected weight preset's priorities.
 pub(crate) fn compute_tls(
     stats: &AreaStats,
     preset: WeightPreset,

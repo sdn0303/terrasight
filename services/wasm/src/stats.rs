@@ -12,24 +12,33 @@ use crate::spatial_index::LayerStatsData;
 /// Facility counts for a queried area.
 #[derive(Debug, Serialize)]
 pub(crate) struct FacilityStats {
+    /// Number of school features whose envelopes intersect the query bbox.
     pub(crate) schools: u32,
+    /// Number of medical facility features whose envelopes intersect the query bbox.
     pub(crate) medical: u32,
+    /// Number of station features whose envelopes intersect the query bbox.
     pub(crate) stations_nearby: u32,
 }
 
 /// A single entry in the zoning distribution.
 #[derive(Debug, Serialize)]
 pub(crate) struct ZoningEntry {
+    /// Zone type string extracted from the `zone_type` GeoJSON property (e.g. `"商業地域"`).
     pub(crate) zone: String,
+    /// Fraction of the query bbox area covered by this zone type, clamped to `[0.0, 1.0]`.
     pub(crate) ratio: f64,
 }
 
 /// Aggregated area statistics returned by [`crate::SpatialEngine::compute_area_stats`].
 #[derive(Debug, Serialize)]
 pub(crate) struct AreaStats {
+    /// Land price statistics for features within the query bbox.
     pub(crate) land_price: LandPriceStats,
+    /// Flood and steep slope risk ratios for the query bbox.
     pub(crate) risk: RiskStats,
+    /// Counts of facility features (schools, medical, stations) within the query bbox.
     pub(crate) facilities: FacilityStats,
+    /// Zoning type distribution sorted descending by area ratio.
     pub(crate) zoning_distribution: Vec<ZoningEntry>,
 }
 

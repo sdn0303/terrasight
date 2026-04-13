@@ -1,3 +1,9 @@
+//! Axis-aligned bounding box type with validated construction.
+//!
+//! [`BBox`] enforces WGS84 coordinate range constraints and requires
+//! `south < north`, `west < east` at construction time, making invalid
+//! bounding boxes unrepresentable after the constructor succeeds.
+
 use crate::constants::{LAT_MAX, LAT_MIN, LAT_RANGE, LNG_MAX, LNG_MIN, LNG_RANGE};
 use crate::error::WasmError;
 
@@ -17,6 +23,36 @@ pub struct BBox {
 }
 
 impl BBox {
+    /// Construct a validated [`BBox`] from four coordinate components.
+    ///
+    /// All four arguments are validated against WGS84 limits and the
+    /// ordering invariants before the struct is created.
+    ///
+    /// # Examples
+    ///
+    /// Valid construction for a bbox over central Tokyo:
+    ///
+    /// ```
+    /// # use terrasight_wasm::BBox;
+    /// let bbox = BBox::new(35.5, 139.5, 35.8, 139.9)?;
+    /// assert!((bbox.south() - 35.5).abs() < f64::EPSILON);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// Invalid construction returns an error — south must be strictly less than north:
+    ///
+    /// ```
+    /// # use terrasight_wasm::BBox;
+    /// let result = BBox::new(35.8, 139.5, 35.5, 139.9); // south > north
+    /// assert!(result.is_err());
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WasmError::InvalidBBox`] if:
+    /// - `south >= north` or `west >= east`
+    /// - Any latitude is outside `[-90.0, 90.0]`
+    /// - Any longitude is outside `[-180.0, 180.0]`
     pub fn new(south: f64, west: f64, north: f64, east: f64) -> Result<Self, WasmError> {
         if south >= north || west >= east {
             return Err(WasmError::InvalidBBox(
@@ -41,15 +77,22 @@ impl BBox {
         })
     }
 
+    /// Returns the southern boundary (minimum latitude) in degrees.
     pub fn south(&self) -> f64 {
         self.south
     }
+
+    /// Returns the western boundary (minimum longitude) in degrees.
     pub fn west(&self) -> f64 {
         self.west
     }
+
+    /// Returns the northern boundary (maximum latitude) in degrees.
     pub fn north(&self) -> f64 {
         self.north
     }
+
+    /// Returns the eastern boundary (maximum longitude) in degrees.
     pub fn east(&self) -> f64 {
         self.east
     }

@@ -81,7 +81,7 @@ impl SpatialEngine {
     ///
     /// # Errors
     ///
-    /// Propagates parse errors from [`parse_fgb`] as JavaScript `Error` objects.
+    /// Propagates parse errors from `parse_fgb` as JavaScript `Error` objects.
     pub fn load_layer(&mut self, layer_id: &str, fgb_bytes: &[u8]) -> Result<u32, JsValue> {
         let layer_id = constants::canonical_layer_id(layer_id);
         self.load_layer_inner(&layer_id, fgb_bytes)
