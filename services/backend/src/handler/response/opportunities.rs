@@ -12,42 +12,60 @@ use crate::domain::entity::{CachedOpportunitiesResponse, Opportunity};
 /// Nearest-station metadata attached to an [`OpportunityDto`].
 #[derive(Debug, Clone, Serialize)]
 pub struct OpportunityStationDto {
+    /// Station name in Japanese (e.g. `"新宿駅"`).
     pub name: String,
+    /// Straight-line distance from the land price point to the station in metres.
     pub distance_m: u32,
 }
 
-/// TLS-enriched land-price record as serialized to JSON.
+/// TLS-enriched land-price record serialised to JSON.
 ///
 /// Fields mirror the frontend `Opportunity` TypeScript type and are
-/// flattened so the client can map directly into a table row.
+/// intentionally flat so that the client can map each item directly into
+/// a data-table row without nesting traversal.
 #[derive(Debug, Clone, Serialize)]
 pub struct OpportunityDto {
+    /// Database row identifier for the underlying land price record.
     pub id: i64,
+    /// Latitude of the land price survey point (WGS-84 decimal degrees).
     pub lat: f64,
+    /// Longitude of the land price survey point (WGS-84 decimal degrees).
     pub lng: f64,
+    /// Human-readable address string for the survey point.
     pub address: String,
+    /// Zoning classification code in Japanese (e.g. `"第一種住居地域"`).
     pub zone: String,
+    /// Building coverage ratio as a percentage integer (e.g. `60` for 60 %).
     pub building_coverage_ratio: i32,
+    /// Floor area ratio as a percentage integer (e.g. `200` for 200 %).
     pub floor_area_ratio: i32,
+    /// Total Location Score on a 0–100 scale.
     pub tls: u8,
+    /// Disaster risk level: `"low"`, `"mid"`, or `"high"`.
     pub risk_level: &'static str,
+    /// Land price CAGR over the lookback window, expressed as a percentage.
     pub trend_pct: f64,
+    /// Nearest railway station. `null` when no station data is available.
     pub station: Option<OpportunityStationDto>,
+    /// Land price per square metre in JPY.
     pub price_per_sqm: i64,
+    /// Investment signal derived from TLS and trend: `"buy"`, `"hold"`, or `"watch"`.
     pub signal: &'static str,
 }
 
 /// Top-level response for `GET /api/v1/opportunities`.
 ///
-/// `total` is the number of records that survived TLS enrichment +
-/// `tls_min`/`risk_max` filtering (i.e. the full cached pool size).
-/// `truncated` is `true` iff there are more records beyond the returned
-/// page — clients can detect "has more pages" via this flag without
-/// doing an extra request.
+/// Supports cursor-free offset pagination. `total` reflects the full
+/// filtered pool size so the client can render a page count without an
+/// extra `count` request. `truncated` is equivalent to
+/// `offset + items.len() < total`.
 #[derive(Debug, Clone, Serialize)]
 pub struct OpportunitiesResponseDto {
+    /// Paginated slice of the filtered opportunity pool.
     pub items: Vec<OpportunityDto>,
+    /// Total number of records in the filtered pool (before pagination).
     pub total: usize,
+    /// `true` when there are more records beyond this page.
     pub truncated: bool,
 }
 

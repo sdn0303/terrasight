@@ -1,3 +1,9 @@
+//! `GET /api/v1/municipalities` handler.
+//!
+//! Returns all municipality records for a given prefecture, used by the
+//! frontend's city-code filter drop-down. Delegates to
+//! [`GetMunicipalitiesUsecase`].
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,9 +16,19 @@ use crate::handler::request::municipality::MunicipalitiesQuery;
 use crate::handler::response::municipality::MunicipalityResponse;
 use crate::usecase::get_municipalities::GetMunicipalitiesUsecase;
 
-/// `GET /api/v1/municipalities?pref_code=`
+/// Handles `GET /api/v1/municipalities`.
 ///
-/// Returns all municipalities for the given prefecture.
+/// Required query parameter: `pref_code` (2-digit prefecture code,
+/// e.g. `"13"` for Tokyo).
+///
+/// Returns a JSON array of [`MunicipalityResponse`] objects, each
+/// containing `city_code`, `city_name`, and `pref_code`.
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `pref_code` fails
+///   [`PrefCode`](crate::domain::value_object::PrefCode) validation.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "municipalities"))]
 pub async fn get_municipalities(
     State(usecase): State<Arc<GetMunicipalitiesUsecase>>,

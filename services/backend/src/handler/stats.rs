@@ -1,3 +1,9 @@
+//! `GET /api/v1/stats` handler.
+//!
+//! Returns aggregated statistics (land price, disaster risk, facility counts,
+//! zoning distribution) for any arbitrary bounding box. Delegates to
+//! [`GetStatsUsecase`].
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,9 +16,18 @@ use crate::handler::request::BBoxQuery;
 use crate::handler::response::StatsResponse;
 use crate::usecase::get_stats::GetStatsUsecase;
 
-/// `GET /api/stats?south=&west=&north=&east=`
+/// Handles `GET /api/v1/stats`.
 ///
-/// Returns aggregated area statistics for the given bounding box.
+/// Accepts four individual coordinate query parameters (`south`, `west`,
+/// `north`, `east`) and an optional `pref_code`. Returns a [`StatsResponse`]
+/// containing land price aggregates, composite disaster risk scores,
+/// facility counts, and a zoning type distribution map.
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when any coordinate is out of range
+///   or the bounding box area exceeds the configured maximum.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "stats"))]
 pub(crate) async fn get_stats(
     State(usecase): State<Arc<GetStatsUsecase>>,

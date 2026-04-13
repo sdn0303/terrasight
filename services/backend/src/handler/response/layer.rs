@@ -9,20 +9,24 @@ use crate::domain::value_object::LayerType;
 
 pub use terrasight_server::http::response::FeatureDto;
 
-/// GeoJSON FeatureCollection response with truncation metadata.
+/// GeoJSON `FeatureCollection` augmented with truncation metadata.
 ///
-/// Returned by area-data and land-prices handlers so that MapLibre GL clients
-/// can detect when the result has been capped and prompt the user to zoom in.
+/// Returned by the area-data and land-prices handlers so that MapLibre GL
+/// clients can detect when the server has capped the result set and prompt
+/// the user to zoom in for a complete view.
 #[derive(Debug, Serialize)]
 pub struct LayerResponseDto {
-    /// Always `"FeatureCollection"`.
+    /// GeoJSON type discriminator. Always `"FeatureCollection"`.
     pub r#type: String,
+    /// Array of GeoJSON `Feature` objects for this layer.
     pub features: Vec<FeatureDto>,
-    /// `true` when the repository capped the result at `limit`.
+    /// `true` when the repository applied the per-layer limit and there are
+    /// more records beyond what is returned.
     pub truncated: bool,
-    /// Number of features actually returned (after truncation).
+    /// Number of features in `features` (after any truncation).
     pub count: usize,
-    /// The per-layer limit that was applied.
+    /// The maximum feature count that was enforced for this layer at the
+    /// requested zoom level.
     pub limit: i64,
 }
 

@@ -1,16 +1,30 @@
-//! Request DTO for `GET /api/area-stats`.
+//! Request DTO for `GET /api/v1/area-stats`.
+//!
+//! [`AreaStatsQuery`] carries a single `code` field that is validated and
+//! parsed into an [`AreaCode`](crate::domain::value_object::AreaCode) domain
+//! value object by [`AreaStatsQuery::into_domain`].
 
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
 use crate::domain::value_object::AreaCode;
 
+/// Query parameters for `GET /api/v1/area-stats`.
 #[derive(Debug, Deserialize)]
 pub struct AreaStatsQuery {
+    /// Administrative area code. Accepts a 2-digit prefecture code
+    /// (e.g. `"13"` for Tokyo) or a 5-digit municipality code
+    /// (e.g. `"13104"` for Shinjuku-ku).
     pub code: String,
 }
 
 impl AreaStatsQuery {
+    /// Convert to a validated [`AreaCode`] domain value object.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Validation`] when `code` is not a valid
+    /// 2-digit prefecture code or 5-digit municipality code.
     pub fn into_domain(self) -> Result<AreaCode, DomainError> {
         AreaCode::parse(&self.code)
     }

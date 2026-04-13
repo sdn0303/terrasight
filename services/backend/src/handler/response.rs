@@ -1,7 +1,24 @@
 //! Handler-layer response DTOs, grouped by endpoint.
 //!
 //! Each submodule owns the `#[derive(Serialize)]` types returned by a
-//! specific endpoint.
+//! specific endpoint. By convention, top-level response structs carry a
+//! `Response` or `Dto` suffix (e.g. [`AreaDataResponseDto`],
+//! [`StatsResponse`]) to distinguish them from domain entities.
+//!
+//! ## Naming convention
+//!
+//! | Suffix | Usage |
+//! |--------|-------|
+//! | `ResponseDto` | Multi-field envelope or transparent wrapper |
+//! | `Response` | Direct mapping of a domain aggregate |
+//! | `Dto` | Nested sub-object inside a response |
+//!
+//! ## GeoJSON responses
+//!
+//! [`LayerResponseDto`] is a GeoJSON `FeatureCollection` augmented with
+//! `truncated`, `count`, and `limit` metadata fields so that MapLibre GL
+//! clients can detect when the server has capped the result set and prompt
+//! the user to zoom in.
 
 pub(crate) mod appraisal;
 pub(crate) mod area_data;

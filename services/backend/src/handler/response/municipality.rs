@@ -4,11 +4,14 @@ use serde::Serialize;
 
 use crate::domain::municipality::Municipality;
 
-/// Single municipality record returned in the response array.
+/// Single municipality record returned in the `GET /api/v1/municipalities` response array.
 #[derive(Debug, Serialize)]
 pub struct MunicipalityResponse {
+    /// 5-digit municipality code (e.g. `"13101"` for Chiyoda-ku).
     pub city_code: String,
+    /// Municipality name in Japanese (e.g. `"千代田区"`).
     pub city_name: String,
+    /// 2-digit parent prefecture code (e.g. `"13"` for Tokyo).
     pub pref_code: String,
 }
 

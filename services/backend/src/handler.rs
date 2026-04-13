@@ -1,3 +1,37 @@
+//! HTTP handler layer for the Terrasight API.
+//!
+//! Each submodule corresponds to one API endpoint group. Handlers are thin
+//! adapters: they extract and validate the incoming request via Axum's
+//! [`Query`](axum::extract::Query) / [`State`](axum::extract::State)
+//! extractors, delegate all business logic to a usecase, and map
+//! [`DomainError`](crate::domain::error::DomainError) to an HTTP status
+//! code via [`AppError`](crate::handler::error::AppError).
+//!
+//! ## Endpoint index
+//!
+//! | Module | Route |
+//! |--------|-------|
+//! | [`appraisals`] | `GET /api/v1/appraisals` |
+//! | [`area_data`] | `GET /api/v1/area-data` |
+//! | [`area_stats`] | `GET /api/v1/area-stats` |
+//! | [`health`] | `GET /api/v1/health` |
+//! | [`land_price`] | `GET /api/v1/land-prices` |
+//! | [`land_price_by_year_range`] | `GET /api/v1/land-prices/by-year-range` |
+//! | [`municipalities`] | `GET /api/v1/municipalities` |
+//! | [`opportunities`] | `GET /api/v1/opportunities` |
+//! | [`score`] | `GET /api/v1/score` |
+//! | [`stats`] | `GET /api/v1/stats` |
+//! | [`transaction_summary`] | `GET /api/v1/transaction-summary` |
+//! | [`transactions`] | `GET /api/v1/transactions` |
+//! | [`trend`] | `GET /api/v1/trend` |
+//!
+//! ## Supporting modules
+//!
+//! - [`error`] — [`AppError`](error::AppError) type alias and
+//!   [`ErrorMapping`](terrasight_server::http::error::ErrorMapping) impl
+//! - [`request`] — Axum `Query` extractor DTOs and `into_domain` / `into_filters` conversions
+//! - [`response`] — `Serialize` response DTOs
+
 pub(crate) mod appraisals;
 pub(crate) mod area_data;
 pub(crate) mod area_stats;

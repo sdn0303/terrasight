@@ -1,3 +1,9 @@
+//! `GET /api/v1/transactions` handler.
+//!
+//! Returns individual real estate transaction records for a city,
+//! optionally filtered by year and capped with a limit. Delegates to
+//! [`GetTransactionsUsecase`].
+
 use std::sync::Arc;
 
 use axum::{
@@ -11,10 +17,19 @@ use crate::handler::request::transaction::TransactionsQuery;
 use crate::handler::response::transaction::TransactionDetailResponse;
 use crate::usecase::get_transactions::GetTransactionsUsecase;
 
-/// `GET /api/v1/transactions?city_code=13101&year_from=2020&limit=50`
+/// Handles `GET /api/v1/transactions`.
 ///
-/// Returns individual transaction records for the given city code,
-/// optionally filtered by year and limited in count.
+/// Required query parameter: `city_code` (5-digit municipality code, e.g.
+/// `"13101"`). Optional `year_from` (integer survey year) and `limit`
+/// (positive integer; no server-side maximum is enforced here).
+///
+/// Returns a JSON array of [`TransactionDetailResponse`] objects.
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `city_code` fails
+///   [`CityCode`] validation or `year_from` is outside the valid range.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "transactions"))]
 pub async fn get_transactions(
     State(usecase): State<Arc<GetTransactionsUsecase>>,

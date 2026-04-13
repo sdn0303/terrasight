@@ -1,3 +1,9 @@
+//! `GET /api/v1/area-stats` handler.
+//!
+//! Returns land price, disaster risk, and facility statistics aggregated
+//! for a single administrative area — either a prefecture (2-digit code)
+//! or a municipality (5-digit code). Delegates to [`GetAreaStatsUsecase`].
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,11 +16,19 @@ use crate::handler::request::AreaStatsQuery;
 use crate::handler::response::AreaStatsResponse;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 
-/// `GET /api/area-stats?code={admin_code}`
+/// Handles `GET /api/v1/area-stats`.
 ///
 /// Returns aggregated statistics for the given administrative area.
-/// `code` is a 2-digit prefecture code (e.g. `"13"`) or 5-digit municipality
-/// code (e.g. `"13105"` for Bunkyo-ku, Tokyo).
+/// The `code` query parameter accepts a 2-digit prefecture code
+/// (e.g. `"13"` for Tokyo) or a 5-digit municipality code
+/// (e.g. `"13105"` for Bunkyo-ku).
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `code` cannot be parsed as a
+///   valid [`AreaCode`](crate::domain::value_object::AreaCode).
+/// - [`AppError`] with `404 Not Found` when the area has no data.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "area-stats"))]
 pub(crate) async fn get_area_stats(
     State(usecase): State<Arc<GetAreaStatsUsecase>>,

@@ -1,3 +1,11 @@
+//! `GET /api/v1/area-data` handler.
+//!
+//! Fetches multiple geospatial layers in a single request. The client
+//! supplies a bounding box, a comma-separated list of layer names, and a
+//! map zoom level; the handler delegates to [`GetAreaDataUsecase`] which
+//! queries each layer concurrently and applies per-layer feature limits
+//! derived from the zoom level.
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,11 +18,21 @@ use crate::handler::request::AreaDataQuery;
 use crate::handler::response::AreaDataResponseDto;
 use crate::usecase::get_area_data::GetAreaDataUsecase;
 
-/// `GET /api/area-data?south=&west=&north=&east=&layers=landprice,zoning,...&zoom=14`
+/// Handles `GET /api/v1/area-data`.
 ///
-/// Returns a JSON object keyed by layer name. Each value is a `LayerResponseDto`
-/// (a GeoJSON FeatureCollection enriched with `truncated`, `count`, and `limit`
-/// metadata fields). Land price features are converted from Point to Polygon.
+/// Returns a JSON object keyed by layer name (e.g. `"landprice"`,
+/// `"zoning"`, `"flood"`). Each value is a [`LayerResponseDto`] — a
+/// GeoJSON `FeatureCollection` enriched with `truncated`, `count`, and
+/// `limit` metadata fields. `LandPrice` point geometries are converted
+/// to ~30 m² polygon squares for improved map visibility.
+///
+/// [`LayerResponseDto`]: crate::handler::response::LayerResponseDto
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `layers` is empty or
+///   the bounding box coordinates are out of range.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "area-data"))]
 pub(crate) async fn get_area_data(
     State(usecase): State<Arc<GetAreaDataUsecase>>,
