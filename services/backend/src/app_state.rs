@@ -68,7 +68,7 @@ impl AppState {
     /// Build the full dependency graph from a database pool and application config.
     ///
     /// The `config` reference is used to determine which reinfolib data source
-    /// to instantiate: [`PostgisFallback`] (no API key) or [`LiveReinfolib`]
+    /// to instantiate: `PostgisFallback` (no API key) or `LiveReinfolib`
     /// (API key present).
     pub fn new(pool: PgPool, config: &Config) -> Self {
         let reinfolib_key_set = config.reinfolib_api_key.is_some();

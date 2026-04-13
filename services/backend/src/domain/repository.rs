@@ -1,3 +1,19 @@
+//! Repository trait contracts for domain data access.
+//!
+//! Each trait in this module defines the interface between the `usecase` layer
+//! and the `infra` layer. Usecases depend on these traits via `Arc<dyn Trait>`;
+//! the `infra` layer provides concrete PostgreSQL implementations
+//! (`PgLayerRepository`, `PgStatsRepository`, etc.).
+//!
+//! ## Design principles
+//!
+//! - Traits are scoped to a single aggregate root (one table family per trait).
+//! - All methods are `async` (via `async_trait`) and return `Result<_, DomainError>`.
+//! - The infra layer must never let `sqlx::Error` or other framework errors
+//!   escape — they are converted to [`DomainError::Database`] at the boundary.
+//! - `mock` (test-only) provides in-process test doubles for every trait in
+//!   this module, gated behind `#[cfg(test)]`.
+
 use std::collections::HashMap;
 
 use async_trait::async_trait;
@@ -15,14 +31,25 @@ use crate::domain::value_object::{
     AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
 
-// ─── Layer Data ──────────────────────────────────────
-// Enum-dispatched: a single `find_layer` entry point replaces the
-// previous six per-layer methods, enabling the caller (usecase layer)
-// to drive concurrent fan-out via `LayerType` without the trait growing
-// a new method each time a layer is added.
-
+/// Repository for map layer GeoJSON features.
+///
+/// Uses a single enum-dispatched entry point ([`find_layer`]) so the usecase
+/// can fan out over all [`LayerType`] variants concurrently without the trait
+/// growing a new method each time a layer is added.
+///
+/// Implemented by `PgLayerRepository` in the `infra` layer.
+///
+/// [`find_layer`]: LayerRepository::find_layer
 #[async_trait]
 pub trait LayerRepository: Send + Sync {
+    /// Fetch GeoJSON features for a single map layer within the given bbox.
+    ///
+    /// The feature count is capped by a zoom-dependent limit; [`LayerResult`]
+    /// carries a `truncated` flag when the cap was hit.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn find_layer(
         &self,
         layer: LayerType,
@@ -32,25 +59,54 @@ pub trait LayerRepository: Send + Sync {
     ) -> Result<LayerResult, DomainError>;
 }
 
-// ─── Stats ───────────────────────────────────────────
-
+/// Repository for aggregate area statistics.
+///
+/// Each method runs an aggregating SQL query over a spatial bounding box and
+/// returns a summary value. Called concurrently by the stats usecase via
+/// `tokio::join!`.
+///
+/// Implemented by `PgStatsRepository` in the `infra` layer.
 #[async_trait]
 pub trait StatsRepository: Send + Sync {
+    /// Compute land price statistics (min, max, avg, median) within the bbox.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn calc_land_price_stats(
         &self,
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<LandPriceStats, DomainError>;
+    /// Compute flood and steep-slope risk statistics within the bbox.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn calc_risk_stats(
         &self,
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<RiskStats, DomainError>;
+
+    /// Count school and medical facilities within the bbox.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn count_facilities(
         &self,
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<FacilityStats, DomainError>;
+
+    /// Compute the share of each zoning type within the bbox.
+    ///
+    /// Returns a map from zone code string to area fraction (values sum to 1.0).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn calc_zoning_distribution(
         &self,
         bbox: &BBox,
@@ -58,11 +114,19 @@ pub trait StatsRepository: Send + Sync {
     ) -> Result<HashMap<String, f64>, DomainError>;
 }
 
-// ─── Trend ───────────────────────────────────────────
-
+/// Repository for price trend time-series queries.
+///
+/// Implemented by `PgTrendRepository` in the `infra` layer.
 #[async_trait]
 pub trait TrendRepository: Send + Sync {
-    /// Price trend data for the nearest observation point within 2km.
+    /// Fetch price trend data for the nearest land price observation point.
+    ///
+    /// Searches within a 2 km radius of `coord`. Returns `None` when no
+    /// observation point exists within that radius.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn find_trend(
         &self,
         coord: Coord,
@@ -70,14 +134,22 @@ pub trait TrendRepository: Send + Sync {
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError>;
 }
 
-// ─── Land Prices (dedicated v1 endpoint) ─────────────
-
+/// Repository for land price spatial queries (dedicated `/api/v1/landprice` endpoint).
+///
+/// Provides year-filtered and year-range GeoJSON queries for the map view as
+/// well as raw record fetching for the opportunities pipeline.
+///
+/// Implemented by `PgLandPriceRepository` in the `infra` layer.
 #[async_trait]
 pub trait LandPriceRepository: Send + Sync {
     /// Fetch land price GeoJSON features filtered by year, bounding box, and zoom.
     ///
     /// The `zoom` level is used to compute a dynamic feature limit via
     /// `compute_feature_limit`. Returns [`LayerResult`] with truncation metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn find_by_year_and_bbox(
         &self,
         year: Year,
@@ -86,7 +158,14 @@ pub trait LandPriceRepository: Send + Sync {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError>;
 
-    /// Fetch land price GeoJSON features across a year range for time machine animation.
+    /// Fetch land price GeoJSON features across a year range for time-machine animation.
+    ///
+    /// Returns all survey years within `[from_year, to_year]` in a single
+    /// [`LayerResult`]. The feature count cap applies across all years combined.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn find_all_years_by_bbox(
         &self,
         from_year: Year,
@@ -96,7 +175,15 @@ pub trait LandPriceRepository: Send + Sync {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError>;
 
-    /// Fetch raw land price records for the `/api/v1/opportunities` endpoint.
+    /// Fetch raw land price records for the `/api/v1/opportunities` pipeline.
+    ///
+    /// Returns up to `limit` [`OpportunityRecord`] rows ordered by the
+    /// database default (primary key). The usecase runs TLS enrichment on
+    /// the returned pool before applying user-facing filters and pagination.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn find_for_opportunities(
         &self,
         bbox: &BBox,
@@ -107,8 +194,11 @@ pub trait LandPriceRepository: Send + Sync {
     ) -> Result<Vec<OpportunityRecord>, DomainError>;
 }
 
-// ─── Admin Area Stats ────────────────────────────────
-
+/// Repository for administrative area aggregate statistics.
+///
+/// Accepts both prefecture (2-digit) and municipality (5-digit) area codes.
+///
+/// Implemented by `PgAdminAreaStatsRepository` in the `infra` layer.
 #[async_trait]
 pub trait AdminAreaStatsRepository: Send + Sync {
     /// Fetch aggregated statistics for the given administrative area code.
@@ -117,16 +207,22 @@ pub trait AdminAreaStatsRepository: Send + Sync {
     async fn get_area_stats(&self, code: &AreaCode) -> Result<AdminAreaStats, DomainError>;
 }
 
-// ─── Health ──────────────────────────────────────────
-
+/// Repository for database health probes.
+///
+/// Implemented by `PgHealthRepository` in the `infra` layer.
 #[async_trait]
 pub trait HealthRepository: Send + Sync {
     /// Check database connectivity (SELECT 1).
     async fn check_connection(&self) -> bool;
 }
 
-// ─── TLS (Total Location Score) ──────────────────────
-
+/// Repository for the Total Location Score (TLS) sub-score data queries.
+///
+/// Each method fetches the data needed for one TLS sub-score component.
+/// The opportunities usecase fans out over all methods concurrently via
+/// `tokio::join!` for each candidate record.
+///
+/// Implemented by `PgTlsRepository` in the `infra` layer.
 #[async_trait]
 pub trait TlsRepository: Send + Sync {
     /// Multi-year land prices near the given coordinate (nearest address within 1km).
@@ -155,8 +251,11 @@ pub trait TlsRepository: Send + Sync {
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError>;
 }
 
-// ─── Transaction ─────────────────────────────────────
-
+/// Repository for real-estate transaction data.
+///
+/// Queries the `transactions` table sourced from MLIT reinfolib XPT003.
+///
+/// Implemented by `PgTransactionRepository` in the `infra` layer.
 #[async_trait]
 pub trait TransactionRepository: Send + Sync {
     /// Fetch aggregated transaction summaries per city/year/property_type.
@@ -182,8 +281,11 @@ pub trait TransactionRepository: Send + Sync {
     ) -> Result<Vec<TransactionDetail>, DomainError>;
 }
 
-// ─── Appraisal ───────────────────────────────────────
-
+/// Repository for official land appraisal (鑑定評価) records.
+///
+/// Queries the `appraisals` table sourced from MLIT reinfolib.
+///
+/// Implemented by `PgAppraisalRepository` in the `infra` layer.
 #[async_trait]
 pub trait AppraisalRepository: Send + Sync {
     /// Fetch appraisal records for a prefecture, optionally filtered by city code.
@@ -197,11 +299,19 @@ pub trait AppraisalRepository: Send + Sync {
     ) -> Result<Vec<AppraisalDetail>, DomainError>;
 }
 
-// ─── Municipality ────────────────────────────────────
-
+/// Repository for municipality lookup data.
+///
+/// Provides the list of [`Municipality`] records for a given prefecture,
+/// used by the `/api/v1/municipalities` endpoint.
+///
+/// Implemented by `PgMunicipalityRepository` in the `infra` layer.
 #[async_trait]
 pub trait MunicipalityRepository: Send + Sync {
     /// Fetch all municipalities for the given prefecture.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] on SQL failure.
     async fn find_municipalities(
         &self,
         pref_code: &PrefCode,

@@ -1,3 +1,21 @@
+//! Validated newtypes that enforce domain invariants at construction time.
+//!
+//! Every type in this module makes invalid states unrepresentable: once a
+//! value is constructed it is guaranteed to satisfy its documented constraints
+//! for its entire lifetime. Callers therefore never need to re-validate a
+//! value that was received as one of these types.
+//!
+//! ## Design convention
+//!
+//! - **Fallible constructors** (`new`, `parse`) return `Result<Self,
+//!   DomainError>` and are the only way to create the type.
+//! - **Infallible constructors** (`clamped`) silently saturate out-of-range
+//!   inputs to the nearest bound. They are used for optional query parameters
+//!   where any value is acceptable but must be normalised.
+//! - **Accessors** (`value`, `get`, `as_str`) borrow or copy the inner
+//!   representation. No `pub` fields — the inner value can only be read
+//!   through the typed accessor.
+
 use crate::domain::constants::{
     BBOX_MAX_SIDE_DEG, CITY_CODE_LEN, LAT_MAX, LNG_MAX, PREF_CODE_LEN, PREF_CODE_MAX,
     PREF_CODE_MIN, YEAR_MAX, YEAR_MIN,
@@ -21,6 +39,28 @@ pub struct BBox {
 }
 
 impl BBox {
+    /// Construct a validated [`BBox`] from the four boundary coordinates.
+    ///
+    /// Coordinate order matches the PostGIS `ST_MakeEnvelope(west, south, east, north)`
+    /// convention used internally.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::InvalidCoordinate`] if any latitude is outside
+    /// `[-90, 90]` or any longitude is outside `[-180, 180]`, or if
+    /// `south >= north` or `west >= east`.
+    ///
+    /// Returns [`DomainError::BBoxTooLarge`] if either side exceeds
+    /// `BBOX_MAX_SIDE_DEG`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use terrasight_api::domain::value_object::BBox;
+    /// let bbox = BBox::new(35.65, 139.70, 35.70, 139.80)?;
+    /// assert!((bbox.south() - 35.65).abs() < f64::EPSILON);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     pub fn new(south: f64, west: f64, north: f64, east: f64) -> Result<Self, DomainError> {
         if !(-LAT_MAX..=LAT_MAX).contains(&south) || !(-LAT_MAX..=LAT_MAX).contains(&north) {
             return Err(DomainError::InvalidCoordinate(
@@ -77,15 +117,19 @@ impl BBox {
         }
     }
 
+    /// Southern latitude boundary (WGS-84 degrees).
     pub fn south(&self) -> f64 {
         self.south
     }
+    /// Western longitude boundary (WGS-84 degrees).
     pub fn west(&self) -> f64 {
         self.west
     }
+    /// Northern latitude boundary (WGS-84 degrees).
     pub fn north(&self) -> f64 {
         self.north
     }
+    /// Eastern longitude boundary (WGS-84 degrees).
     pub fn east(&self) -> f64 {
         self.east
     }
@@ -100,6 +144,21 @@ pub struct Coord {
 }
 
 impl Coord {
+    /// Construct a validated coordinate from latitude and longitude.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::InvalidCoordinate`] if `lat` is outside `[-90, 90]`
+    /// or `lng` is outside `[-180, 180]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use terrasight_api::domain::value_object::Coord;
+    /// let coord = Coord::new(35.689_487, 139.691_706)?; // Tokyo Station
+    /// assert!((coord.lat() - 35.689_487).abs() < 1e-6);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     pub fn new(lat: f64, lng: f64) -> Result<Self, DomainError> {
         if !(-LAT_MAX..=LAT_MAX).contains(&lat) {
             return Err(DomainError::InvalidCoordinate(
@@ -114,9 +173,11 @@ impl Coord {
         Ok(Self { lat, lng })
     }
 
+    /// WGS-84 latitude in decimal degrees.
     pub fn lat(&self) -> f64 {
         self.lat
     }
+    /// WGS-84 longitude in decimal degrees.
     pub fn lng(&self) -> f64 {
         self.lng
     }
@@ -193,7 +254,7 @@ impl ZoomLevel {
 /// Trend lookback window in years.
 ///
 /// Clamped to `[TREND_MIN_YEARS, TREND_MAX_YEARS]` via [`YearsLookback::clamped`].
-/// `YearsLookback::DEFAULT` matches [`TREND_DEFAULT_YEARS`](crate::domain::constants::TREND_DEFAULT_YEARS).
+/// `YearsLookback::DEFAULT` matches `TREND_DEFAULT_YEARS`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct YearsLookback(i32);
 
@@ -230,21 +291,33 @@ impl TlsScore {
         Self(value.clamp(0.0, 100.0) as u8)
     }
 
+    /// Return the TLS score as a `u8` in `0..=100`.
     pub fn value(self) -> u8 {
         self.0
     }
 }
 
 /// Risk level bucket derived from the S1 Disaster sub-score.
+///
+/// Higher S1 scores (safer locations) map to [`Low`](RiskLevel::Low).
+/// The mapping thresholds are defined in `terrasight-domain` scoring constants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RiskLevel {
+    /// Disaster score is above the low-risk threshold — safe to invest.
     Low,
+    /// Disaster score is between the mid and low thresholds — some caution warranted.
     Mid,
+    /// Disaster score is below the mid-risk threshold — significant hazard exposure.
     High,
 }
 
 impl RiskLevel {
-    /// Parse the REST API query string value (`"low" | "mid" | "high"`).
+    /// Parse a risk level from a REST API query-string value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Validation`] for any value other than `"low"`,
+    /// `"mid"`, or `"high"`.
     pub fn parse(s: &str) -> Result<Self, DomainError> {
         match s {
             "low" => Ok(Self::Low),
@@ -256,6 +329,7 @@ impl RiskLevel {
         }
     }
 
+    /// Return the canonical REST API string for this risk level.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Low => "low",
@@ -264,7 +338,7 @@ impl RiskLevel {
         }
     }
 
-    /// Derive a `RiskLevel` from a raw S1 disaster sub-score (higher = safer).
+    /// Derive a [`RiskLevel`] from a raw S1 disaster sub-score (higher = safer).
     pub fn from_disaster_score(score: f64) -> Self {
         use terrasight_domain::scoring::constants::{
             DISASTER_SCORE_LOW_THRESHOLD, DISASTER_SCORE_MID_THRESHOLD,
@@ -285,13 +359,18 @@ impl RiskLevel {
 /// [`OpportunitySignal::derive`] for the exact mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OpportunitySignal {
+    /// Low risk + TLS ≥ 80. Strong buy signal for investment analysis.
     Hot,
+    /// Low or mid risk + TLS ≥ 65. Good potential with moderate caution.
     Warm,
+    /// TLS ≥ 50 (any risk). Average location; further due diligence required.
     Neutral,
+    /// TLS < 50. Below-average fundamentals; not recommended for investment.
     Cold,
 }
 
 impl OpportunitySignal {
+    /// Return the canonical REST API string for this signal.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Hot => "hot",
@@ -374,6 +453,24 @@ impl AreaCode {
 pub struct PrefCode(String);
 
 impl PrefCode {
+    /// Parse a 2-digit prefecture code string.
+    ///
+    /// Trims surrounding whitespace before validation so query-string values
+    /// like `" 13 "` are accepted.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::InvalidPrefCode`] if the input is not exactly
+    /// 2 ASCII digits representing a prefecture in the range `01`–`47`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use terrasight_api::domain::value_object::PrefCode;
+    /// let code = PrefCode::new("13")?; // Tokyo
+    /// assert_eq!(code.as_str(), "13");
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     pub fn new(code: &str) -> Result<Self, DomainError> {
         let code = code.trim();
         if code.len() == PREF_CODE_LEN && code.chars().all(|c| c.is_ascii_digit()) {
@@ -387,6 +484,7 @@ impl PrefCode {
         Err(DomainError::InvalidPrefCode(code.to_string()))
     }
 
+    /// Borrow the inner 2-digit code string.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -401,6 +499,22 @@ impl PrefCode {
 pub struct CityCode(String);
 
 impl CityCode {
+    /// Parse a 5-digit JIS X 0402 municipality code.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::InvalidCityCode`] if the input is not exactly 5
+    /// ASCII digits or if the leading 2-digit prefecture component is outside
+    /// the valid range `01`–`47`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use terrasight_api::domain::value_object::CityCode;
+    /// let code = CityCode::new("13101")?; // 千代田区
+    /// assert_eq!(code.pref_code(), "13");
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     pub fn new(code: &str) -> Result<Self, DomainError> {
         let code = code.trim();
         if code.len() != CITY_CODE_LEN || !code.chars().all(|c| c.is_ascii_digit()) {
@@ -415,11 +529,14 @@ impl CityCode {
         Ok(Self(code.to_string()))
     }
 
+    /// Borrow the inner 5-digit code string.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
-    /// 上位2桁の都道府県コードを返す。
+    /// Return the 2-digit prefecture prefix of this municipality code.
+    ///
+    /// For example, `"13101".pref_code()` returns `"13"` (Tokyo).
     pub fn pref_code(&self) -> &str {
         &self.0[..2]
     }
@@ -433,13 +550,17 @@ impl CityCode {
 pub struct OpportunityLimit(u32);
 
 impl OpportunityLimit {
+    /// Server-enforced maximum page size.
     pub const MAX: u32 = crate::domain::constants::MAX_OPPORTUNITY_LIMIT;
+    /// Default page size used when the client omits the `limit` parameter.
     pub const DEFAULT: Self = Self(crate::domain::constants::DEFAULT_OPPORTUNITY_LIMIT);
 
+    /// Clamp a raw page-size value to `[1, MAX]`.
     pub fn clamped(value: u32) -> Self {
         Self(value.clamp(1, Self::MAX))
     }
 
+    /// Return the page size as a `u32`.
     pub fn get(self) -> u32 {
         self.0
     }
@@ -453,23 +574,37 @@ impl OpportunityLimit {
 pub struct OpportunityOffset(u32);
 
 impl OpportunityOffset {
+    /// Wrap a zero-based page offset.
+    ///
+    /// No upper bound is enforced; the usecase returns an empty slice when
+    /// `offset` exceeds the size of the cached opportunity pool.
     pub fn new(value: u32) -> Self {
         Self(value)
     }
 
+    /// Return the offset as a `u32`.
     pub fn get(self) -> u32 {
         self.0
     }
 }
 
-/// Map layer type.
+/// Map layer type for the `/api/v1/features` endpoint.
+///
+/// Each variant corresponds to a PostGIS table and a specific feature limit
+/// curve as a function of zoom level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LayerType {
+    /// 地価公示 / 地価調査 — official land price survey points.
     LandPrice,
+    /// 用途地域 — urban planning zone polygons.
     Zoning,
+    /// 浸水想定区域 — flood-risk hazard areas.
     Flood,
+    /// 急傾斜地崩壊危険区域 — steep-slope hazard areas.
     SteepSlope,
+    /// 学校 — elementary, middle, and high schools.
     Schools,
+    /// 医療施設 — hospitals and clinics.
     Medical,
 }
 
@@ -500,22 +635,34 @@ impl LayerType {
     }
 }
 
-/// Trend analysis result produced by the usecase layer.
+/// Trend analysis result produced by the `GetTrendUsecase`.
+///
+/// Contains the nearest observation-point location, the raw time-series data,
+/// and the derived CAGR summary. Passed directly to the handler for
+/// serialisation into the `/api/v1/trend` response.
 #[derive(Debug, Clone)]
 pub struct TrendAnalysis {
+    /// Metadata about the nearest land price observation point.
     pub location: crate::domain::entity::TrendLocation,
+    /// Annual price data points over the requested lookback window.
     pub data: Vec<crate::domain::entity::TrendPoint>,
+    /// Compound annual growth rate (CAGR) across the lookback window.
     pub cagr: f64,
+    /// Whether prices trended upward or downward over the lookback window.
     pub direction: TrendDirection,
 }
 
+/// Overall price trend direction over the lookback window.
 #[derive(Debug, Clone, Copy)]
 pub enum TrendDirection {
+    /// CAGR is positive — prices increased over the period.
     Up,
+    /// CAGR is zero or negative — prices were flat or fell over the period.
     Down,
 }
 
 impl TrendDirection {
+    /// Return the canonical REST API string for this direction.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Up => "up",
@@ -526,35 +673,56 @@ impl TrendDirection {
 
 /// Validated filter set for opportunity queries.
 ///
-/// Constructed by the handler layer from raw query parameters;
-/// consumed by the usecase layer.
+/// Constructed by the handler layer from raw query parameters and passed to
+/// the usecase. All fields have been validated and normalised; the usecase
+/// can use them directly without further checking.
 #[derive(Debug, Clone)]
 pub struct OpportunitiesFilters {
+    /// Geographic bounding box for the query.
     pub bbox: BBox,
+    /// Maximum number of opportunities to return (after cache + pagination).
     pub limit: OpportunityLimit,
+    /// Zero-based page offset into the cached opportunity pool.
     pub offset: OpportunityOffset,
+    /// Minimum acceptable TLS score. `None` means no lower bound.
     pub tls_min: Option<TlsScore>,
+    /// Maximum acceptable risk level. `None` means no upper bound.
     pub risk_max: Option<RiskLevel>,
+    /// Allow-list of zone codes. Empty means all zones are accepted.
     pub zones: Vec<ZoneCode>,
+    /// Maximum walking distance (m) to the nearest station. `None` means no limit.
     pub station_max: Option<Meters>,
+    /// Inclusive price range `(min, max)` in JPY/m². `None` means no price filter.
     pub price_range: Option<(PricePerSqm, PricePerSqm)>,
+    /// TLS weight preset controlling sub-score importance.
     pub preset: WeightPreset,
+    /// Optional prefecture filter for multi-prefecture deployments.
     pub pref_code: Option<PrefCode>,
+    /// Allow-list of 5-digit city codes. Empty means all cities are accepted.
     pub cities: Vec<String>,
 }
 
 /// Cache key fingerprint for opportunities requests.
 ///
-/// Excludes `limit`/`offset` so all paginated views of the same
-/// filter set share a cache slot.
+/// Excludes `limit` and `offset` so all paginated views of the same filter
+/// set share a single in-memory cache slot. Coordinates are stored as integer
+/// micro-degrees (`f64 * 1e6` truncated to `i64`) to avoid floating-point
+/// equality issues in the `Hash` and `Eq` implementations.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OpportunitiesCacheKey {
+    /// Bounding box encoded as `(south, west, north, east)` in micro-degrees.
     pub bbox_microdeg: (i64, i64, i64, i64),
+    /// Minimum TLS score filter, or `None` if not applied.
     pub tls_min: Option<u8>,
+    /// Maximum risk level filter, or `None` if not applied.
     pub risk_max: Option<RiskLevel>,
+    /// Zone code allow-list (raw strings for hash stability).
     pub zones: Vec<String>,
+    /// Maximum station distance in metres, or `None` if not applied.
     pub station_max: Option<u32>,
+    /// Price range as `(min_jpy, max_jpy)` per m², or `None` if not applied.
     pub price_range: Option<(i64, i64)>,
+    /// TLS weight preset identifier.
     pub preset: WeightPreset,
 }
 

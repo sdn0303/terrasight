@@ -2,11 +2,28 @@
 //!
 //! All magic numbers used across the scoring, spatial search, and validation
 //! logic are centralized here to make thresholds easy to audit and adjust.
+//!
+//! ## Scope
+//!
+//! These are constants that are specific to the `terrasight-api` binary.
+//! Constants shared across multiple crates (e.g. coordinate bounds, prefecture
+//! code range) live in `terrasight-domain` and are re-exported here for
+//! convenient use within this crate.
+//!
+//! ## Visibility
+//!
+//! All constants are `pub(crate)` — they are implementation details of the
+//! API binary and should not form part of any public interface.
 
 // ---------------------------------------------------------------------------
 // Risk scoring — area-based statistics (bbox / polygon query)
 // ---------------------------------------------------------------------------
 
+/// Re-exported from `terrasight-domain` for use within this crate.
+///
+/// Includes coordinate bounds (`LAT_MAX`, `LNG_MAX`), bbox limit
+/// (`BBOX_MAX_SIDE_DEG`), prefecture code range (`PREF_CODE_MIN/MAX/LEN`),
+/// and risk-statistics weights (`STATS_RISK_WEIGHT_FLOOD/STEEP`).
 pub(crate) use terrasight_domain::constants::{
     BBOX_MAX_SIDE_DEG, LAT_MAX, LNG_MAX, PREF_CODE_LEN, PREF_CODE_MAX, PREF_CODE_MIN,
     STATS_RISK_WEIGHT_FLOOD, STATS_RISK_WEIGHT_STEEP,
