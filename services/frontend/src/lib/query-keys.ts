@@ -46,4 +46,12 @@ export const queryKeys = {
       },
     ) => ["opportunities", "list", bbox, filters] as const,
   },
+  transactionSummary: {
+    all: ["transaction-summary"] as const,
+    byPref: (prefCode: string) => ["transaction-summary", prefCode] as const,
+  },
+  municipalities: {
+    all: ["municipalities"] as const,
+    byPref: (prefCode: string) => ["municipalities", prefCode] as const,
+  },
 };

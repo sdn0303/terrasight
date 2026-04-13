@@ -11,6 +11,7 @@ import {
 import type { ComponentType, SVGProps } from "react";
 import { CARD_RADIUS, PAGE_INSET, RAIL_WIDTH } from "@/lib/layout";
 import { GLOW_SHADOW, GRADIENT } from "@/lib/theme-tokens";
+import { useNavigationLevel } from "@/hooks/use-navigation-level";
 import { type LeftPanelKind, useUIStore } from "@/stores/ui-store";
 
 type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -36,6 +37,7 @@ const LEFT_PANEL_TOOLS: readonly LeftPanelKind[] = [
 ];
 
 export function SidebarRail() {
+  const level = useNavigationLevel();
   const leftPanel = useUIStore((s) => s.leftPanel);
   const bottomSheet = useUIStore((s) => s.bottomSheet);
   const insight = useUIStore((s) => s.insight);
@@ -104,7 +106,10 @@ export function SidebarRail() {
 
       {/* Tools */}
       <nav className="flex flex-col items-center gap-1.5">
-        {TOOLS.map((tool) => (
+        {(level === "L1" || level === "L2"
+          ? TOOLS.filter((t) => t.id === "map" || t.id === "layers")
+          : TOOLS
+        ).map((tool) => (
           <RailTool
             key={tool.id}
             tool={tool}

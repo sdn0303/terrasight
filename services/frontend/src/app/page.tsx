@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { BreadcrumbNav } from "@/components/explore/breadcrumb-nav";
 import { FinderPanel } from "@/components/finder/finder-panel";
 import { CompareTab } from "@/components/insight/compare-tab";
 import { InfraTab } from "@/components/insight/infra-tab";
@@ -8,6 +9,7 @@ import { IntelTab } from "@/components/insight/intel-tab";
 import { RiskTab } from "@/components/insight/risk-tab";
 import { TrendTab } from "@/components/insight/trend-tab";
 import { LayerControlPanel } from "@/components/layer/layer-control-panel";
+import { DataModeBar } from "@/components/layout/data-mode-bar";
 import type { DrawerTabDef } from "@/components/layout/insight-drawer";
 import { InsightDrawer } from "@/components/layout/insight-drawer";
 import { MapCanvasFrame } from "@/components/layout/map-canvas-frame";
@@ -16,14 +18,20 @@ import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { OpportunitiesSheet } from "@/components/opportunities/opportunities-sheet";
 import { ThemesPanel } from "@/components/theme/themes-panel";
+import { MunicipalityMapLayer } from "@/features/municipality/components/municipality-map-layer";
+import { MunicipalityList } from "@/features/municipality/components/municipality-list";
+import { PrefectureMapLayer } from "@/features/prefecture/components/prefecture-map-layer";
+import { PrefectureList } from "@/features/prefecture/components/prefecture-list";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useNavigationLevel } from "@/hooks/use-navigation-level";
 import { useUIStore } from "@/stores/ui-store";
 
 export default function Home() {
   const { handleFeatureClick } = useMapInteraction();
   const page = useMapPage();
+  const level = useNavigationLevel();
 
   const insight = useUIStore((s) => s.insight);
   const activeTab = useUIStore((s) => s.activeTab);
@@ -100,21 +108,25 @@ export default function Home() {
           onMoveEnd={page.handleMoveEnd}
           onFeatureClick={handleFeatureClick}
         >
-          <LayerRenderer
-            visibleLayers={page.visibleLayers}
-            staticLayers={page.staticLayers}
-            apiLayers={page.apiLayers}
-            areaData={page.areaData as Record<string, unknown> | null}
-            landPriceData={page.landPriceData}
-            isLandPriceFetching={page.isLandPriceFetching}
-            isLandPriceError={page.isLandPriceError}
-            isZoomTooLow={page.isZoomTooLow}
-            populationYear={page.populationYear}
-            setPopulationYear={page.setPopulationYear}
-            landPriceYear={page.landPriceYear}
-            setLandPriceYear={page.setLandPriceYear}
-            landPriceFeatureCount={page.landPriceData.features.length}
-          />
+          {level === "L1" && <PrefectureMapLayer />}
+          {level === "L2" && <MunicipalityMapLayer />}
+          {(level === "L3" || level === "L4") && (
+            <LayerRenderer
+              visibleLayers={page.visibleLayers}
+              staticLayers={page.staticLayers}
+              apiLayers={page.apiLayers}
+              areaData={page.areaData as Record<string, unknown> | null}
+              landPriceData={page.landPriceData}
+              isLandPriceFetching={page.isLandPriceFetching}
+              isLandPriceError={page.isLandPriceError}
+              isZoomTooLow={page.isZoomTooLow}
+              populationYear={page.populationYear}
+              setPopulationYear={page.setPopulationYear}
+              landPriceYear={page.landPriceYear}
+              setLandPriceYear={page.setLandPriceYear}
+              landPriceFeatureCount={page.landPriceData.features.length}
+            />
+          )}
         </MapView>
         {page.isZoomTooLow && (
           <div
@@ -137,6 +149,9 @@ export default function Home() {
         )}
       </div>
 
+      <DataModeBar level={level} />
+      <BreadcrumbNav />
+
       <SidebarRail />
 
       <LayerControlPanel
@@ -147,27 +162,37 @@ export default function Home() {
         open={leftPanel === "themes"}
         onClose={() => setLeftPanel(null)}
       />
-      <FinderPanel
-        open={leftPanel === "finder"}
-        onClose={() => setLeftPanel(null)}
-        onSearch={() => setBottomSheet("opportunities")}
-        matchCount={1247}
-      />
 
-      <OpportunitiesSheet
-        open={bottomSheet === "opportunities"}
-        onClose={() => setBottomSheet(null)}
-      />
+      {level === "L1" && <PrefectureList />}
+      {level === "L2" && <MunicipalityList />}
 
-      <InsightDrawer
-        open={insightOpen}
-        onClose={() => setInsight(null)}
-        title={insightTitle}
-        subtitle="Selected on map"
-        tabs={drawerTabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      {(level === "L3" || level === "L4") && (
+        <FinderPanel
+          open={leftPanel === "finder"}
+          onClose={() => setLeftPanel(null)}
+          onSearch={() => setBottomSheet("opportunities")}
+          matchCount={1247}
+        />
+      )}
+
+      {(level === "L3" || level === "L4") && (
+        <OpportunitiesSheet
+          open={bottomSheet === "opportunities"}
+          onClose={() => setBottomSheet(null)}
+        />
+      )}
+
+      {(level === "L3" || level === "L4") && (
+        <InsightDrawer
+          open={insightOpen}
+          onClose={() => setInsight(null)}
+          title={insightTitle}
+          subtitle="Selected on map"
+          tabs={drawerTabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
     </MapCanvasFrame>
   );
 }
