@@ -1,27 +1,42 @@
 import type { FeatureCollection } from "geojson";
-import { layerUrl } from "@/lib/data-url";
 import { canonicalLayerId } from "@/lib/layer-ids";
 import { logger } from "@/lib/logger";
+import { ManifestSchema } from "./manifest-schema";
 
 const log = logger.child({ module: "spatial-engine" });
 
 // ---------------------------------------------------------------------------
-// Layer manifest — all 11 layers loaded into the R-tree
+// Manifest-driven layer loading
 // ---------------------------------------------------------------------------
 
-const WASM_LAYERS = [
-  { id: "admin-boundary", url: layerUrl("13", "admin-boundary") },
-  { id: "did", url: layerUrl("13", "did") },
-  { id: "flood-history", url: layerUrl("13", "flood-history") },
-  { id: "geology", url: layerUrl("13", "geology") },
-  { id: "landform", url: layerUrl("13", "landform") },
-  { id: "liquefaction", url: layerUrl("13", "liquefaction") },
-  { id: "railway", url: layerUrl("13", "railway") },
-  { id: "soil", url: layerUrl("13", "soil") },
-  { id: "fault", url: layerUrl("national", "fault") },
-  { id: "volcano", url: layerUrl("national", "volcano") },
-  { id: "seismic", url: layerUrl("national", "seismic") },
-] as const;
+const DATA_BASE = process.env.NEXT_PUBLIC_DATA_URL ?? "/data/fgb";
+
+async function loadLayerManifest(
+  prefCode: string,
+): Promise<Array<{ id: string; url: string }>> {
+  const res = await fetch(`${DATA_BASE}/manifest.json`);
+  if (!res.ok) {
+    throw new Error(`Manifest fetch failed: ${res.status}`);
+  }
+  const raw: unknown = await res.json();
+  const manifest = ManifestSchema.parse(raw);
+
+  const layers: Array<{ id: string; url: string }> = [];
+
+  // Prefecture-specific layers
+  const prefLayers = manifest.prefectures[prefCode]?.layers ?? [];
+  for (const layer of prefLayers) {
+    layers.push({ id: layer.id, url: `${DATA_BASE}/${layer.path}` });
+  }
+
+  // National layers (always loaded)
+  const nationalLayers = manifest.prefectures["national"]?.layers ?? [];
+  for (const layer of nationalLayers) {
+    layers.push({ id: layer.id, url: `${DATA_BASE}/${layer.path}` });
+  }
+
+  return layers;
+}
 
 // ---------------------------------------------------------------------------
 // Message protocol (mirrors worker.ts — kept in sync manually)
@@ -61,12 +76,40 @@ interface ErrorMessage {
   message: string;
 }
 
+interface LoadGeoJsonResultMessage {
+  type: "load-geojson-result";
+  id: number;
+  count: number;
+}
+
+interface LoadGeoJsonErrorMessage {
+  type: "load-geojson-error";
+  id: number;
+  error: string;
+}
+
+interface TlsResultMessage {
+  type: "tls-result";
+  id: number;
+  result: string; // JSON string from WASM
+}
+
+interface TlsErrorMessage {
+  type: "tls-error";
+  id: number;
+  error: string;
+}
+
 type WorkerMessage =
   | InitDoneMessage
   | QueryResultMessage
   | QueryErrorMessage
   | StatsResultMessage
   | StatsErrorMessage
+  | LoadGeoJsonResultMessage
+  | LoadGeoJsonErrorMessage
+  | TlsResultMessage
+  | TlsErrorMessage
   | ErrorMessage;
 
 // ---------------------------------------------------------------------------
@@ -102,10 +145,24 @@ interface PendingStatsQuery {
   reject: (reason: unknown) => void;
 }
 
+interface PendingLoadGeoJsonQuery {
+  kind: "load-geojson";
+  resolve: (value: number) => void;
+  reject: (reason: unknown) => void;
+}
+
+interface PendingTlsQuery {
+  kind: "tls";
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
+}
+
 type PendingQuery =
   | PendingFeatureQuery
   | PendingPerLayerQuery
-  | PendingStatsQuery;
+  | PendingStatsQuery
+  | PendingLoadGeoJsonQuery
+  | PendingTlsQuery;
 
 // ---------------------------------------------------------------------------
 // Adapter
@@ -114,6 +171,7 @@ type PendingQuery =
 export class SpatialEngineAdapter {
   private worker: Worker | null = null;
   private _loadedLayers = new Set<string>();
+  private _expectedLayers: string[] = [];
   private readonly pending = new Map<number, PendingQuery>();
   private nextId = 0;
   private readonly listeners: ((ready: boolean) => void)[] = [];
@@ -144,63 +202,66 @@ export class SpatialEngineAdapter {
   }
 
   /**
-   * Initialise the WASM worker and load all layers.
+   * Initialise the WASM worker and load all layers for the given prefecture.
    * SSR-safe: no-ops when called outside a browser context.
    * Applies a 30-second timeout; on failure logs a warning and enters
    * fallback mode (worker = null, ready = false).
    */
-  async init(): Promise<void> {
+  async init(prefCode = "13"): Promise<void> {
     if (typeof window === "undefined") return;
     if (this.worker !== null || this._loadedLayers.size > 0) return;
 
     performance.mark("wasm-init-start");
 
-    this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
-      type: "module",
-    });
+    try {
+      const layers = await loadLayerManifest(prefCode);
+      this._expectedLayers = layers.map((l) => l.id);
 
-    this.worker.onmessage = (event: MessageEvent<unknown>) => {
-      const msg = event.data as WorkerMessage;
-      this.handleMessage(msg);
-    };
+      this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
+        type: "module",
+      });
 
-    this.worker.onerror = (event: ErrorEvent) => {
-      console.warn("[SpatialEngineAdapter] Worker error:", event.message);
-    };
-
-    const initPromise = new Promise<void>((resolve, reject) => {
-      // Temporary handler to capture the first "init-done" or "error"
-      const originalHandler = this.worker?.onmessage;
-      if (!this.worker) {
-        reject(new Error("Worker unexpectedly null"));
-        return;
-      }
       this.worker.onmessage = (event: MessageEvent<unknown>) => {
         const msg = event.data as WorkerMessage;
-        if (msg.type === "init-done") {
-          // Restore normal handler then resolve
-          if (this.worker) this.worker.onmessage = originalHandler ?? null;
-          this.handleMessage(msg);
-          resolve();
-        } else if (msg.type === "error") {
-          reject(new Error(msg.message));
-        } else {
-          // Route any race-condition query results through normal handler
-          this.handleMessage(msg);
-        }
+        this.handleMessage(msg);
       };
-    });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("SpatialEngine init timed out after 30s")),
-        30_000,
-      ),
-    );
+      this.worker.onerror = (event: ErrorEvent) => {
+        console.warn("[SpatialEngineAdapter] Worker error:", event.message);
+      };
 
-    this.worker.postMessage({ type: "init", layers: WASM_LAYERS });
+      const initPromise = new Promise<void>((resolve, reject) => {
+        // Temporary handler to capture the first "init-done" or "error"
+        const originalHandler = this.worker?.onmessage;
+        if (!this.worker) {
+          reject(new Error("Worker unexpectedly null"));
+          return;
+        }
+        this.worker.onmessage = (event: MessageEvent<unknown>) => {
+          const msg = event.data as WorkerMessage;
+          if (msg.type === "init-done") {
+            // Restore normal handler then resolve
+            if (this.worker) this.worker.onmessage = originalHandler ?? null;
+            this.handleMessage(msg);
+            resolve();
+          } else if (msg.type === "error") {
+            reject(new Error(msg.message));
+          } else {
+            // Route any race-condition query results through normal handler
+            this.handleMessage(msg);
+          }
+        };
+      });
 
-    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("SpatialEngine init timed out after 30s")),
+          30_000,
+        ),
+      );
+
+      this.worker.postMessage({ type: "init", layers });
+
       await Promise.race([initPromise, timeoutPromise]);
     } catch (err) {
       performance.mark("wasm-init-failed");
@@ -213,10 +274,29 @@ export class SpatialEngineAdapter {
         "[SpatialEngineAdapter] Falling back to FlatGeobuf mode:",
         err instanceof Error ? err.message : err,
       );
+      if (this.worker) {
+        this.worker.terminate();
+        this.worker = null;
+      }
+      // _loadedLayers stays empty — callers fall back to full FGB load
+      this.notifyListeners(false);
+    }
+  }
+
+  /**
+   * Terminate the current worker and re-initialise for a new prefecture.
+   * Clears all loaded layer state before re-init.
+   */
+  async reloadForPrefecture(prefCode: string): Promise<void> {
+    if (this.worker) {
       this.worker.terminate();
       this.worker = null;
-      // _loadedLayers stays empty — callers fall back to full FGB load
     }
+    this._loadedLayers.clear();
+    this._expectedLayers = [];
+    this.notifyListeners(false);
+
+    await this.init(prefCode);
   }
 
   /**
@@ -294,10 +374,63 @@ export class SpatialEngineAdapter {
    * Compute aggregate stats for a given bounding box using the in-memory
    * WASM index. Returns a plain object matching the StatsResponse shape.
    */
-  async computeStats(_bbox: BBox): Promise<unknown> {
-    // Phase 1: WASM stats is disabled. Backend /api/stats is canonical.
-    // Re-enable in Phase 3 after data ingestion + parity test.
-    throw new Error("WASM stats disabled in Phase 1");
+  async computeStats(bbox: BBox): Promise<unknown> {
+    if (this.worker === null || this._loadedLayers.size === 0) {
+      return null;
+    }
+
+    const id = this.nextId++;
+    return new Promise<unknown>((resolve, reject) => {
+      this.pending.set(id, { kind: "stats", resolve, reject });
+      this.worker?.postMessage({
+        type: "compute-stats",
+        id,
+        bbox,
+      });
+    });
+  }
+
+  /**
+   * Load a GeoJSON string into the WASM R-tree under the given layer ID.
+   * Returns the number of features indexed, or 0 if the worker is not ready.
+   */
+  async loadGeoJsonLayer(layerId: string, geojson: string): Promise<number> {
+    if (this.worker === null) {
+      return 0;
+    }
+
+    const id = this.nextId++;
+    return new Promise<number>((resolve, reject) => {
+      this.pending.set(id, { kind: "load-geojson", resolve, reject });
+      this.worker?.postMessage({
+        type: "load-geojson",
+        id,
+        layerId,
+        geojson,
+      });
+    });
+  }
+
+  /**
+   * Compute a Terrasight Location Score (TLS) for the given bounding box
+   * using the specified weight preset. Returns a plain object or null when
+   * the engine is not ready.
+   */
+  async computeTls(bbox: BBox, preset = "balance"): Promise<unknown> {
+    if (this.worker === null || this._loadedLayers.size === 0) {
+      return null;
+    }
+
+    const id = this.nextId++;
+    return new Promise<unknown>((resolve, reject) => {
+      this.pending.set(id, { kind: "tls", resolve, reject });
+      this.worker?.postMessage({
+        type: "compute-tls",
+        id,
+        bbox,
+        preset,
+      });
+    });
   }
 
   /**
@@ -335,7 +468,7 @@ export class SpatialEngineAdapter {
         performance.mark("wasm-init-done");
         performance.measure("wasm-init", "wasm-init-start", "wasm-init-done");
         const initMeasure = performance.getEntriesByName("wasm-init").pop();
-        const allLayerIds = WASM_LAYERS.map((l) => l.id);
+        const allLayerIds = this._expectedLayers;
         const failedLayers = allLayerIds.filter(
           (id) => !this._loadedLayers.has(id),
         );
@@ -420,6 +553,55 @@ export class SpatialEngineAdapter {
       }
 
       case "stats-error": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        pending.reject(new Error(msg.error));
+        break;
+      }
+
+      case "load-geojson-result": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        if (pending.kind !== "load-geojson") {
+          pending.reject(
+            new Error("Unexpected load-geojson-result for non-load-geojson pending entry"),
+          );
+          break;
+        }
+        pending.resolve(msg.count);
+        break;
+      }
+
+      case "load-geojson-error": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        pending.reject(new Error(msg.error));
+        break;
+      }
+
+      case "tls-result": {
+        const pending = this.pending.get(msg.id);
+        if (!pending) break;
+        this.pending.delete(msg.id);
+        if (pending.kind !== "tls") {
+          pending.reject(
+            new Error("Unexpected tls-result for non-tls pending entry"),
+          );
+          break;
+        }
+        try {
+          const parsed = JSON.parse(msg.result) as unknown;
+          pending.resolve(parsed);
+        } catch (err) {
+          pending.reject(err);
+        }
+        break;
+      }
+
+      case "tls-error": {
         const pending = this.pending.get(msg.id);
         if (!pending) break;
         this.pending.delete(msg.id);

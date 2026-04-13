@@ -4,7 +4,7 @@ import { Layer, Source } from "react-map-gl/maplibre";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 export function BoundaryLayer() {
-  const { data } = useStaticLayer("13", "admin-boundary", true);
+  const { data } = useStaticLayer("admin-boundary", true);
   if (!data) return null;
   return (
     <Source id="n03-boundary" type="geojson" data={data}>

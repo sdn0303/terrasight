@@ -9,6 +9,7 @@ import { layerUrl } from "@/lib/data-url";
 import { canonicalLayerId } from "@/lib/layer-ids";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 import { useMapStore } from "@/stores/map-store";
+import { usePrefectureStore } from "@/stores/prefecture-store";
 
 // ---------------------------------------------------------------------------
 // FGB prefix code mapping — canonical layer ID → prefCode for FGB URL
@@ -16,19 +17,16 @@ import { useMapStore } from "@/stores/map-store";
 
 const NATIONAL_LAYERS = new Set(["fault", "volcano", "seismic"]);
 
-function prefCodeForLayer(canonicalId: string): string {
-  return NATIONAL_LAYERS.has(canonicalId) ? "national" : "13";
-}
-
 // ---------------------------------------------------------------------------
 // FGB fallback fetcher
 // ---------------------------------------------------------------------------
 
 async function fetchFgbLayer(
   canonicalId: string,
+  prefCode: string,
   signal: AbortSignal,
 ): Promise<FeatureCollection> {
-  const url = layerUrl(prefCodeForLayer(canonicalId), canonicalId);
+  const url = layerUrl(prefCode, canonicalId);
   const response = await fetch(url, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status}`);
@@ -59,6 +57,10 @@ export function useVisibleStaticLayers(
   visibleLayerIds: string[],
 ): Map<string, FeatureCollection> {
   const wasmReady = useSpatialEngineReady();
+  const selectedPrefCode = usePrefectureStore((s) => s.selectedPrefCode);
+
+  const prefCodeForLayer = (canonicalId: string): string =>
+    NATIONAL_LAYERS.has(canonicalId) ? "national" : selectedPrefCode;
 
   // Viewport bbox from map store (same pattern as useStaticLayer)
   const latitude = useMapStore((s) => s.viewState.latitude);
@@ -120,13 +122,16 @@ export function useVisibleStaticLayers(
 
   // --- Layer 1: FGB fallback (bbox-independent, infinite cache) ---
   const fallbackResults = useQueries({
-    queries: fallbackLayers.map((id) => ({
-      queryKey: ["static-layer-fallback", prefCodeForLayer(id), id],
-      queryFn: ({ signal }: { signal: AbortSignal }) =>
-        fetchFgbLayer(id, signal),
-      staleTime: Number.POSITIVE_INFINITY,
-      gcTime: Number.POSITIVE_INFINITY,
-    })),
+    queries: fallbackLayers.map((id) => {
+      const resolvedPrefCode = prefCodeForLayer(id);
+      return {
+        queryKey: ["static-layer-fallback", resolvedPrefCode, id],
+        queryFn: ({ signal }: { signal: AbortSignal }) =>
+          fetchFgbLayer(id, resolvedPrefCode, signal),
+        staleTime: Number.POSITIVE_INFINITY,
+        gcTime: Number.POSITIVE_INFINITY,
+      };
+    }),
   });
 
   // Build merged result map

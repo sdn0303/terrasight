@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function DIDLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "did", visible && !propData);
+  const selfFetch = useStaticLayer("did", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

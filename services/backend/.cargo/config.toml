@@ -1,0 +1,16 @@
+# Cargo workspace configuration for the backend service.
+#
+# Integration tests share a single PostGIS database and a fixed-size
+# connection pool (5 connections). Running tests in parallel causes pool
+# starvation when the opportunities endpoint holds connections for TLS
+# enrichment of large record sets. Serializing integration tests prevents
+# this without requiring a larger pool or per-test database isolation.
+[test]
+# Run integration tests one at a time to avoid DB connection pool starvation.
+# Unit tests (compiled into the same binary) are unaffected because they do
+# not touch the database.
+#
+# This applies to `cargo test --test api_integration` only when the binary is
+# built without `--jobs`; pure unit tests inside library crates are still
+# compiled in parallel.
+test-threads = 1

@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function VolcanoLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("national", "volcano", visible && !propData);
+  const selfFetch = useStaticLayer("volcano", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

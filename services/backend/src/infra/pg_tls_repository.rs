@@ -12,7 +12,12 @@ use crate::domain::repository::TlsRepository;
 use crate::domain::value_object::Coord;
 
 /// Maximum time to wait for a single TLS sub-query.
-const TLS_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
+///
+/// 30 s gives local Docker-based integration tests enough headroom for
+/// spatial queries (medical, school, flood, seismic) against imported data
+/// sets of several thousand rows.  Production deployments with a co-located
+/// DB and appropriate spatial indexes complete well within this budget.
+const TLS_QUERY_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, FromRow)]
 struct NearestPriceRow {

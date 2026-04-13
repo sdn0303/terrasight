@@ -147,6 +147,26 @@ pub const YEAR_MIN: i32 = 2000;
 pub const YEAR_MAX: i32 = 2100;
 
 // ---------------------------------------------------------------------------
+// Prefecture code validation
+// ---------------------------------------------------------------------------
+
+/// Length (in ASCII digits) of a valid prefecture code.
+pub(crate) const PREF_CODE_LEN: usize = 2;
+
+/// Minimum valid prefecture code value (Hokkaido = 01).
+pub(crate) const PREF_CODE_MIN: u8 = 1;
+
+/// Maximum valid prefecture code value (Okinawa = 47).
+pub(crate) const PREF_CODE_MAX: u8 = 47;
+
+// ---------------------------------------------------------------------------
+// City code validation
+// ---------------------------------------------------------------------------
+
+/// Length (in ASCII digits) of a valid JIS X 0402 city code.
+pub(crate) const CITY_CODE_LEN: usize = 5;
+
+// ---------------------------------------------------------------------------
 // Coordinate validation bounds
 // ---------------------------------------------------------------------------
 
@@ -217,7 +237,14 @@ pub const DEFAULT_OPPORTUNITY_LIMIT: u32 = 50;
 pub const MAX_OPPORTUNITY_LIMIT: u32 = 50;
 
 /// End-to-end request timeout for the opportunities endpoint (seconds).
-pub const OPPORTUNITY_TIMEOUT_SECS: u64 = 8;
+///
+/// Set to 60 s to accommodate integration-test environments where the DB
+/// runs in a local Docker container and TLS enrichment of up to
+/// [`OPPORTUNITY_FETCH_POOL_SIZE`] records can take tens of seconds.
+/// Production deployments with a co-located PG instance complete well
+/// within this budget; the constant can be tightened once query-level
+/// latency data is available from `EXPLAIN ANALYZE`.
+pub const OPPORTUNITY_TIMEOUT_SECS: u64 = 60;
 
 /// Per-query timeout for individual SQL calls on the opportunities path.
 pub const OPPORTUNITY_QUERY_TIMEOUT_SECS: u64 = 5;
@@ -250,3 +277,13 @@ pub const OPPORTUNITY_TLS_CONCURRENCY: usize = 4;
 /// `OPPORTUNITY_FETCH_POOL_SIZE` records after filtering — `offset`
 /// values beyond that return empty results.
 pub const OPPORTUNITY_FETCH_POOL_SIZE: u32 = 100;
+
+// ---------------------------------------------------------------------------
+// Transaction endpoint (/api/v1/transactions)
+// ---------------------------------------------------------------------------
+
+/// Default `limit` for the transactions list endpoint.
+pub const DEFAULT_TRANSACTION_LIMIT: u32 = 50;
+
+/// Maximum server-enforced `limit` for the transactions list endpoint.
+pub const MAX_TRANSACTION_LIMIT: u32 = 200;

@@ -1,12 +1,16 @@
+pub mod appraisals;
 pub mod area_data;
 pub mod area_stats;
 pub mod error;
 pub mod health;
 pub mod land_price;
 pub mod land_price_by_year_range;
+pub mod municipalities;
 pub mod opportunities;
 pub mod request;
 pub mod response;
 pub mod score;
 pub mod stats;
+pub mod transaction_summary;
+pub mod transactions;
 pub mod trend;

@@ -27,8 +27,9 @@ use crate::domain::entity::{
 use crate::domain::error::DomainError;
 use crate::domain::repository::{
     AdminAreaStatsRepository, HealthRepository, LandPriceRepository, LayerRepository,
-    StatsRepository, TlsRepository, TrendRepository,
+    StatsRepository, TlsRepository, TransactionRepository, TrendRepository,
 };
+use crate::domain::transaction::{TransactionDetail, TransactionSummary};
 use crate::domain::value_object::{
     AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
@@ -364,6 +365,51 @@ impl MockTlsRepository {
     pub fn with_count_recent_transactions(self, r: Result<i64, DomainError>) -> Self {
         self.recent_tx.lock().unwrap().push(r);
         self
+    }
+}
+
+// ─── TransactionRepository ────────────────────────────────────────────────────
+
+#[derive(Default)]
+pub struct MockTransactionRepository {
+    summary: Mutex<Vec<Result<Vec<TransactionSummary>, DomainError>>>,
+    transactions: Mutex<Vec<Result<Vec<TransactionDetail>, DomainError>>>,
+}
+
+impl MockTransactionRepository {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_summary(self, r: Result<Vec<TransactionSummary>, DomainError>) -> Self {
+        self.summary.lock().unwrap().push(r);
+        self
+    }
+
+    pub fn with_transactions(self, r: Result<Vec<TransactionDetail>, DomainError>) -> Self {
+        self.transactions.lock().unwrap().push(r);
+        self
+    }
+}
+
+#[async_trait]
+impl TransactionRepository for MockTransactionRepository {
+    async fn find_transaction_summary(
+        &self,
+        _pref_code: &PrefCode,
+        _year_from: Option<&Year>,
+        _property_type: Option<&str>,
+    ) -> Result<Vec<TransactionSummary>, DomainError> {
+        pop(&self.summary, "find_transaction_summary")
+    }
+
+    async fn find_transactions(
+        &self,
+        _city_code: &str,
+        _year_from: Option<&Year>,
+        _limit: u32,
+    ) -> Result<Vec<TransactionDetail>, DomainError> {
+        pop(&self.transactions, "find_transactions")
     }
 }
 

@@ -33,6 +33,15 @@ export const TOKYO_23_WARDS = [
   "江戸川区",
 ] as const;
 
+/**
+ * Cities grouped by prefecture code. Keyed by 2-digit pref code string.
+ * Extend when additional prefecture datasets are onboarded.
+ */
+export const CITIES_BY_PREF: Record<string, readonly string[]> = {
+  "13": TOKYO_23_WARDS,
+  // 他都道府県は追加時に拡張
+};
+
 export const ZONE_OPTIONS = ["商業", "近商", "住居", "工業"] as const;
 
 export type Zone = (typeof ZONE_OPTIONS)[number];

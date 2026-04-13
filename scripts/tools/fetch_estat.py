@@ -22,7 +22,8 @@ Dependencies:
     pip install requests  (or managed via uv / pyproject.toml)
 
 Output:
-    data/estat/census_population_mesh.csv
+    data/estat/census_population.csv          (all prefectures)
+    data/estat/census_population_13.csv       (--pref 13)
     data/estat/housing_vacancy_municipality.csv
 
 API docs: https://www.e-stat.go.jp/api/api-info/e-stat-manual3-0
@@ -144,7 +145,9 @@ def fetch_census_population(
     """Fetch census population data (mesh or municipality level).
 
     Searches for the latest census tables and downloads population data.
-    Output: data/estat/census_population_mesh.csv
+    Output:
+        data/estat/census_population_{pref_code}.csv  (when pref_code specified)
+        data/estat/census_population.csv              (all prefectures)
     """
     print("=== Census Population Data (国勢調査) ===")
 
@@ -181,7 +184,8 @@ def fetch_census_population(
         return 0
 
     # Step 3: Fetch data with pagination
-    output_file = OUTPUT_DIR / "census_population_mesh.csv"
+    filename = f"census_population_{pref_code}.csv" if pref_code else "census_population.csv"
+    output_file = OUTPUT_DIR / filename
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     total_rows = 0

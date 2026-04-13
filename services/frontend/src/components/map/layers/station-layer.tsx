@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function StationLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("13", "station", visible && !propData);
+  const selfFetch = useStaticLayer("station", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

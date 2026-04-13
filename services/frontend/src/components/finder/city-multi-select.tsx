@@ -2,8 +2,9 @@
 
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import { TOKYO_23_WARDS } from "@/lib/filter-constants";
+import { CITIES_BY_PREF } from "@/lib/filter-constants";
 import { GRADIENT } from "@/lib/theme-tokens";
+import { usePrefectureStore } from "@/stores/prefecture-store";
 
 interface CityMultiSelectProps {
   selected: string[];
@@ -11,8 +12,10 @@ interface CityMultiSelectProps {
 }
 
 export function CityMultiSelect({ selected, onChange }: CityMultiSelectProps) {
+  const prefCode = usePrefectureStore((s) => s.selectedPrefCode);
   const [open, setOpen] = useState(false);
-  const available = TOKYO_23_WARDS.filter((c) => !selected.includes(c));
+  const cityList = CITIES_BY_PREF[prefCode] ?? [];
+  const available = cityList.filter((c) => !selected.includes(c));
 
   const remove = (c: string) => {
     onChange(selected.filter((x) => x !== c));

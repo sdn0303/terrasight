@@ -22,7 +22,7 @@ interface Props {
  * - ≥ 0.02      → high:     red
  */
 export function SeismicLayer({ visible, data: propData }: Props) {
-  const selfFetch = useStaticLayer("national", "seismic", visible && !propData);
+  const selfFetch = useStaticLayer("seismic", visible && !propData);
   const data = propData ?? selfFetch.data;
   if (!visible || !data) return null;
   return (

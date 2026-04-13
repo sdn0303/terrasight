@@ -46,6 +46,22 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
         .route("/api/score", get(handler::score::get_score))
         .route("/api/stats", get(handler::stats::get_stats))
         .route("/api/trend", get(handler::trend::get_trend))
+        .route(
+            "/api/v1/transactions/summary",
+            get(handler::transaction_summary::get_transaction_summary),
+        )
+        .route(
+            "/api/v1/transactions",
+            get(handler::transactions::get_transactions),
+        )
+        .route(
+            "/api/v1/appraisals",
+            get(handler::appraisals::get_appraisals),
+        )
+        .route(
+            "/api/v1/municipalities",
+            get(handler::municipalities::get_municipalities),
+        )
         .layer(response_time::response_time_layer())
         .layer(request_id::request_id_layer())
         .with_state(state)

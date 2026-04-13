@@ -55,7 +55,7 @@ impl LandPriceQuery {
 /// Land price year-range query parameters for `GET /api/v1/land-prices/all-years`.
 ///
 /// Expects `bbox` as a comma-separated string `"sw_lng,sw_lat,ne_lng,ne_lat"`
-/// and an optional year range `from`/`to` (defaults to `2019..=2024`).
+/// and an optional year range `from`/`to` (defaults to `2019..=2030`).
 ///
 /// # Example query string
 ///
@@ -83,7 +83,7 @@ fn default_from_year() -> i32 {
 }
 
 fn default_to_year() -> i32 {
-    2024
+    2030
 }
 
 impl LandPriceByYearRangeQuery {

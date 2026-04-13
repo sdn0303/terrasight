@@ -68,7 +68,7 @@ describe("useStaticLayer", () => {
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(
-      () => useStaticLayer("13", "city-boundary", false),
+      () => useStaticLayer("city-boundary", false),
       { wrapper },
     );
 
@@ -99,7 +99,7 @@ describe("useStaticLayer", () => {
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(
-      () => useStaticLayer(PREF_CODE, LAYER_ID, true),
+      () => useStaticLayer(LAYER_ID, true),
       { wrapper },
     );
 
@@ -125,7 +125,7 @@ describe("useStaticLayer", () => {
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(
-      () => useStaticLayer("13", "missing-layer", true),
+      () => useStaticLayer("missing-layer", true),
       { wrapper },
     );
 

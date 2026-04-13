@@ -33,6 +33,15 @@ else
     echo "  REINFOLIB schema applied"
 fi
 
+# Step 0c: Ensure e-Stat schema (additive — safe to re-run)
+if docker compose exec -T db psql -U app -d realestate -c "SELECT 1 FROM population_municipality LIMIT 0" > /dev/null 2>&1; then
+    echo "  e-Stat schema already applied"
+else
+    echo "  Applying e-Stat migration..."
+    docker compose exec -T db psql -U app -d realestate < "$MIGRATIONS/00000000000003_estat.sql" > /dev/null 2>&1
+    echo "  e-Stat schema applied"
+fi
+
 # Step 1: Convert raw -> GeoJSON
 echo "--- Step 1: Convert ---"
 uv run scripts/tools/pipeline/convert.py --pref "$PREF" --priority "$PRIORITY"
@@ -49,6 +58,10 @@ uv run scripts/tools/pipeline/import_db.py --pref "$PREF" --priority "$PRIORITY"
 # Step 3b: Import REINFOLIB data
 echo "--- Step 3b: Import REINFOLIB ---"
 uv run scripts/tools/pipeline/import_db.py --pref "$PREF" --reinfolib
+
+# Step 3c: e-Stat data import
+echo "--- Step 3c: Import e-Stat ---"
+uv run scripts/tools/pipeline/import_db.py --pref "$PREF" --estat
 
 # Step 4: Validate
 echo "--- Step 4: Validate ---"

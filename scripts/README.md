@@ -133,7 +133,7 @@ uv run scripts/tools/fetch_estat.py --dry-run                # List available ta
 e-Stat API (政府統計の総合窓口) から国勢調査人口・住宅空き家率を取得する**スタンドアロンスクリプト**。
 
 - **Status**: 機能的に完成、`download-data.sh` から呼ばれる
-- **Output**: `data/estat/census_population_tokyo.csv`, `data/estat/housing_vacancy_municipality.csv`
+- **Output**: `data/estat/census_population.csv` (全国) / `census_population_{pref_code}.csv` (県別), `data/estat/housing_vacancy_municipality.csv`
 - **API key**: `ESTAT_APP_ID` (環境変数 or `services/backend/.env`)
 - **Pipeline 統合**: 未実装。DB テーブル・インポートパスなし
 - **将来**: TLS スコアリング S4 (将来性) / S5 (価格) の入力データとして使用予定。統合時に `population` / `vacancy_rate` テーブル + import パスが必要
