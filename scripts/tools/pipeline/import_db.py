@@ -3,10 +3,12 @@
 
 Usage:
     uv run scripts/tools/pipeline/import_db.py --pref 13 --priority P0
+    uv run scripts/tools/pipeline/import_db.py --pref 13 --estat
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import logging
 import os
@@ -29,6 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 1000
+CENSUS_YEAR = 2020  # 最新の国勢調査年
 
 # Allowlist of valid table names to prevent SQL injection.
 VALID_TABLES = frozenset({
@@ -270,6 +273,108 @@ def _build_row(table_name: str, props: dict, geom_wkt: str, pref_code: str) -> t
     return None
 
 
+def import_estat_population(conn, cursor, pref_code: str | None) -> int:
+    """Import census population from CSV to population_municipality."""
+    if pref_code:
+        csv_path = Path(f"data/estat/census_population_{pref_code}.csv")
+    else:
+        csv_path = Path("data/estat/census_population.csv")
+
+    if not csv_path.exists():
+        logger.warning(f"CSV not found: {csv_path}")
+        return 0
+
+    rows: list[tuple] = []
+    with open(csv_path, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for record in reader:
+            area_code = record.get("area_code", "")
+            # Only 5-digit municipality-level codes
+            if len(area_code) != 5:
+                continue
+            derived_pref = area_code[:2]
+            if pref_code and derived_pref != pref_code:
+                continue
+            value_raw = record.get("value", "")
+            if not value_raw:
+                continue
+            rows.append((
+                derived_pref,
+                area_code,
+                record.get("category", ""),
+                int(value_raw),
+                CENSUS_YEAR,
+            ))
+
+    if not rows:
+        logger.info(f"No population rows to import from {csv_path}")
+        return 0
+
+    insert_sql = """
+        INSERT INTO population_municipality (pref_code, city_code, category, value, census_year)
+        VALUES %s
+        ON CONFLICT (city_code, category, census_year)
+        DO UPDATE SET value = EXCLUDED.value
+    """
+    execute_values(cursor, insert_sql, rows, page_size=BATCH_SIZE)
+    conn.commit()
+    logger.info(f"Imported {len(rows)} population rows from {csv_path}")
+    return len(rows)
+
+
+def import_estat_vacancy(conn, cursor, pref_code: str | None) -> int:
+    """Import housing vacancy from CSV to vacancy_rates."""
+    csv_path = Path("data/estat/housing_vacancy_municipality.csv")
+
+    if not csv_path.exists():
+        logger.warning(f"CSV not found: {csv_path}")
+        return 0
+
+    rows: list[tuple] = []
+    with open(csv_path, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for record in reader:
+            area_code = record.get("area_code", "")
+            # Only 5-digit codes, exclude prefecture-level (xxx00) and national (00000)
+            if len(area_code) != 5:
+                continue
+            if area_code == "00000":
+                continue
+            if area_code[2:] == "000":
+                continue
+            derived_pref = area_code[:2]
+            if pref_code and derived_pref != pref_code:
+                continue
+            year_raw = record.get("year", "")
+            if not year_raw:
+                continue
+            survey_year = int(year_raw[:4])
+            vacancy_raw = record.get("vacancy_count", "")
+            if not vacancy_raw:
+                continue
+            rows.append((
+                derived_pref,
+                area_code,
+                int(vacancy_raw),
+                survey_year,
+            ))
+
+    if not rows:
+        logger.info(f"No vacancy rows to import from {csv_path}")
+        return 0
+
+    insert_sql = """
+        INSERT INTO vacancy_rates (pref_code, city_code, vacancy_count, survey_year)
+        VALUES %s
+        ON CONFLICT (city_code, survey_year)
+        DO UPDATE SET vacancy_count = EXCLUDED.vacancy_count
+    """
+    execute_values(cursor, insert_sql, rows, page_size=BATCH_SIZE)
+    conn.commit()
+    logger.info(f"Imported {len(rows)} vacancy rows from {csv_path}")
+    return len(rows)
+
+
 def import_reinfolib_data(conn, pref_code: str) -> None:
     """Import 不動産情報ライブラリ data for a prefecture."""
     from scripts.tools.pipeline.adapters.reinfolib_csv import (
@@ -351,6 +456,7 @@ def main() -> None:
     parser.add_argument("--priority", default=None, help="Filter by priority")
     parser.add_argument("--dataset", default=None, help="Filter by dataset ID")
     parser.add_argument("--reinfolib", action="store_true", help="Import REINFOLIB data")
+    parser.add_argument("--estat", action="store_true", help="Import e-Stat data (population + vacancy)")
     args = parser.parse_args()
 
     pref_code = args.pref.zfill(2)
@@ -366,8 +472,9 @@ def main() -> None:
 
     conn = psycopg2.connect(get_db_url())
     try:
-        # Skip GeoJSON catalog loop when running reinfolib-only import
-        if not (args.reinfolib and args.priority is None and args.dataset is None):
+        # Skip GeoJSON catalog loop when running reinfolib-only or estat-only import
+        skip_geojson = (args.reinfolib or args.estat) and args.priority is None and args.dataset is None
+        if not skip_geojson:
             for entry in entries:
                 if entry.output_geojson is None:
                     continue
@@ -380,6 +487,17 @@ def main() -> None:
 
         if args.reinfolib:
             import_reinfolib_data(conn, pref_code)
+
+        if args.estat:
+            cursor = conn.cursor()
+            count_pop = import_estat_population(conn, cursor, pref_code)
+            count_vac = import_estat_vacancy(conn, cursor, pref_code)
+            logger.info(f"e-Stat import complete: {count_pop} population rows, {count_vac} vacancy rows")
+            cursor.execute("REFRESH MATERIALIZED VIEW mv_population_summary")
+            cursor.execute("REFRESH MATERIALIZED VIEW mv_vacancy_summary")
+            conn.commit()
+            logger.info("Materialized views refreshed: mv_population_summary, mv_vacancy_summary")
+            cursor.close()
     finally:
         conn.close()
 
