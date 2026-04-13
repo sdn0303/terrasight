@@ -20,6 +20,8 @@ pub fn bbox_area_deg2(south: f64, west: f64, north: f64, east: f64) -> f64 {
 pub const BUFFER_DEG: f64 = 0.00015;
 
 const MAX_FEATURES: i64 = 10_000;
+const LOW_ZOOM_THRESHOLD: u32 = 10;
+const LOW_ZOOM_DIVISOR: i64 = 4;
 
 // ── Layer density (features per square degree at zoom 14) ──
 const DENSITY_LANDPRICE: f64 = 50_000.0;
@@ -30,27 +32,33 @@ const DENSITY_SCHOOLS: f64 = 30_000.0;
 const DENSITY_MEDICAL: f64 = 80_000.0;
 const DENSITY_DEFAULT: f64 = 30_000.0;
 
-// ── Feature limit constants ──
-const LOW_ZOOM_THRESHOLD: u32 = 10;
-const LOW_ZOOM_DIVISOR: i64 = 4;
+/// Typed enum identifying the GIS data layers served by the backend.
+///
+/// Using an enum instead of a raw `&str` at call sites encodes the set of
+/// valid layer names in the type system and lets `compute_feature_limit`
+/// dispatch on density without string comparison.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerKind {
+    LandPrice,
+    Flood,
+    Zoning,
+    SteepSlope,
+    Schools,
+    Medical,
+    Other,
+}
 
-// ── Layer name constants ──
-const LAYER_LANDPRICE: &str = "landprice";
-const LAYER_FLOOD: &str = "flood";
-const LAYER_ZONING: &str = "zoning";
-const LAYER_STEEP_SLOPE: &str = "steep_slope";
-const LAYER_SCHOOLS: &str = "schools";
-const LAYER_MEDICAL: &str = "medical";
-
-fn layer_density(layer: &str) -> f64 {
-    match layer {
-        LAYER_LANDPRICE => DENSITY_LANDPRICE,
-        LAYER_FLOOD => DENSITY_FLOOD,
-        LAYER_ZONING => DENSITY_ZONING,
-        LAYER_STEEP_SLOPE => DENSITY_STEEP_SLOPE,
-        LAYER_SCHOOLS => DENSITY_SCHOOLS,
-        LAYER_MEDICAL => DENSITY_MEDICAL,
-        _ => DENSITY_DEFAULT,
+impl LayerKind {
+    fn density(self) -> f64 {
+        match self {
+            Self::LandPrice => DENSITY_LANDPRICE,
+            Self::Flood => DENSITY_FLOOD,
+            Self::Zoning => DENSITY_ZONING,
+            Self::SteepSlope => DENSITY_STEEP_SLOPE,
+            Self::Schools => DENSITY_SCHOOLS,
+            Self::Medical => DENSITY_MEDICAL,
+            Self::Other => DENSITY_DEFAULT,
+        }
     }
 }
 
@@ -62,14 +70,13 @@ fn layer_density(layer: &str) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use terrasight_geo::spatial::compute_feature_limit;
+/// use terrasight_geo::spatial::{LayerKind, compute_feature_limit};
 ///
-/// assert_eq!(compute_feature_limit("flood", 0.02, 12), 3_000);
-/// assert_eq!(compute_feature_limit("flood", 1.0, 12), 10_000);
+/// assert_eq!(compute_feature_limit(LayerKind::Flood, 0.02, 12), 3_000);
+/// assert_eq!(compute_feature_limit(LayerKind::Flood, 1.0, 12), 10_000);
 /// ```
-pub fn compute_feature_limit(layer: &str, bbox_area_deg2: f64, zoom: u32) -> i64 {
-    let density = layer_density(layer);
-    let raw = (bbox_area_deg2 * density).ceil() as i64;
+pub fn compute_feature_limit(layer: LayerKind, bbox_area_deg2: f64, zoom: u32) -> i64 {
+    let raw = (bbox_area_deg2 * layer.density()).ceil() as i64;
     let capped = raw.min(MAX_FEATURES);
     let adjusted = if zoom < LOW_ZOOM_THRESHOLD {
         capped / LOW_ZOOM_DIVISOR
@@ -142,24 +149,24 @@ mod tests {
     #[test]
     fn feature_limit_small_bbox_flood() {
         // 0.02 deg² × 150_000 = 3_000
-        assert_eq!(compute_feature_limit("flood", 0.02, 12), 3_000);
+        assert_eq!(compute_feature_limit(LayerKind::Flood, 0.02, 12), 3_000);
     }
 
     #[test]
     fn feature_limit_caps_at_max() {
         // 1.0 × 150_000 = 150_000 → capped at 10_000
-        assert_eq!(compute_feature_limit("flood", 1.0, 12), 10_000);
+        assert_eq!(compute_feature_limit(LayerKind::Flood, 1.0, 12), 10_000);
     }
 
     #[test]
     fn feature_limit_low_zoom_divides() {
         // 0.5 × 150_000 = 75_000 → cap 10_000 → ÷4 = 2_500
-        assert_eq!(compute_feature_limit("flood", 0.5, 8), 2_500);
+        assert_eq!(compute_feature_limit(LayerKind::Flood, 0.5, 8), 2_500);
     }
 
     #[test]
-    fn feature_limit_unknown_layer_uses_default() {
-        assert!(compute_feature_limit("unknown", 0.01, 12) > 0);
+    fn feature_limit_other_layer_uses_default() {
+        assert!(compute_feature_limit(LayerKind::Other, 0.01, 12) > 0);
     }
 
     // --- point_to_polygon tests ---

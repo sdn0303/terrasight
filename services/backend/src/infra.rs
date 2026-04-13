@@ -11,6 +11,7 @@ pub(crate) mod pg_stats_repository;
 pub(crate) mod pg_tls_repository;
 pub(crate) mod pg_transaction_repository;
 pub(crate) mod pg_trend_repository;
+pub(crate) mod query_helpers;
 pub(crate) mod reinfolib_mock;
 pub(crate) mod row_types;
 

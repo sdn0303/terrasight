@@ -2,27 +2,41 @@ use crate::domain::constants::{BCR_MAX, BCR_MIN, FAR_MAX, FAR_MIN};
 use crate::domain::error::DomainError;
 use crate::domain::value_object::{AreaCode, Coord, OpportunitySignal, RiskLevel, TlsScore, Year};
 
-/// Human-readable name for an administrative area.
+/// Generate a validated non-empty string newtype.
 ///
-/// Rejects empty / whitespace-only strings via [`DomainError::Validation`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AreaName(String);
+/// The generated type trims whitespace on construction and rejects strings that
+/// are empty after trimming.  It also derives `Debug`, `Clone`, `PartialEq`,
+/// `Eq`, `Hash`, and `Display`.
+macro_rules! nonempty_string_type {
+    ($Name:ident, $err_msg:literal) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub struct $Name(String);
 
-impl AreaName {
-    pub fn parse(s: &str) -> Result<Self, DomainError> {
-        let trimmed = s.trim();
-        if trimmed.is_empty() {
-            return Err(DomainError::Validation(
-                "area name must be non-empty".into(),
-            ));
+        impl $Name {
+            pub fn parse(s: &str) -> Result<Self, DomainError> {
+                let trimmed = s.trim();
+                if trimmed.is_empty() {
+                    return Err(DomainError::Validation($err_msg.into()));
+                }
+                Ok(Self(trimmed.to_owned()))
+            }
+
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
         }
-        Ok(Self(trimmed.to_owned()))
-    }
 
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+        impl std::fmt::Display for $Name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+    };
 }
+
+nonempty_string_type!(AreaName, "area name must be non-empty");
+nonempty_string_type!(Address, "address must be non-empty");
+nonempty_string_type!(ZoneCode, "zone code must be non-empty");
 
 /// Land price per square meter, stored in JPY (integer yen).
 ///
@@ -116,26 +130,6 @@ impl Percent {
     }
 }
 
-/// Zoning code (e.g. "YOYOKU_CODE_01"). Rejects empty strings.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ZoneCode(String);
-
-impl ZoneCode {
-    pub fn parse(s: &str) -> Result<Self, DomainError> {
-        let trimmed = s.trim();
-        if trimmed.is_empty() {
-            return Err(DomainError::Validation(
-                "zone code must be non-empty".into(),
-            ));
-        }
-        Ok(Self(trimmed.to_owned()))
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
 /// Record count, clamped to `>= 0` at construction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RecordCount(i64);
@@ -147,26 +141,6 @@ impl RecordCount {
 
     pub fn value(self) -> i64 {
         self.0
-    }
-}
-
-/// Postal address string for an observation point or entity.
-///
-/// Rejects empty / whitespace-only strings via [`DomainError::Validation`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Address(String);
-
-impl Address {
-    pub fn parse(s: &str) -> Result<Self, DomainError> {
-        let trimmed = s.trim();
-        if trimmed.is_empty() {
-            return Err(DomainError::Validation("address must be non-empty".into()));
-        }
-        Ok(Self(trimmed.to_owned()))
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
     }
 }
 

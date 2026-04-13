@@ -10,7 +10,7 @@ use crate::constants;
 use crate::error::WasmError;
 
 use flatgeobuf::{FallibleStreamingIterator, FgbReader};
-use geo::{Coord, LineString, MultiPolygon, Point, Polygon};
+use geo::{BoundingRect, Coord, LineString, MultiPolygon, Point, Polygon};
 use geozero::FeatureAccess;
 use geozero::geojson::GeoJsonWriter;
 
@@ -71,11 +71,15 @@ pub(crate) fn parse_fgb(bytes: &[u8]) -> Result<Vec<ParsedFeature>, WasmError> {
 
         let geojson = String::from_utf8(buf).map_err(|e| WasmError::Utf8(e.to_string()))?;
 
-        let (min_x, min_y, max_x, max_y) = extract_bbox(&geojson)?;
-
-        // Best-effort extraction of geo geometry and properties from the GeoJSON string.
-        // Parse failures are silently converted to None.
+        // Best-effort extraction of geo geometry and properties — parses the JSON once.
         let (geometry_geo, properties) = extract_geo_and_properties(&geojson);
+
+        // Compute the bounding envelope from the already-parsed geometry when possible.
+        // Fall back to the full JSON walk only for geometries we could not parse.
+        let (min_x, min_y, max_x, max_y) = match geometry_bbox(&geometry_geo) {
+            Some(bbox) => bbox,
+            None => extract_bbox(&geojson)?,
+        };
 
         features.push(ParsedFeature {
             min_x,
@@ -189,6 +193,16 @@ fn json_to_coord_vec(arr: &serde_json::Value) -> Option<Vec<Coord<f64>>> {
     } else {
         Some(coords)
     }
+}
+
+/// Extract `(min_x, min_y, max_x, max_y)` from an already-parsed `geo::Geometry`.
+///
+/// Returns `None` if the geometry is `None` or has no bounding rectangle (e.g.
+/// an empty geometry collection).  Avoids a second JSON parse pass when the
+/// geometry was successfully extracted by [`extract_geo_and_properties`].
+fn geometry_bbox(geom: &Option<geo::Geometry<f64>>) -> Option<(f64, f64, f64, f64)> {
+    let rect = geom.as_ref()?.bounding_rect()?;
+    Some((rect.min().x, rect.min().y, rect.max().x, rect.max().y))
 }
 
 /// Accumulates bounding-box extents while walking a GeoJSON coordinate tree.

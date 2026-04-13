@@ -3,9 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 use terrasight_server::db::spatial::bind_coord;
-use tokio::time::timeout;
 
-use super::map_db_err;
 use crate::domain::constants::{
     TLS_PRICE_SEARCH_RADIUS_M, TLS_RISK_SEARCH_RADIUS_M, TLS_SCHOOL_SEARCH_RADIUS_M,
     TLS_TRANSACTION_SEARCH_RADIUS_M,
@@ -14,6 +12,7 @@ use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult
 use crate::domain::error::DomainError;
 use crate::domain::repository::TlsRepository;
 use crate::domain::value_object::Coord;
+use crate::infra::query_helpers::run_query;
 use crate::infra::row_types::CountRow;
 
 /// Maximum time to wait for a single TLS sub-query.
@@ -120,8 +119,12 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_nearest_prices(&self, coord: &Coord) -> Result<Vec<PriceRecord>, DomainError> {
         // Search radius: TLS_PRICE_SEARCH_RADIUS_M, SRID: 4326
-        let query = sqlx::query_as::<_, NearestPriceRow>(
-            r#"
+        let rows = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls nearest_prices query",
+            bind_coord(
+                sqlx::query_as::<_, NearestPriceRow>(
+                    r#"
             WITH nearest AS (
                 SELECT address,
                        ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS dist
@@ -135,16 +138,14 @@ impl TlsRepository for PgTlsRepository {
             INNER JOIN nearest n ON lp.address = n.address
             ORDER BY lp.survey_year
             "#,
-        );
-        let rows = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_PRICE_SEARCH_RADIUS_M)
-                .fetch_all(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_PRICE_SEARCH_RADIUS_M)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls nearest_prices query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(row_count = rows.len(), "tls nearest_prices fetched"))?;
 
         Ok(rows.into_iter().map(PriceRecord::from).collect())
@@ -154,22 +155,24 @@ impl TlsRepository for PgTlsRepository {
     async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError> {
         // MAX depth_rank within TLS_RISK_SEARCH_RADIUS_M buffer. Returns NULL when no flood zone intersects.
         // depth_rank is text in the schema; safe cast ignores non-numeric values.
-        let query = sqlx::query_as::<_, DepthRankRow>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls flood_depth_rank query",
+            bind_coord(
+                sqlx::query_as::<_, DepthRankRow>(
+                    r#"
             SELECT MAX(CASE WHEN depth_rank ~ '^\d+$' THEN depth_rank::int END) AS depth_rank
             FROM flood_risk
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_RISK_SEARCH_RADIUS_M)
-                .fetch_one(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_RISK_SEARCH_RADIUS_M)
+            .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls flood_depth_rank query".into()))?
-        .map_err(map_db_err)
         .inspect(|r| tracing::debug!(depth_rank = ?r.depth_rank, "tls flood_depth_rank fetched"))?;
 
         Ok(row.depth_rank)
@@ -179,24 +182,26 @@ impl TlsRepository for PgTlsRepository {
     async fn has_steep_slope_nearby(&self, coord: &Coord) -> Result<bool, DomainError> {
         // TLS_RISK_SEARCH_RADIUS_M buffer, SRID: 4326
         // Uses EXISTS instead of COUNT to short-circuit on first match.
-        let query = sqlx::query_as::<_, BoolRow>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls steep_slope_nearby query",
+            bind_coord(
+                sqlx::query_as::<_, BoolRow>(
+                    r#"
             SELECT EXISTS (
                 SELECT 1
                 FROM steep_slope
                 WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             ) AS exists
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_RISK_SEARCH_RADIUS_M)
-                .fetch_one(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_RISK_SEARCH_RADIUS_M)
+            .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls steep_slope_nearby query".into()))?
-        .map_err(map_db_err)
         .inspect(|r| tracing::debug!(exists = r.exists, "tls steep_slope_nearby fetched"))?;
 
         Ok(row.exists)
@@ -205,24 +210,26 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_schools_nearby(&self, coord: &Coord) -> Result<SchoolStats, DomainError> {
         // TLS_SCHOOL_SEARCH_RADIUS_M radius, SRID: 4326
-        let query = sqlx::query_as::<_, SchoolsNearbyRow>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls schools_nearby query",
+            bind_coord(
+                sqlx::query_as::<_, SchoolsNearbyRow>(
+                    r#"
             SELECT COUNT(*) AS count,
                    COALESCE(bool_or(school_type = '小学校'), false) AS has_primary,
                    COALESCE(bool_or(school_type = '中学校'), false) AS has_junior_high
             FROM schools
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_SCHOOL_SEARCH_RADIUS_M)
-                .fetch_one(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_SCHOOL_SEARCH_RADIUS_M)
+            .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls schools_nearby query".into()))?
-        .map_err(map_db_err)
         .inspect(|row| {
             tracing::debug!(
                 count = row.count,
@@ -238,24 +245,26 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_medical_nearby(&self, coord: &Coord) -> Result<MedicalStats, DomainError> {
         // TLS_PRICE_SEARCH_RADIUS_M radius, SRID: 4326
-        let query = sqlx::query_as::<_, MedicalNearbyRow>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls medical_nearby query",
+            bind_coord(
+                sqlx::query_as::<_, MedicalNearbyRow>(
+                    r#"
             SELECT COUNT(*) FILTER (WHERE facility_type = '病院') AS hospital_count,
                    COUNT(*) FILTER (WHERE facility_type != '病院') AS clinic_count,
                    COALESCE(SUM(beds), 0)::int8 AS total_beds
             FROM medical_facilities
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_PRICE_SEARCH_RADIUS_M)
-                .fetch_one(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_PRICE_SEARCH_RADIUS_M)
+            .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls medical_nearby query".into()))?
-        .map_err(map_db_err)
         .inspect(|row| {
             tracing::debug!(
                 hospitals = row.hospital_count,
@@ -271,21 +280,24 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_zoning_far(&self, coord: &Coord) -> Result<Option<f64>, DomainError> {
         // Find the zoning polygon that contains the point; return its floor_area_ratio.
-        let query = sqlx::query_as::<_, OptionalF64Row>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls zoning_far query",
+            bind_coord(
+                sqlx::query_as::<_, OptionalF64Row>(
+                    r#"
             SELECT floor_area_ratio::double precision AS value
             FROM zoning
             WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint($1, $2), 4326))
             LIMIT 1
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat()).fetch_optional(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .fetch_optional(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls zoning_far query".into()))?
-        .map_err(map_db_err)
         .inspect(|r| tracing::debug!(found = r.is_some(), "tls zoning_far fetched"))?;
 
         Ok(row.and_then(|r| r.value))
@@ -295,8 +307,12 @@ impl TlsRepository for PgTlsRepository {
     async fn calc_price_z_score(&self, coord: &Coord) -> Result<ZScoreResult, DomainError> {
         // Uses the denormalized zone_type column on land_prices to avoid the slow
         // ST_Contains join against the zoning table that was causing 503 errors.
-        let query = sqlx::query_as::<_, ZScoreRow>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls price_z_score query",
+            bind_coord(
+                sqlx::query_as::<_, ZScoreRow>(
+                    r#"
             WITH nearest AS (
                 SELECT price_per_sqm, zone_type
                 FROM land_prices
@@ -322,16 +338,14 @@ impl TlsRepository for PgTlsRepository {
             FROM nearest n
             LEFT JOIN zone_stats zs ON true
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_PRICE_SEARCH_RADIUS_M)
-                .fetch_one(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_PRICE_SEARCH_RADIUS_M)
+            .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls price_z_score query".into()))?
-        .map_err(map_db_err)
         .inspect(|row| {
             tracing::debug!(
                 z_score = row.z_score,
@@ -348,23 +362,25 @@ impl TlsRepository for PgTlsRepository {
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError> {
         // Count land_prices within TLS_TRANSACTION_SEARCH_RADIUS_M where year >= (max_year - 1).
         // This captures the latest full year and prior year for recency assessment.
-        let query = sqlx::query_as::<_, CountRow>(
-            r#"
+        let row = run_query(
+            TLS_QUERY_TIMEOUT,
+            "tls recent_transactions query",
+            bind_coord(
+                sqlx::query_as::<_, CountRow>(
+                    r#"
             SELECT COUNT(*) AS count
             FROM land_prices
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
               AND survey_year >= (SELECT MAX(survey_year) - 1 FROM land_prices)
             "#,
-        );
-        let row = timeout(
-            TLS_QUERY_TIMEOUT,
-            bind_coord(query, coord.lng(), coord.lat())
-                .bind(TLS_TRANSACTION_SEARCH_RADIUS_M)
-                .fetch_one(&self.pool),
+                ),
+                coord.lng(),
+                coord.lat(),
+            )
+            .bind(TLS_TRANSACTION_SEARCH_RADIUS_M)
+            .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("tls recent_transactions query".into()))?
-        .map_err(map_db_err)
         .inspect(|r| tracing::debug!(count = r.count, "tls recent_transactions fetched"))?;
 
         Ok(row.count)

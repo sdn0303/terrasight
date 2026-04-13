@@ -2,13 +2,12 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use sqlx::PgPool;
-use tokio::time::timeout;
 
-use super::map_db_err;
 use crate::domain::entity::{AdminAreaStats, AreaName, FacilityStats, RiskStats};
 use crate::domain::error::DomainError;
 use crate::domain::repository::AdminAreaStatsRepository;
 use crate::domain::value_object::{AreaCode, AreaCodeLevel};
+use crate::infra::query_helpers::run_query;
 use crate::infra::row_types::{CountRow, LandPriceStatsRow};
 
 /// Maximum time to wait for any admin-area stats query.
@@ -40,8 +39,9 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
         };
 
         // Land price stats — global aggregate (placeholder until admin_boundaries exists).
-        let lp_row = timeout(
+        let lp_row = run_query(
             ADMIN_STATS_QUERY_TIMEOUT,
+            "admin_area land_price_stats query",
             sqlx::query_as::<_, LandPriceStatsRow>(
                 r#"
             SELECT
@@ -57,29 +57,25 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
             .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("admin_area land_price_stats query".into()))?
-        .map_err(map_db_err)
         .inspect(|row| tracing::debug!(count = row.count, "admin_area land_price_stats fetched"))?;
 
         // Facility counts — global aggregate (placeholder until admin_boundaries exists).
-        let schools_row = timeout(
+        let schools_row = run_query(
             ADMIN_STATS_QUERY_TIMEOUT,
+            "admin_area schools_count query",
             sqlx::query_as::<_, CountRow>("SELECT COUNT(*) AS count FROM schools")
                 .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("admin_area schools_count query".into()))?
-        .map_err(map_db_err)
         .inspect(|r| tracing::debug!(count = r.count, "admin_area schools_count fetched"))?;
 
-        let medical_row = timeout(
+        let medical_row = run_query(
             ADMIN_STATS_QUERY_TIMEOUT,
+            "admin_area medical_count query",
             sqlx::query_as::<_, CountRow>("SELECT COUNT(*) AS count FROM medical_facilities")
                 .fetch_one(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("admin_area medical_count query".into()))?
-        .map_err(map_db_err)
         .inspect(|r| tracing::debug!(count = r.count, "admin_area medical_count fetched"))?;
 
         tracing::debug!(

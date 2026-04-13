@@ -95,6 +95,18 @@ impl std::str::FromStr for WeightPreset {
 }
 
 impl WeightPreset {
+    /// Return the serde snake_case serialization string for this preset.
+    ///
+    /// Avoids `serde_json::to_value` round-trips at the handler boundary.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Balance => "balance",
+            Self::Investment => "investment",
+            Self::Residential => "residential",
+            Self::DisasterFocus => "disaster_focus",
+        }
+    }
+
     pub fn weights(self) -> AxisWeights {
         match self {
             Self::Balance => AxisWeights {

@@ -42,13 +42,7 @@ pub(crate) fn compute_land_price_stats(
     indices: &[u32],
 ) -> LandPriceStats {
     let LayerStatsData::PricePoints(prices) = stats_data else {
-        return LandPriceStats {
-            avg_per_sqm: None,
-            median_per_sqm: None,
-            min_per_sqm: None,
-            max_per_sqm: None,
-            count: 0,
-        };
+        return LandPriceStats::default();
     };
 
     let mut values: Vec<f64> = indices
@@ -60,13 +54,7 @@ pub(crate) fn compute_land_price_stats(
         .collect();
 
     if values.is_empty() {
-        return LandPriceStats {
-            avg_per_sqm: None,
-            median_per_sqm: None,
-            min_per_sqm: None,
-            max_per_sqm: None,
-            count: 0,
-        };
+        return LandPriceStats::default();
     }
 
     values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -91,6 +79,15 @@ pub(crate) fn compute_land_price_stats(
     }
 }
 
+/// Validate a bbox rect and return its area, or `None` if the area is non-positive.
+///
+/// Both `compute_area_ratio` and `compute_zoning_distribution` use this guard to
+/// short-circuit before any polygon intersection work.
+fn bbox_area(bbox_rect: &Rect<f64>) -> Option<f64> {
+    let area = bbox_rect.unsigned_area();
+    if area > 0.0 { Some(area) } else { None }
+}
+
 /// Compute the ratio of feature geometry area intersecting `bbox_rect` to the bbox area.
 ///
 /// Returns a value in `[0.0, 1.0]`. Returns `0.0` if `stats_data` is not
@@ -104,10 +101,9 @@ pub(crate) fn compute_area_ratio(
         return 0.0;
     };
 
-    let bbox_area = bbox_rect.unsigned_area();
-    if bbox_area <= 0.0 {
+    let Some(bbox_area) = bbox_area(bbox_rect) else {
         return 0.0;
-    }
+    };
 
     let bbox_polygon = rect_to_polygon(bbox_rect);
 
@@ -142,10 +138,9 @@ pub(crate) fn compute_zoning_distribution(
         return Vec::new();
     };
 
-    let bbox_area = bbox_rect.unsigned_area();
-    if bbox_area <= 0.0 {
+    let Some(bbox_area) = bbox_area(bbox_rect) else {
         return Vec::new();
-    }
+    };
 
     let bbox_polygon = rect_to_polygon(bbox_rect);
 

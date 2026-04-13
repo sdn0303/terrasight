@@ -3,44 +3,19 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde_json::json;
 use sqlx::{FromRow, PgPool};
-use terrasight_geo::spatial::{bbox_area_deg2, compute_feature_limit};
+use terrasight_geo::spatial::{LayerKind, bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
-use tokio::time::timeout;
 
-use super::map_db_err;
 use crate::domain::entity::{GeoFeature, LayerResult};
 use crate::domain::error::DomainError;
 use crate::domain::repository::LayerRepository;
 use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 use crate::infra::geo_convert::to_geo_feature;
+use crate::infra::query_helpers::{apply_limit, run_query};
+use crate::infra::row_types::LandPriceFeatureRow;
 
 /// Maximum time to wait for any single layer query before returning an error.
 const LAYER_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
-
-#[derive(Debug, FromRow)]
-struct LandPriceLayerRow {
-    id: i64,
-    price_per_sqm: i32,
-    address: String,
-    land_use: Option<String>,
-    survey_year: i16,
-    geometry: serde_json::Value,
-}
-
-impl From<LandPriceLayerRow> for GeoFeature {
-    fn from(row: LandPriceLayerRow) -> Self {
-        to_geo_feature(
-            row.geometry,
-            json!({
-                "id": row.id,
-                "price_per_sqm": row.price_per_sqm,
-                "address": row.address,
-                "land_use": row.land_use,
-                "year": row.survey_year,
-            }),
-        )
-    }
-}
 
 #[derive(Debug, FromRow)]
 struct ZoningLayerRow {
@@ -154,20 +129,6 @@ impl PgAreaRepository {
     }
 }
 
-/// Apply the N+1 truncation pattern: fetch `limit + 1` rows, check if more
-/// exist, then return at most `limit` rows along with the truncation flag.
-fn apply_limit(mut rows: Vec<GeoFeature>, limit: i64) -> LayerResult {
-    let truncated = rows.len() > limit as usize;
-    if truncated {
-        rows.truncate(limit as usize);
-    }
-    LayerResult {
-        features: rows,
-        truncated,
-        limit,
-    }
-}
-
 #[async_trait]
 impl LayerRepository for PgAreaRepository {
     #[tracing::instrument(skip(self), fields(layer = ?layer))]
@@ -198,32 +159,37 @@ impl PgAreaRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("landprice", area, zoom);
-        let query = sqlx::query_as::<_, LandPriceLayerRow>(
-            r#"
-            SELECT id, price_per_sqm, address, land_use, survey_year,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM land_prices
-            WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($5::text IS NULL OR pref_code = $5)
-            LIMIT $6
-            "#,
-        );
-        let rows = timeout(
+        let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom);
+        let rows = run_query(
             LAYER_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "land_prices layer query",
+            bind_bbox(
+                sqlx::query_as::<_, LandPriceFeatureRow>(
+                    r#"
+                    SELECT id, price_per_sqm, address, land_use, survey_year,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM land_prices
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("land_prices layer query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "land_prices fetched"))?;
 
-        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        Ok(apply_limit(features, limit))
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
     }
 
     async fn query_zoning(
@@ -233,32 +199,37 @@ impl PgAreaRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("zoning", area, zoom);
-        let query = sqlx::query_as::<_, ZoningLayerRow>(
-            r#"
-            SELECT id, zone_type, zone_code, floor_area_ratio, building_coverage,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM zoning
-            WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($5::text IS NULL OR pref_code = $5)
-            LIMIT $6
-            "#,
-        );
-        let rows = timeout(
+        let limit = compute_feature_limit(LayerKind::Zoning, area, zoom);
+        let rows = run_query(
             LAYER_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "zoning layer query",
+            bind_bbox(
+                sqlx::query_as::<_, ZoningLayerRow>(
+                    r#"
+                    SELECT id, zone_type, zone_code, floor_area_ratio, building_coverage,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM zoning
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("zoning layer query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "zoning fetched"))?;
 
-        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        Ok(apply_limit(features, limit))
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
     }
 
     async fn query_flood_risk(
@@ -268,32 +239,37 @@ impl PgAreaRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("flood", area, zoom);
-        let query = sqlx::query_as::<_, FloodRiskRow>(
-            r#"
-            SELECT id, depth_rank, river_name,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM flood_risk
-            WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($5::text IS NULL OR pref_code = $5)
-            LIMIT $6
-            "#,
-        );
-        let rows = timeout(
+        let limit = compute_feature_limit(LayerKind::Flood, area, zoom);
+        let rows = run_query(
             LAYER_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "flood_risk layer query",
+            bind_bbox(
+                sqlx::query_as::<_, FloodRiskRow>(
+                    r#"
+                    SELECT id, depth_rank, river_name,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM flood_risk
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("flood_risk layer query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "flood_risk fetched"))?;
 
-        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        Ok(apply_limit(features, limit))
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
     }
 
     async fn query_steep_slope(
@@ -303,32 +279,37 @@ impl PgAreaRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("steep_slope", area, zoom);
-        let query = sqlx::query_as::<_, SteepSlopeRow>(
-            r#"
-            SELECT id, area_name,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM steep_slope
-            WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($5::text IS NULL OR pref_code = $5)
-            LIMIT $6
-            "#,
-        );
-        let rows = timeout(
+        let limit = compute_feature_limit(LayerKind::SteepSlope, area, zoom);
+        let rows = run_query(
             LAYER_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "steep_slope layer query",
+            bind_bbox(
+                sqlx::query_as::<_, SteepSlopeRow>(
+                    r#"
+                    SELECT id, area_name,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM steep_slope
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("steep_slope layer query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "steep_slope fetched"))?;
 
-        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        Ok(apply_limit(features, limit))
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
     }
 
     async fn query_schools(
@@ -338,32 +319,37 @@ impl PgAreaRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("schools", area, zoom);
-        let query = sqlx::query_as::<_, SchoolRow>(
-            r#"
-            SELECT id, school_name, school_type,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM schools
-            WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($5::text IS NULL OR pref_code = $5)
-            LIMIT $6
-            "#,
-        );
-        let rows = timeout(
+        let limit = compute_feature_limit(LayerKind::Schools, area, zoom);
+        let rows = run_query(
             LAYER_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "schools layer query",
+            bind_bbox(
+                sqlx::query_as::<_, SchoolRow>(
+                    r#"
+                    SELECT id, school_name, school_type,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM schools
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("schools layer query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "schools fetched"))?;
 
-        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        Ok(apply_limit(features, limit))
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
     }
 
     async fn query_medical(
@@ -373,33 +359,38 @@ impl PgAreaRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("medical", area, zoom);
-        let query = sqlx::query_as::<_, MedicalFacilityRow>(
-            r#"
-            SELECT id, facility_name, facility_type, beds,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM medical_facilities
-            WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($5::text IS NULL OR pref_code = $5)
-            LIMIT $6
-            "#,
-        );
-        let rows = timeout(
+        let limit = compute_feature_limit(LayerKind::Medical, area, zoom);
+        let rows = run_query(
             LAYER_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "medical_facilities layer query",
+            bind_bbox(
+                sqlx::query_as::<_, MedicalFacilityRow>(
+                    r#"
+                    SELECT id, facility_name, facility_type, beds,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM medical_facilities
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("medical_facilities layer query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(row_count = rows.len(), limit, "medical_facilities fetched")
         })?;
 
-        let features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        Ok(apply_limit(features, limit))
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
     }
 }

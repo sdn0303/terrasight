@@ -1,13 +1,10 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use serde_json::json;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
-use terrasight_geo::spatial::{bbox_area_deg2, compute_feature_limit};
+use terrasight_geo::spatial::{LayerKind, bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
-use tokio::time::timeout;
 
-use super::map_db_err;
 use crate::domain::constants::OPPORTUNITY_QUERY_TIMEOUT_SECS;
 use crate::domain::entity::{
     Address, BuildingCoverageRatio, FloorAreaRatio, GeoFeature, LayerResult, OpportunityRecord,
@@ -16,39 +13,14 @@ use crate::domain::entity::{
 use crate::domain::error::DomainError;
 use crate::domain::repository::LandPriceRepository;
 use crate::domain::value_object::{BBox, Coord, PrefCode, Year, ZoomLevel};
-use crate::infra::geo_convert::to_geo_feature;
+use crate::infra::query_helpers::{apply_limit, run_query};
+use crate::infra::row_types::LandPriceFeatureRow;
 
 /// Maximum time to wait for the land price query before returning an error.
 const LAND_PRICE_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Longer timeout for multi-year queries which scan more rows.
 const LAND_PRICE_ALL_YEARS_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Raw row returned by land-price spatial queries.
-#[derive(Debug, FromRow)]
-struct LandPriceFeatureRow {
-    id: i64,
-    price_per_sqm: i32,
-    address: String,
-    land_use: Option<String>,
-    survey_year: i16,
-    geometry: serde_json::Value,
-}
-
-impl From<LandPriceFeatureRow> for GeoFeature {
-    fn from(row: LandPriceFeatureRow) -> Self {
-        to_geo_feature(
-            row.geometry,
-            json!({
-                "id": row.id,
-                "price_per_sqm": row.price_per_sqm,
-                "address": row.address,
-                "land_use": row.land_use,
-                "year": row.survey_year,
-            }),
-        )
-    }
-}
 
 /// Raw row for the `/api/v1/opportunities` query. Joined with the `zoning`
 /// table to populate `building_coverage_ratio` and `floor_area_ratio`.
@@ -109,30 +81,34 @@ impl LandPriceRepository for PgLandPriceRepository {
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit("landprice", area, zoom.get());
+        let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get());
 
-        let query = sqlx::query_as::<_, LandPriceFeatureRow>(
-            r#"
-            SELECT id, price_per_sqm, address, land_use, survey_year,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM land_prices
-            WHERE survey_year = $5
-              AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($6::text IS NULL OR pref_code = $6)
-            LIMIT $7
-            "#,
-        );
-        let rows = timeout(
+        let rows = run_query(
             LAND_PRICE_QUERY_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(year.value())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "land_price query",
+            bind_bbox(
+                sqlx::query_as::<_, LandPriceFeatureRow>(
+                    r#"
+                    SELECT id, price_per_sqm, address, land_use, survey_year,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM land_prices
+                    WHERE survey_year = $5
+                      AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($6::text IS NULL OR pref_code = $6)
+                    LIMIT $7
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(year.value())
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("land_price query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(
                 row_count = rows.len(),
@@ -142,18 +118,10 @@ impl LandPriceRepository for PgLandPriceRepository {
             )
         })?;
 
-        let mut features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        let truncated = features.len() > limit as usize;
-        if truncated {
-            features.truncate(limit as usize);
-        }
-
-        Ok(LayerResult {
-            features,
-            truncated,
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
             limit,
-        })
+        ))
     }
 
     /// Fetch land price features across a year range for time machine animation.
@@ -172,32 +140,36 @@ impl LandPriceRepository for PgLandPriceRepository {
     ) -> Result<LayerResult, DomainError> {
         let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let year_count = i64::from((to_year.value() - from_year.value() + 1).max(1));
-        let base_limit = compute_feature_limit("landprice", area, zoom.get());
+        let base_limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get());
         let limit = base_limit.saturating_mul(year_count);
 
-        let query = sqlx::query_as::<_, LandPriceFeatureRow>(
-            r#"
-            SELECT id, price_per_sqm, address, land_use, survey_year,
-                   ST_AsGeoJSON(geom)::jsonb AS geometry
-            FROM land_prices
-            WHERE survey_year BETWEEN $5 AND $6
-              AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND ($7::text IS NULL OR pref_code = $7)
-            LIMIT $8
-            "#,
-        );
-        let rows = timeout(
+        let rows = run_query(
             LAND_PRICE_ALL_YEARS_TIMEOUT,
-            bind_bbox(query, bbox.west(), bbox.south(), bbox.east(), bbox.north())
-                .bind(from_year.value())
-                .bind(to_year.value())
-                .bind(pref_code.map(PrefCode::as_str))
-                .bind(limit + 1)
-                .fetch_all(&self.pool),
+            "land_price all-years query",
+            bind_bbox(
+                sqlx::query_as::<_, LandPriceFeatureRow>(
+                    r#"
+                    SELECT id, price_per_sqm, address, land_use, survey_year,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM land_prices
+                    WHERE survey_year BETWEEN $5 AND $6
+                      AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($7::text IS NULL OR pref_code = $7)
+                    LIMIT $8
+                    "#,
+                ),
+                bbox.west(),
+                bbox.south(),
+                bbox.east(),
+                bbox.north(),
+            )
+            .bind(from_year.value())
+            .bind(to_year.value())
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
         )
         .await
-        .map_err(|_| DomainError::Timeout("land_price all-years query".into()))?
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(
                 row_count = rows.len(),
@@ -208,18 +180,10 @@ impl LandPriceRepository for PgLandPriceRepository {
             )
         })?;
 
-        let mut features: Vec<GeoFeature> = rows.into_iter().map(GeoFeature::from).collect();
-
-        let truncated = features.len() > limit as usize;
-        if truncated {
-            features.truncate(limit as usize);
-        }
-
-        Ok(LayerResult {
-            features,
-            truncated,
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
             limit,
-        })
+        ))
     }
 
     /// Fetch enriched opportunity records via a spatial join with the
@@ -307,15 +271,14 @@ impl LandPriceRepository for PgLandPriceRepository {
             .push(" ORDER BY lp.price_per_sqm DESC LIMIT ")
             .push_bind(i64::from(limit));
 
-        timeout(
+        run_query(
             Duration::from_secs(OPPORTUNITY_QUERY_TIMEOUT_SECS),
+            "opportunities query",
             builder
                 .build_query_as::<OpportunityRow>()
                 .fetch_all(&self.pool),
         )
-        .await
-        .map_err(|_| DomainError::Timeout("opportunities query".into()))?
-        .map_err(map_db_err)?
+        .await?
         .into_iter()
         .map(OpportunityRecord::try_from)
         .collect::<Result<Vec<_>, _>>()
