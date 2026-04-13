@@ -1,3 +1,18 @@
+//! GeoJSON feature parsing from PostGIS `ST_AsGeoJSON` output.
+//!
+//! PostGIS returns geometry as a JSON string from `ST_AsGeoJSON`.  This module
+//! provides [`RawGeoFeature`] — a domain-independent intermediate representation
+//! — and [`to_raw_geo_feature`] to parse the raw JSON into it.
+//!
+//! Repository implementations use these types to decouple the database layer
+//! from domain-specific GeoJSON structs.  The API handler then converts
+//! `RawGeoFeature` into [`crate::http::response::FeatureDto`] for serialization.
+//!
+//! ## Coordinate order
+//!
+//! Per RFC 7946 all coordinates are `[longitude, latitude]` (x, y).
+//! PostGIS preserves this ordering when the geometry is stored in SRID 4326.
+
 /// A GeoJSON Feature representation independent of domain types.
 ///
 /// The API binary converts this to its domain `GeoFeature` type after

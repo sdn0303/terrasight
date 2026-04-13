@@ -1,3 +1,21 @@
+//! PostgreSQL connection pool constructor.
+//!
+//! Centralises `PgPool` creation so all binaries share the same pool
+//! configuration (max connections, connect timeout, etc.) without duplicating
+//! boilerplate in each `main.rs`.
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! # async fn example() -> Result<(), sqlx::Error> {
+//! let pool = terrasight_server::db::pool::create_pool(
+//!     "postgres://user:pass@localhost/terrasight",
+//!     10,
+//! ).await?;
+//! # Ok(())
+//! # }
+//! ```
+
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 

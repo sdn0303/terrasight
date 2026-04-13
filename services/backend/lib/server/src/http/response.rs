@@ -1,3 +1,27 @@
+//! RFC 7946 GeoJSON response DTOs for MapLibre GL consumption.
+//!
+//! Provides [`FeatureCollectionDto`] and [`FeatureDto`] — the JSON shapes
+//! returned by every spatial endpoint.  These are intentionally domain-free:
+//! handlers convert domain types into these DTOs at the handler boundary.
+//!
+//! ## Coordinate order
+//!
+//! All coordinates must follow RFC 7946 ordering: **`[longitude, latitude]`**.
+//! PostGIS returns coordinates in this order when the geometry SRID is 4326.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use terrasight_server::http::response::{FeatureCollectionDto, FeatureDto};
+//! use serde_json::json;
+//!
+//! let fc = FeatureCollectionDto::new(vec![
+//!     FeatureDto::new("Point".into(), json!([139.76, 35.68]), json!({"name": "Tokyo Station"})),
+//! ]);
+//! let json = serde_json::to_string(&fc).expect("serialization is infallible");
+//! assert!(json.contains("FeatureCollection"));
+//! ```
+
 use serde::Serialize;
 
 /// RFC 7946 GeoJSON FeatureCollection response.

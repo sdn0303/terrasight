@@ -1,3 +1,44 @@
+//! Generic HTTP error mapping for Axum handlers.
+//!
+//! This module provides two complementary pieces:
+//!
+//! - [`ErrorMapping`] — a trait that domain error types implement to declare
+//!   their HTTP status code and a machine-readable error code string.
+//! - [`ApiError<E>`] — a generic newtype that wraps any [`ErrorMapping`] value
+//!   and implements [`axum::response::IntoResponse`], producing a consistent
+//!   JSON error envelope and emitting a `WARN` tracing event.
+//!
+//! ## Response shape
+//!
+//! ```json
+//! { "error": { "code": "INVALID_PARAMS", "message": "lat must be in [-90, 90]" } }
+//! ```
+//!
+//! ## Example
+//!
+//! ```rust
+//! use axum::http::StatusCode;
+//! use terrasight_server::http::error::{ApiError, ErrorMapping};
+//! use std::fmt;
+//!
+//! #[derive(Debug)]
+//! enum AppError { NotFound }
+//!
+//! impl fmt::Display for AppError {
+//!     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//!         write!(f, "resource not found")
+//!     }
+//! }
+//!
+//! impl ErrorMapping for AppError {
+//!     fn status_code(&self) -> StatusCode { StatusCode::NOT_FOUND }
+//!     fn error_code(&self) -> &'static str { "NOT_FOUND" }
+//! }
+//!
+//! // In a handler:
+//! // Err(ApiError(AppError::NotFound))
+//! ```
+
 use axum::{
     Json,
     http::StatusCode,

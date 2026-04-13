@@ -1,3 +1,21 @@
+//! Global tracing subscriber setup with runtime format selection.
+//!
+//! Exposes [`LogFormat`] (Pretty / JSON) and [`init_global_logger`] which
+//! installs the appropriate [`tracing_subscriber`] layers once at startup.
+//!
+//! ## Format selection
+//!
+//! | Format | When to use |
+//! |--------|-------------|
+//! | [`LogFormat::Pretty`] | Local development — colored, human-readable |
+//! | [`LogFormat::Json`] | Production — newline-delimited JSON for Loki / CloudWatch |
+//!
+//! ## Filter
+//!
+//! The filter is read from the `RUST_LOG` environment variable.  When
+//! `RUST_LOG` is unset, the `default_filter` argument is used; if that is also
+//! `None`, the level defaults to `"info"`.
+
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Log output format.

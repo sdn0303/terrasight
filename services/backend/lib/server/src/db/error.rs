@@ -1,3 +1,22 @@
+//! Database error type and convenience adapter for `sqlx::Error`.
+//!
+//! [`DbError`] is a thin newtype over [`sqlx::Error`] that keeps the `db`
+//! module's public API independent of `sqlx` internals.  Repository
+//! implementations convert `sqlx::Error` with [`map_db_err`] and callers
+//! (typically usecase or handler layers) convert the result further into their
+//! own domain error:
+//!
+//! ```rust,ignore
+//! use terrasight_server::db::{DbError, map_db_err};
+//!
+//! let rows = sqlx::query_as::<_, MyRow>(SQL)
+//!     .fetch_all(&pool)
+//!     .await
+//!     .map_err(map_db_err)?;
+//! // In the usecase layer:
+//! // .map_err(|e: DbError| DomainError::Database(e.into_message()))?;
+//! ```
+
 /// Database error type that wraps `sqlx::Error`.
 ///
 /// Domain-independent: the API binary converts this to its own `DomainError`
