@@ -2118,48 +2118,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "realestate-api-core"
-version = "0.1.0"
-dependencies = [
- "axum",
- "governor",
- "http",
- "pin-project-lite",
- "serde",
- "serde_json",
- "tower",
- "tower-http",
- "tower_governor",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "realestate-db"
-version = "0.1.0"
-dependencies = [
- "serde_json",
- "sqlx",
- "thiserror 2.0.18",
- "tracing",
-]
-
-[[package]]
-name = "realestate-telemetry"
-version = "0.1.0"
-dependencies = [
- "axum",
- "metrics",
- "metrics-exporter-prometheus",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tower-http",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"

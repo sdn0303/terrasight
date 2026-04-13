@@ -1,6 +1,52 @@
 [workspace]
-members = [".", "lib/telemetry", "lib/geo", "lib/mlit", "lib/db", "lib/api-core", "lib/domain", "lib/server"]
+members = [".", "lib/domain", "lib/server", "lib/geo", "lib/mlit"]
 resolver = "3"
+
+[workspace.dependencies]
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = "0.8"
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "compression-gzip", "trace", "request-id", "propagate-header", "set-header"] }
+tower_governor = "0.8"
+governor = "0.10"
+http = "1"
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "json", "migrate"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Utilities
+uuid = { version = "1", features = ["v4"] }
+pin-project-lite = "0.2"
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+async-trait = "0.1"
+dotenvy = "0.15"
+envy = "0.4"
+moka = { version = "0.12", features = ["future"] }
+
+# Testing
+wiremock = "0.6"
+axum-test = "19"
 
 [package]
 name = "realestate-api"
@@ -13,26 +59,26 @@ terrasight-server = { path = "lib/server" }
 terrasight-geo = { path = "lib/geo" }
 terrasight-domain = { path = "lib/domain" }
 terrasight-mlit = { path = "lib/mlit", features = ["jshis"] }
-axum = "0.8"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "json", "migrate"] }
-tower-http = { version = "0.6", features = ["cors", "compression-gzip", "trace"] }
-http = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
-dotenvy = "0.15"
-envy = "0.4"
-async-trait = "0.1"
-futures = "0.3"
-thiserror = "2"
-anyhow = "1"
-chrono = { version = "0.4", features = ["serde"] }
-moka = { version = "0.12", features = ["future"] }
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+tower-http = { workspace = true }
+http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy = { workspace = true }
+envy = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+moka = { workspace = true }
 
 [dev-dependencies]
-axum-test = "19"
+axum-test = { workspace = true }
 
 [profile.release]
 lto = true
