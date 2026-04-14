@@ -37,8 +37,8 @@ use crate::domain::value_object::{AreaCode, Coord, OpportunitySignal, RiskLevel,
 /// are empty after trimming.  It also derives `Debug`, `Clone`, `PartialEq`,
 /// `Eq`, `Hash`, and `Display`.
 macro_rules! nonempty_string_type {
-    ($(#[doc = $doc:literal])* $Name:ident, $err_msg:literal) => {
-        $(#[doc = $doc])*
+    ($Name:ident, $doc:expr, $err_msg:literal) => {
+        #[doc = $doc]
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $Name(String);
 
@@ -71,26 +71,20 @@ macro_rules! nonempty_string_type {
 }
 
 nonempty_string_type!(
-    /// Human-readable area name (e.g. "新宿区", "Shinjuku").
-    ///
-    /// Whitespace-trimmed and non-empty by construction.
     AreaName,
+    "Human-readable area name (e.g. \"新宿区\", \"Shinjuku\"). Whitespace-trimmed and non-empty by construction.",
     "area name must be non-empty"
 );
 
 nonempty_string_type!(
-    /// Postal or street address, trimmed and non-empty by construction.
-    ///
-    /// Used as the human-readable label for land price observation points.
     Address,
+    "Postal or street address, trimmed and non-empty by construction. Used as the human-readable label for land price observation points.",
     "address must be non-empty"
 );
 
 nonempty_string_type!(
-    /// Urban-planning zone code (用途地域コード), e.g. `"商業地域"`.
-    ///
-    /// Trimmed and non-empty by construction. Code set defined by MLIT.
     ZoneCode,
+    "Urban-planning zone code (用途地域コード), e.g. \"商業地域\". Trimmed and non-empty by construction. Code set defined by MLIT.",
     "zone code must be non-empty"
 );
 
