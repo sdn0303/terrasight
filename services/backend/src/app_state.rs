@@ -27,10 +27,10 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use sqlx::PgPool;
+use terrasight_mlit::config::MlitConfig;
 use terrasight_mlit::jshis::JshisClient;
 
 use crate::config::Config;
-use crate::domain::constants::JSHIS_TIMEOUT_SECS;
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::infra::pg_admin_area_stats_repository::PgAdminAreaStatsRepository;
@@ -112,11 +112,15 @@ impl AppState {
         let reinfolib_key_set = config.reinfolib_api_key.is_some();
         let reinfolib = create_reinfolib_source(pool.clone(), config);
 
-        let jshis = match JshisClient::new(JSHIS_TIMEOUT_SECS) {
+        let mlit_config = MlitConfig {
+            reinfolib_api_key: config.reinfolib_api_key.clone(),
+            ..MlitConfig::default()
+        };
+        let jshis = match JshisClient::new(&mlit_config) {
             Ok(client) => {
                 tracing::info!(
                     "J-SHIS client initialised (timeout {}s)",
-                    JSHIS_TIMEOUT_SECS
+                    mlit_config.request_timeout_secs
                 );
                 Some(Arc::new(client))
             }

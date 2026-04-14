@@ -41,7 +41,7 @@ const RETRY_BACKOFF_BASE: u64 = 2;
 pub(crate) async fn request_with_retry(
     http: &reqwest::Client,
     url: &str,
-    params: &[(String, String)],
+    params: &[(&str, &str)],
     auth_header: Option<(&'static str, &str)>,
     context: &'static str,
 ) -> Result<reqwest::Response, MlitError> {

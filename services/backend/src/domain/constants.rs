@@ -190,13 +190,6 @@ pub(crate) const DEFAULT_TO_YEAR: i32 = 2030;
 pub(crate) const DEFAULT_ZOOM_LEVEL: u32 = 14;
 
 // ---------------------------------------------------------------------------
-// External API timeouts
-// ---------------------------------------------------------------------------
-
-/// Timeout (seconds) for J-SHIS (Japan Seismic Hazard Information Station) API requests.
-pub(crate) const JSHIS_TIMEOUT_SECS: u64 = 30;
-
-// ---------------------------------------------------------------------------
 // TLS query search radii (metres) — per-query overrides of the shared radii
 // ---------------------------------------------------------------------------
 

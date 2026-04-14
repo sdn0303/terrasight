@@ -71,6 +71,23 @@ const PARAM_RESPONSE_FORMAT: &str = "response_format";
 /// Query parameter: GeoJSON response format value.
 const PARAM_VALUE_GEOJSON: &str = "geojson";
 
+// ── Reinfolib endpoint codes ──────────────────────────────────────────────────
+
+/// XPT001: Real estate transaction price points (tile-based).
+const ENDPOINT_TRANSACTION_PRICES: &str = "XPT001";
+/// XPT002: Official land appraisal / survey points (tile-based).
+const ENDPOINT_LAND_PRICES: &str = "XPT002";
+/// XIT001: Bulk transaction data by prefecture (non-tile).
+const ENDPOINT_TRANSACTION_DATA: &str = "XIT001";
+/// XKT002: Urban-planning zoning polygons (tile-based).
+const ENDPOINT_ZONING: &str = "XKT002";
+/// XKT006: School facility points (tile-based).
+const ENDPOINT_SCHOOLS: &str = "XKT006";
+/// XKT010: Medical facility points (tile-based).
+const ENDPOINT_MEDICAL: &str = "XKT010";
+/// XKT016: Disaster-hazard area polygons (tile-based).
+const ENDPOINT_HAZARD_AREAS: &str = "XKT016";
+
 impl ReinfolibClient {
     /// Create a new client with the given configuration.
     ///
@@ -133,17 +150,17 @@ impl ReinfolibClient {
 
         for tile in &tiles {
             let url = format!("{}/{}", self.base_url, endpoint);
-            let mut params = vec![
-                (
-                    PARAM_RESPONSE_FORMAT.to_string(),
-                    PARAM_VALUE_GEOJSON.to_string(),
-                ),
-                ("z".to_string(), tile.z.to_string()),
-                ("x".to_string(), tile.x.to_string()),
-                ("y".to_string(), tile.y.to_string()),
+            let z_str = tile.z.to_string();
+            let x_str = tile.x.to_string();
+            let y_str = tile.y.to_string();
+            let mut params: Vec<(&str, &str)> = vec![
+                (PARAM_RESPONSE_FORMAT, PARAM_VALUE_GEOJSON),
+                ("z", &z_str),
+                ("x", &x_str),
+                ("y", &y_str),
             ];
             for (k, v) in extra_params {
-                params.push(((*k).to_string(), (*v).to_string()));
+                params.push((k, v));
             }
 
             let response = crate::retry::request_with_retry(
@@ -168,11 +185,13 @@ impl ReinfolibClient {
             );
 
             for feature in geojson.features {
-                all_features.push(
-                    serde_json::to_value(&feature).map_err(|e| {
-                        MlitError::Parse(format!("Failed to serialize feature: {e}"))
-                    })?,
-                );
+                // Build the GeoJSON Feature Value directly from the already-parsed
+                // fields — no round-trip through serde_json::to_value needed.
+                all_features.push(serde_json::json!({
+                    "type": feature.r#type,
+                    "geometry": feature.geometry,
+                    "properties": feature.properties,
+                }));
             }
         }
 
@@ -212,7 +231,7 @@ impl ReinfolibClient {
         to: &str,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
         self.fetch_tile_features(
-            "XPT001",
+            ENDPOINT_TRANSACTION_PRICES,
             west,
             south,
             east,
@@ -239,8 +258,15 @@ impl ReinfolibClient {
         year: u16,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
         let year_str = year.to_string();
-        self.fetch_tile_features("XPT002", west, south, east, north, &[("year", &year_str)])
-            .await
+        self.fetch_tile_features(
+            ENDPOINT_LAND_PRICES,
+            west,
+            south,
+            east,
+            north,
+            &[("year", &year_str)],
+        )
+        .await
     }
 
     /// XIT001: Get bulk transaction data for a prefecture (non-tile endpoint).
@@ -262,11 +288,13 @@ impl ReinfolibClient {
         quarter: u8,
         area: &str,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
-        let url = format!("{}/XIT001", self.base_url);
-        let params = vec![
-            ("year".to_string(), year.to_string()),
-            ("quarter".to_string(), quarter.to_string()),
-            ("area".to_string(), area.to_string()),
+        let url = format!("{}/{}", self.base_url, ENDPOINT_TRANSACTION_DATA);
+        let year_str = year.to_string();
+        let quarter_str = quarter.to_string();
+        let params: Vec<(&str, &str)> = vec![
+            ("year", &year_str),
+            ("quarter", &quarter_str),
+            ("area", area),
         ];
         let resp = crate::retry::request_with_retry(
             &self.http,
@@ -301,7 +329,7 @@ impl ReinfolibClient {
         east: f64,
         north: f64,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
-        self.fetch_tile_features("XKT002", west, south, east, north, &[])
+        self.fetch_tile_features(ENDPOINT_ZONING, west, south, east, north, &[])
             .await
     }
 
@@ -319,7 +347,7 @@ impl ReinfolibClient {
         east: f64,
         north: f64,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
-        self.fetch_tile_features("XKT006", west, south, east, north, &[])
+        self.fetch_tile_features(ENDPOINT_SCHOOLS, west, south, east, north, &[])
             .await
     }
 
@@ -337,7 +365,7 @@ impl ReinfolibClient {
         east: f64,
         north: f64,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
-        self.fetch_tile_features("XKT010", west, south, east, north, &[])
+        self.fetch_tile_features(ENDPOINT_MEDICAL, west, south, east, north, &[])
             .await
     }
 
@@ -356,7 +384,7 @@ impl ReinfolibClient {
         east: f64,
         north: f64,
     ) -> Result<Vec<serde_json::Value>, MlitError> {
-        self.fetch_tile_features("XKT016", west, south, east, north, &[])
+        self.fetch_tile_features(ENDPOINT_HAZARD_AREAS, west, south, east, north, &[])
             .await
     }
 }

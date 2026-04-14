@@ -8,11 +8,13 @@
 //! # Example
 //!
 //! ```ignore
+//! use terrasight_mlit::config::MlitConfig;
 //! use terrasight_mlit::jshis::JshisClient;
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let client = JshisClient::new(30).expect("client creation should succeed");
+//!     let config = MlitConfig::default();
+//!     let client = JshisClient::new(&config).expect("client creation should succeed");
 //!
 //!     // Tokyo Station: longitude 139.7671, latitude 35.6812
 //!     let hazard = client
@@ -28,6 +30,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::MlitConfig;
 use crate::error::MlitError;
 
 // ---------------------------------------------------------------------------
@@ -162,27 +165,28 @@ pub struct JshisClient {
 }
 
 impl JshisClient {
-    /// Create a new client with the given request timeout.
+    /// Create a new client from a shared [`MlitConfig`].
     ///
-    /// # Parameters
-    ///
-    /// - `timeout_secs`: Per-request timeout in seconds. Recommended: 30.
+    /// J-SHIS requires no API key; only `config.request_timeout_secs` is used.
+    /// This constructor signature is consistent with [`ReinfolibClient::new`].
     ///
     /// # Errors
     ///
     /// Returns [`MlitError::Http`] if the underlying `reqwest` client cannot
     /// be built (e.g., invalid TLS configuration).
     ///
-    /// # Example
+    /// # Examples
     ///
-    /// ```
+    /// ```no_run
+    /// use terrasight_mlit::config::MlitConfig;
     /// use terrasight_mlit::jshis::JshisClient;
     ///
-    /// let client = JshisClient::new(30).expect("client should build");
+    /// let config = MlitConfig::default();
+    /// let client = JshisClient::new(&config).expect("client should build");
     /// ```
-    pub fn new(timeout_secs: u64) -> Result<Self, MlitError> {
+    pub fn new(config: &MlitConfig) -> Result<Self, MlitError> {
         let http = reqwest::Client::builder()
-            .timeout(Duration::from_secs(timeout_secs))
+            .timeout(Duration::from_secs(config.request_timeout_secs))
             .build()
             .map_err(MlitError::Http)?;
 
@@ -230,10 +234,7 @@ impl JshisClient {
             self.base_url, PSHM_VERSION, PSHM_CASE, PSHM_EQCODE,
         );
         let position = format!("{lng},{lat}");
-        let params = [
-            ("position".to_string(), position),
-            ("epsg".to_string(), EPSG_WGS84.to_string()),
-        ];
+        let params = [("position", position.as_str()), ("epsg", EPSG_WGS84)];
 
         tracing::debug!(lng, lat, "querying J-SHIS seismic hazard");
 
@@ -286,10 +287,7 @@ impl JshisClient {
             self.base_url, SSTRCT_VERSION,
         );
         let position = format!("{lng},{lat}");
-        let params = [
-            ("position".to_string(), position),
-            ("epsg".to_string(), EPSG_WGS84.to_string()),
-        ];
+        let params = [("position", position.as_str()), ("epsg", EPSG_WGS84)];
 
         tracing::debug!(lng, lat, "querying J-SHIS surface ground");
 
@@ -337,10 +335,7 @@ impl JshisClient {
     ) -> Result<LandslideResponse, MlitError> {
         let url = format!("{}/landslide/isContaining.json", self.base_url);
         let position = format!("{lng},{lat}");
-        let params = [
-            ("position".to_string(), position),
-            ("epsg".to_string(), EPSG_WGS84.to_string()),
-        ];
+        let params = [("position", position.as_str()), ("epsg", EPSG_WGS84)];
 
         tracing::debug!(lng, lat, "querying J-SHIS landslide terrain");
 
@@ -438,7 +433,11 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn make_client(base_url: String) -> JshisClient {
-        JshisClient::new(5)
+        let config = MlitConfig {
+            request_timeout_secs: 5,
+            ..MlitConfig::default()
+        };
+        JshisClient::new(&config)
             .expect("JshisClient should build in tests")
             .with_base_url(base_url)
     }
