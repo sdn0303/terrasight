@@ -16,7 +16,7 @@ use crate::handler::request::transaction::TransactionSummaryQuery;
 use crate::handler::response::transaction::TransactionSummaryResponse;
 use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
 
-/// Handles `GET /api/v1/transaction-summary`.
+/// Handles `GET /api/v1/transactions/summary`.
 ///
 /// Required query parameter: `pref_code` (2-digit prefecture code). Optional
 /// `year_from` (integer) and `property_type` (raw Japanese string such as

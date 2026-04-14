@@ -1,6 +1,6 @@
 //! Shared bounding box and coordinate query DTOs.
 //!
-//! [`BBoxQuery`] is used by the `stats` and `area-data` handlers.
+//! [`BBoxQuery`] is used by the `stats` handler.
 //! [`CoordQuery`] is used by the `score` and `trend` handlers.
 //!
 //! Both types deserialize from Axum's [`Query`](axum::extract::Query)
@@ -13,8 +13,7 @@ use crate::domain::error::DomainError;
 use crate::domain::value_object::{BBox, Coord, PrefCode};
 use terrasight_domain::scoring::tls::WeightPreset;
 
-/// Bounding box query parameters shared by `GET /api/v1/area-data` and
-/// `GET /api/v1/stats`.
+/// Bounding box query parameters for `GET /api/v1/stats`.
 ///
 /// Fields are provided as individual query parameters (not a packed string)
 /// and are converted to a validated [`BBox`] domain value object via
@@ -59,7 +58,8 @@ pub struct CoordQuery {
     /// Longitude in WGS-84 decimal degrees (−180 … 180).
     pub lng: f64,
     /// TLS weight preset key. Accepted values: `"balance"`, `"investment"`,
-    /// `"disaster"`, `"livability"`. Defaults to `"balance"` when omitted.
+    /// `"residential"`, `"disaster"` (or `"disaster_focus"`).
+    /// Defaults to `"balance"` when omitted.
     /// Unknown strings also fall back to `"balance"`.
     #[serde(default = "default_preset")]
     pub preset: String,

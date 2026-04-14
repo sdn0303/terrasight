@@ -21,7 +21,7 @@ use crate::handler::request::LandPriceByYearRangeQuery;
 use crate::handler::response::LayerResponseDto;
 use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
 
-/// Handles `GET /api/v1/land-prices/by-year-range`.
+/// Handles `GET /api/v1/land-prices/all-years`.
 ///
 /// Query parameters: `bbox` (comma-separated `sw_lng,sw_lat,ne_lng,ne_lat`),
 /// optional `from` and `to` year integers (defaults to
