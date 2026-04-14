@@ -73,6 +73,7 @@ impl GeoBBox {
     /// assert_eq!(bbox.south, 35.65);
     /// assert_eq!(bbox.east, 139.80);
     /// ```
+    #[must_use]
     pub fn new(south: f64, west: f64, north: f64, east: f64) -> Self {
         Self {
             south,

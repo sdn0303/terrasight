@@ -40,6 +40,7 @@ const WGS84_LNG_OFFSET: f64 = 180.0;
 /// let x = lng_to_tile_x(139.7671, 14);
 /// assert_eq!(x, 14552);
 /// ```
+#[must_use]
 pub fn lng_to_tile_x(lng: f64, z: u8) -> u32 {
     let n = 2_f64.powi(i32::from(z));
     ((lng + WGS84_LNG_OFFSET) / WGS84_LNG_RANGE * n).floor() as u32
@@ -57,6 +58,7 @@ pub fn lng_to_tile_x(lng: f64, z: u8) -> u32 {
 /// let y = lat_to_tile_y(35.6812, 14);
 /// assert_eq!(y, 6451);
 /// ```
+#[must_use]
 pub fn lat_to_tile_y(lat: f64, z: u8) -> u32 {
     let n = 2_f64.powi(i32::from(z));
     let lat_rad = lat.to_radians();
@@ -79,6 +81,7 @@ pub fn lat_to_tile_y(lat: f64, z: u8) -> u32 {
 /// assert_eq!(tiles.len(), 1);
 /// assert_eq!(tiles[0].z, 14);
 /// ```
+#[must_use]
 pub fn bbox_to_tiles(west: f64, south: f64, east: f64, north: f64, z: u8) -> Vec<TileCoord> {
     let x_min = lng_to_tile_x(west, z);
     let x_max = lng_to_tile_x(east, z);

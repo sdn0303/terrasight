@@ -43,7 +43,7 @@ use terrasight_domain::scoring::sub_scores::{
     score_volume,
 };
 use terrasight_domain::scoring::tls::{
-    CrossAnalysis, Grade, WeightPreset, compute_cross_analysis, compute_tls,
+    AxisScores, CrossAnalysis, Grade, WeightPreset, compute_cross_analysis, compute_tls,
 };
 
 /// Usecase for `GET /api/v1/score` and the opportunity-enrichment pipeline.
@@ -94,22 +94,16 @@ impl ComputeTlsUsecase {
         let future = inputs.build_future_axis(weights.future);
         let (price, relative_value_score) = inputs.build_price_axis(weights.price);
 
-        let tls = compute_tls(
-            disaster.score,
-            terrain.score,
-            livability.score,
-            future.score,
-            price.score,
-            preset,
-        );
+        let axis_scores = AxisScores {
+            s1_disaster: disaster.score,
+            s2_terrain: terrain.score,
+            s3_livability: livability.score,
+            s4_future: future.score,
+            s5_profitability: price.score,
+        };
+        let tls = compute_tls(&axis_scores, preset);
         let grade = Grade::from_score(tls);
-        let cross_analysis = compute_cross_analysis(
-            disaster.score,
-            terrain.score,
-            livability.score,
-            future.score,
-            relative_value_score,
-        );
+        let cross_analysis = compute_cross_analysis(&axis_scores, relative_value_score);
 
         let output = TlsOutput {
             score: tls,

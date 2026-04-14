@@ -16,6 +16,7 @@
 /// assert_eq!(round_dp(25.55, 1), 25.6);
 /// assert_eq!(round_dp(100.0, 0), 100.0);
 /// ```
+#[must_use]
 pub fn round_dp(value: f64, decimal_places: u32) -> f64 {
     let factor = 10_f64.powi(decimal_places as i32);
     (value * factor).round() / factor

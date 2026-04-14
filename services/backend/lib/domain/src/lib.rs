@@ -24,10 +24,17 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use terrasight_domain::scoring::tls::{compute_tls, WeightPreset};
+//! use terrasight_domain::scoring::tls::{AxisScores, compute_tls, WeightPreset};
 //!
 //! // Compute a balanced TLS from 5 axis scores (each 0–100).
-//! let tls = compute_tls(80.0, 75.0, 90.0, 60.0, 55.0, WeightPreset::Balance);
+//! let scores = AxisScores {
+//!     s1_disaster: 80.0,
+//!     s2_terrain: 75.0,
+//!     s3_livability: 90.0,
+//!     s4_future: 60.0,
+//!     s5_profitability: 55.0,
+//! };
+//! let tls = compute_tls(&scores, WeightPreset::Balance);
 //! assert!(tls > 0.0 && tls <= 100.0);
 //! ```
 

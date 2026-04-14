@@ -30,6 +30,7 @@ use crate::coord::GeoCoord;
 /// let unit = GeoBBox { south: 0.0, west: 0.0, north: 1.0, east: 1.0 };
 /// assert_eq!(bbox_area_deg2(&unit), 1.0);
 /// ```
+#[must_use]
 pub fn bbox_area_deg2(bbox: &GeoBBox) -> f64 {
     ((bbox.north - bbox.south) * (bbox.east - bbox.west)).abs()
 }
@@ -131,6 +132,7 @@ impl LayerKind {
 /// assert_eq!(compute_feature_limit(LayerKind::Flood, 0.02, 12), 3_000);
 /// assert_eq!(compute_feature_limit(LayerKind::Flood, 1.0, 12), 10_000);
 /// ```
+#[must_use]
 pub fn compute_feature_limit(layer: LayerKind, bbox_area_deg2: f64, zoom: u8) -> i64 {
     let raw = (bbox_area_deg2 * layer.density()).ceil() as i64;
     let capped = raw.min(MAX_FEATURES);
@@ -158,6 +160,7 @@ pub fn compute_feature_limit(layer: LayerKind, bbox_area_deg2: f64, zoom: u8) ->
 /// let ring = point_to_polygon(&coord);
 /// assert_eq!(ring[0], ring[4]);
 /// ```
+#[must_use]
 pub fn point_to_polygon(coord: &GeoCoord) -> [[f64; 2]; 5] {
     let diameter = 2.0 * POINT_TO_POLYGON_BUFFER_DEG;
     let w = coord.lng - POINT_TO_POLYGON_BUFFER_DEG;

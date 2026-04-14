@@ -69,6 +69,7 @@ fn weighted_avg_with_confidence(subs: &[SubAvailability]) -> (f64, f64) {
 /// divided by the total weight.
 ///
 /// Returns `(0.0, 0.0)` when `subs` is empty.
+#[must_use]
 pub fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
     if subs.is_empty() {
         return (0.0, 0.0);
@@ -96,6 +97,7 @@ pub fn compute_s1(subs: &[SubAvailability]) -> (f64, f64) {
 ///
 /// Future phases will extend this to include terrain form (G_form) and
 /// geology (G_geo) sub-scores with weights `0.50 / 0.30 / 0.20`.
+#[must_use]
 pub fn compute_s2(avs: f64, avs_avail: bool) -> (f64, f64) {
     let confidence = if avs_avail { S2_WEIGHT_AVS } else { 0.0 };
     (avs.clamp(SCORE_MIN, SCORE_MAX), confidence)
@@ -113,6 +115,7 @@ pub fn compute_s2(avs: f64, avs_avail: bool) -> (f64, f64) {
 ///
 /// All constants are from [`crate::scoring::constants`] (`S3_WEIGHT_*`,
 /// `S3_FALLBACK_WEIGHT_*`).
+#[must_use]
 pub fn compute_s3(
     transit: f64,
     edu: f64,
@@ -160,6 +163,7 @@ pub fn compute_s3(
 /// Missing sub-scores (marked `available = false`) still contribute their
 /// default score to the weighted average, but are excluded from the
 /// confidence numerator.
+#[must_use]
 pub fn compute_s4(
     pop: f64,
     price: f64,
@@ -192,6 +196,7 @@ pub fn compute_s4(
 ///
 /// Weights: relative value [`S5_WEIGHT_RELATIVE_VALUE`] (0.65),
 /// transaction volume [`S5_WEIGHT_VOLUME`] (0.35).
+#[must_use]
 pub fn compute_s5(rel: f64, vol: f64, rel_avail: bool, vol_avail: bool) -> (f64, f64) {
     let subs = [
         SubAvailability {

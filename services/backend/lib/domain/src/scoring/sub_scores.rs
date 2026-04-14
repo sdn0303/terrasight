@@ -41,6 +41,7 @@ use crate::scoring::constants::*;
 /// assert_eq!(score_flood(Some(1)), 80.0);  // shallow inundation
 /// assert_eq!(score_flood(Some(5)), 0.0);   // catastrophic depth
 /// ```
+#[must_use]
 pub fn score_flood(depth_rank: Option<i32>) -> f64 {
     match depth_rank {
         None => FLOOD_DEFAULT,
@@ -75,6 +76,7 @@ pub fn score_flood(depth_rank: Option<i32>) -> f64 {
 /// assert_eq!(score_liquefaction(Some(0.0)), 100.0);
 /// assert_eq!(score_liquefaction(Some(20.0)), 10.0);
 /// ```
+#[must_use]
 pub fn score_liquefaction(pl_value: Option<f64>) -> f64 {
     match pl_value {
         None => UNAVAILABLE_DEFAULT,
@@ -113,6 +115,7 @@ pub fn score_liquefaction(pl_value: Option<f64>) -> f64 {
 /// assert_eq!(score_seismic(0.02), 100.0);
 /// assert_eq!(score_seismic(0.50), 5.0);
 /// ```
+#[must_use]
 pub fn score_seismic(prob_30yr: f64) -> f64 {
     for &(upper, score) in SEISMIC_MAP {
         if prob_30yr < upper {
@@ -145,6 +148,7 @@ pub fn score_seismic(prob_30yr: f64) -> f64 {
 /// assert_eq!(score_tsunami(Some(0.0)), 100.0);
 /// assert_eq!(score_tsunami(Some(3.0)), 10.0);
 /// ```
+#[must_use]
 pub fn score_tsunami(depth_m: Option<f64>) -> f64 {
     match depth_m {
         None => UNAVAILABLE_DEFAULT,
@@ -183,6 +187,7 @@ pub fn score_tsunami(depth_m: Option<f64>) -> f64 {
 /// assert_eq!(score_landslide(Some(false)), 100.0);
 /// assert_eq!(score_landslide(Some(true)), 40.0);
 /// ```
+#[must_use]
 pub fn score_landslide(steep_nearby: Option<bool>) -> f64 {
     match steep_nearby {
         None => UNAVAILABLE_DEFAULT,
@@ -219,6 +224,7 @@ pub fn score_landslide(steep_nearby: Option<bool>) -> f64 {
 /// assert_eq!(score_avs30(Some(500.0)), 100.0);
 /// assert_eq!(score_avs30(Some(100.0)), 10.0);
 /// ```
+#[must_use]
 pub fn score_avs30(avs30: Option<f64>) -> f64 {
     match avs30 {
         None => UNAVAILABLE_DEFAULT,
@@ -256,6 +262,7 @@ pub fn score_avs30(avs30: Option<f64>) -> f64 {
 /// // Capped at 100
 /// assert_eq!(score_education(10, true, true), 100.0);
 /// ```
+#[must_use]
 pub fn score_education(school_count: i64, has_primary: bool, has_junior_high: bool) -> f64 {
     let diversity_bonus =
         (has_primary as i64 + has_junior_high as i64) as f64 * EDU_DIVERSITY_BONUS;
@@ -282,6 +289,7 @@ pub fn score_education(school_count: i64, has_primary: bool, has_junior_high: bo
 /// let s = score_medical(2, 5, 100);
 /// assert!((s - 85.04).abs() < 0.1);
 /// ```
+#[must_use]
 pub fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: i64) -> f64 {
     let bed_score = ((total_beds as f64 + 1.0).log10()) * MED_BED_LOG_MULTIPLIER;
     (hospital_count as f64 * MED_HOSPITAL_SCORE
@@ -311,6 +319,7 @@ pub fn score_medical(hospital_count: i64, clinic_count: i64, total_beds: i64) ->
 /// assert_eq!(score_price_trend(-0.05), 25.0); // −5%/yr
 /// assert_eq!(score_price_trend(1.0), 100.0);  // clamped
 /// ```
+#[must_use]
 pub fn score_price_trend(cagr: f64) -> f64 {
     (PRICE_TREND_OFFSET + cagr * PRICE_TREND_MULTIPLIER).clamp(SCORE_MIN, SCORE_MAX)
 }
@@ -332,6 +341,7 @@ pub fn score_price_trend(cagr: f64) -> f64 {
 /// assert_eq!(score_far(Some(400.0)), 50.0);  // 400% / 8 = 50
 /// assert_eq!(score_far(Some(800.0)), 100.0); // capped
 /// ```
+#[must_use]
 pub fn score_far(designated_far: Option<f64>) -> f64 {
     match designated_far {
         None => UNAVAILABLE_DEFAULT,
@@ -362,6 +372,7 @@ pub fn score_far(designated_far: Option<f64>) -> f64 {
 /// assert_eq!(score_relative_value(2.0), 10.0);   // expensive → lower score
 /// assert_eq!(score_relative_value(-5.0), 100.0); // clamped
 /// ```
+#[must_use]
 pub fn score_relative_value(z_score: f64) -> f64 {
     (RELATIVE_VALUE_OFFSET - z_score * RELATIVE_VALUE_MULTIPLIER).clamp(SCORE_MIN, SCORE_MAX)
 }
@@ -382,6 +393,7 @@ pub fn score_relative_value(z_score: f64) -> f64 {
 /// assert_eq!(score_volume(20), 100.0);
 /// assert_eq!(score_volume(30), 100.0); // capped
 /// ```
+#[must_use]
 pub fn score_volume(tx_count: i64) -> f64 {
     (tx_count as f64 * VOLUME_MULTIPLIER).min(SCORE_MAX)
 }

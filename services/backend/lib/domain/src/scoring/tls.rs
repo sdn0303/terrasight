@@ -11,6 +11,28 @@ use serde::Serialize;
 use crate::scoring::constants::*;
 
 // ═══════════════════════════════════════════════════════════════════════════
+// AxisScores
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Normalized axis scores (0–100 scale) for the 5-axis TLS formula.
+///
+/// Each field represents one of the five TLS axes. Constructed by the
+/// usecase layer after composing sub-scores via [`super::axis`] functions.
+#[derive(Debug, Clone, Copy)]
+pub struct AxisScores {
+    /// S1 — Disaster resilience score.
+    pub s1_disaster: f64,
+    /// S2 — Terrain quality score.
+    pub s2_terrain: f64,
+    /// S3 — Livability (transit, education, medical) score.
+    pub s3_livability: f64,
+    /// S4 — Future potential score.
+    pub s4_future: f64,
+    /// S5 — Profitability (price competitiveness) score.
+    pub s5_profitability: f64,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Grade
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -58,6 +80,7 @@ impl Grade {
     /// assert_eq!(Grade::from_score(85.0), Grade::S);
     /// assert_eq!(Grade::from_score(84.9), Grade::A);
     /// ```
+    #[must_use]
     pub fn from_score(score: f64) -> Self {
         if score >= GRADE_S_MIN {
             Self::S
@@ -84,6 +107,7 @@ impl Grade {
     /// assert_eq!(Grade::S.label(), "Excellent");
     /// assert_eq!(Grade::E.label(), "Poor");
     /// ```
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::S => "Excellent",
@@ -106,6 +130,7 @@ impl Grade {
     ///
     /// assert_eq!(Grade::B.as_str(), "B");
     /// ```
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::S => "S",
@@ -218,6 +243,7 @@ impl WeightPreset {
     ///
     /// assert_eq!(WeightPreset::DisasterFocus.as_str(), "disaster_focus");
     /// ```
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Balance => "balance",
@@ -231,6 +257,7 @@ impl WeightPreset {
     ///
     /// All constants are sourced from [`crate::scoring::constants`]; no
     /// literals appear in this function.
+    #[must_use]
     pub fn weights(self) -> AxisWeights {
         match self {
             Self::Balance => AxisWeights {
@@ -272,29 +299,37 @@ impl WeightPreset {
 /// Computes the Total Location Score (TLS) from five axis scores using the
 /// given weight preset.
 ///
-/// Each axis score must be in the range `[0.0, 100.0]`. The return value is
-/// clamped to `[0.0, 100.0]` regardless of input values.
+/// Each axis score in `scores` must be in the range `[0.0, 100.0]`. The
+/// return value is clamped to `[0.0, 100.0]` regardless of input values.
 ///
-/// Axis mapping:
-/// - `s1` — Disaster resilience (see [`super::axis::compute_s1`])
-/// - `s2` — Terrain quality (see [`super::axis::compute_s2`])
-/// - `s3` — Livability (see [`super::axis::compute_s3`])
-/// - `s4` — Future potential (see [`super::axis::compute_s4`])
-/// - `s5` — Profitability (see [`super::axis::compute_s5`])
+/// Using [`AxisScores`] instead of five positional `f64` parameters prevents
+/// transposition bugs at the call site (e.g. swapping S3 and S4).
 ///
 /// # Examples
 ///
 /// ```
-/// use terrasight_domain::scoring::tls::{compute_tls, WeightPreset};
+/// use terrasight_domain::scoring::tls::{AxisScores, compute_tls, WeightPreset};
 ///
-/// let tls = compute_tls(80.0, 75.0, 90.0, 60.0, 55.0, WeightPreset::Balance);
+/// let scores = AxisScores {
+///     s1_disaster: 80.0,
+///     s2_terrain: 75.0,
+///     s3_livability: 90.0,
+///     s4_future: 60.0,
+///     s5_profitability: 55.0,
+/// };
+/// let tls = compute_tls(&scores, WeightPreset::Balance);
 /// // 0.25×80 + 0.15×75 + 0.25×90 + 0.15×60 + 0.20×55
 /// // = 20 + 11.25 + 22.5 + 9 + 11 = 73.75
 /// assert!((tls - 73.75).abs() < 0.01);
 /// ```
-pub fn compute_tls(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64, preset: WeightPreset) -> f64 {
+#[must_use]
+pub fn compute_tls(scores: &AxisScores, preset: WeightPreset) -> f64 {
     let w = preset.weights();
-    let tls = w.disaster * s1 + w.terrain * s2 + w.livability * s3 + w.future * s4 + w.price * s5;
+    let tls = w.disaster * scores.s1_disaster
+        + w.terrain * scores.s2_terrain
+        + w.livability * scores.s3_livability
+        + w.future * scores.s4_future
+        + w.price * scores.s5_profitability;
     tls.clamp(SCORE_MIN, SCORE_MAX)
 }
 
@@ -333,29 +368,38 @@ pub struct CrossAnalysis {
 
 /// Computes cross-axis investment insight signals from five axis scores.
 ///
-/// - `s1` — Disaster resilience axis score (0–100)
-/// - `s2` — Terrain quality axis score (0–100)
-/// - `s3` — Livability axis score (0–100)
-/// - `s4` — Future-potential axis score (0–100)
+/// - `scores` — The five TLS axis scores bundled as [`AxisScores`].
 /// - `v_rel` — Relative value sub-score from S5 (0–100); higher means cheaper
-///   than the zoning-type median
+///   than the zoning-type median. Kept separate because it is a raw sub-score,
+///   not an aggregated axis output.
 ///
 /// All output fields are clamped to `[0.0, 100.0]`.
 ///
 /// # Examples
 ///
 /// ```
-/// use terrasight_domain::scoring::tls::compute_cross_analysis;
+/// use terrasight_domain::scoring::tls::{AxisScores, compute_cross_analysis};
 ///
+/// let scores = AxisScores {
+///     s1_disaster: 80.0,
+///     s2_terrain: 60.0,
+///     s3_livability: 82.0,
+///     s4_future: 58.0,
+///     s5_profitability: 70.0,
+/// };
 /// // S1=80, V_rel=30 → value_discovery = 80 × (100−30)/100 = 56
-/// let ca = compute_cross_analysis(80.0, 60.0, 82.0, 58.0, 30.0);
+/// let ca = compute_cross_analysis(&scores, 30.0);
 /// assert!((ca.value_discovery - 56.0).abs() < 0.01);
 /// ```
-pub fn compute_cross_analysis(s1: f64, s2: f64, s3: f64, s4: f64, v_rel: f64) -> CrossAnalysis {
+#[must_use]
+pub fn compute_cross_analysis(scores: &AxisScores, v_rel: f64) -> CrossAnalysis {
     CrossAnalysis {
-        value_discovery: (s1 * (SCORE_MAX - v_rel) / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
-        demand_signal: (s3 * s4 / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
-        ground_safety: (s1 * s2 / SCORE_MAX).clamp(SCORE_MIN, SCORE_MAX),
+        value_discovery: (scores.s1_disaster * (SCORE_MAX - v_rel) / SCORE_MAX)
+            .clamp(SCORE_MIN, SCORE_MAX),
+        demand_signal: (scores.s3_livability * scores.s4_future / SCORE_MAX)
+            .clamp(SCORE_MIN, SCORE_MAX),
+        ground_safety: (scores.s1_disaster * scores.s2_terrain / SCORE_MAX)
+            .clamp(SCORE_MIN, SCORE_MAX),
     }
 }
 
@@ -394,15 +438,28 @@ mod tests {
 
     // ── TLS ──
 
+    fn axis_scores(s1: f64, s2: f64, s3: f64, s4: f64, s5: f64) -> AxisScores {
+        AxisScores {
+            s1_disaster: s1,
+            s2_terrain: s2,
+            s3_livability: s3,
+            s4_future: s4,
+            s5_profitability: s5,
+        }
+    }
+
     #[test]
     fn tls_balance_all_100() {
-        let tls = compute_tls(100.0, 100.0, 100.0, 100.0, 100.0, WeightPreset::Balance);
+        let tls = compute_tls(
+            &axis_scores(100.0, 100.0, 100.0, 100.0, 100.0),
+            WeightPreset::Balance,
+        );
         assert!((tls - 100.0).abs() < 0.01);
     }
 
     #[test]
     fn tls_balance_all_zero() {
-        let tls = compute_tls(0.0, 0.0, 0.0, 0.0, 0.0, WeightPreset::Balance);
+        let tls = compute_tls(&axis_scores(0.0, 0.0, 0.0, 0.0, 0.0), WeightPreset::Balance);
         assert!(tls.abs() < 0.01);
     }
 
@@ -410,7 +467,10 @@ mod tests {
     fn tls_balance_mixed() {
         // 0.25*65 + 0.15*60 + 0.25*82 + 0.15*58 + 0.20*71
         // = 16.25 + 9.0 + 20.5 + 8.7 + 14.2 = 68.65
-        let tls = compute_tls(65.0, 60.0, 82.0, 58.0, 71.0, WeightPreset::Balance);
+        let tls = compute_tls(
+            &axis_scores(65.0, 60.0, 82.0, 58.0, 71.0),
+            WeightPreset::Balance,
+        );
         assert!((tls - 68.65).abs() < 0.01, "expected 68.65, got {tls}");
     }
 
@@ -418,7 +478,10 @@ mod tests {
     fn tls_investment_preset() {
         // Investment: 0.15*65 + 0.10*60 + 0.20*82 + 0.25*58 + 0.30*71
         // = 9.75 + 6.0 + 16.4 + 14.5 + 21.3 = 67.95
-        let tls = compute_tls(65.0, 60.0, 82.0, 58.0, 71.0, WeightPreset::Investment);
+        let tls = compute_tls(
+            &axis_scores(65.0, 60.0, 82.0, 58.0, 71.0),
+            WeightPreset::Investment,
+        );
         assert!((tls - 67.95).abs() < 0.01, "expected 67.95, got {tls}");
     }
 
@@ -428,39 +491,11 @@ mod tests {
         // somewhere in the request pipeline (wire to handler → usecase → compute).
         // The same 5-axis input with 4 different presets must yield 4 distinct
         // totals (each preset weights axes differently).
-        let inputs = (65.0, 60.0, 82.0, 58.0, 71.0);
-        let balance = compute_tls(
-            inputs.0,
-            inputs.1,
-            inputs.2,
-            inputs.3,
-            inputs.4,
-            WeightPreset::Balance,
-        );
-        let investment = compute_tls(
-            inputs.0,
-            inputs.1,
-            inputs.2,
-            inputs.3,
-            inputs.4,
-            WeightPreset::Investment,
-        );
-        let residential = compute_tls(
-            inputs.0,
-            inputs.1,
-            inputs.2,
-            inputs.3,
-            inputs.4,
-            WeightPreset::Residential,
-        );
-        let disaster = compute_tls(
-            inputs.0,
-            inputs.1,
-            inputs.2,
-            inputs.3,
-            inputs.4,
-            WeightPreset::DisasterFocus,
-        );
+        let input = axis_scores(65.0, 60.0, 82.0, 58.0, 71.0);
+        let balance = compute_tls(&input, WeightPreset::Balance);
+        let investment = compute_tls(&input, WeightPreset::Investment);
+        let residential = compute_tls(&input, WeightPreset::Residential);
+        let disaster = compute_tls(&input, WeightPreset::DisasterFocus);
 
         // Every pair must differ by at least 0.1 (noticeable in UI)
         let scores = [
@@ -538,21 +573,21 @@ mod tests {
     #[test]
     fn cross_analysis_safe_cheap() {
         // S1=80, V_rel=30 → value_discovery = 80 * (100-30)/100 = 56
-        let ca = compute_cross_analysis(80.0, 60.0, 82.0, 58.0, 30.0);
+        let ca = compute_cross_analysis(&axis_scores(80.0, 60.0, 82.0, 58.0, 0.0), 30.0);
         assert!((ca.value_discovery - 56.0).abs() < 0.01);
     }
 
     #[test]
     fn cross_analysis_demand() {
         // S3=82, S4=58 → demand = 82*58/100 = 47.56
-        let ca = compute_cross_analysis(80.0, 60.0, 82.0, 58.0, 50.0);
+        let ca = compute_cross_analysis(&axis_scores(80.0, 60.0, 82.0, 58.0, 0.0), 50.0);
         assert!((ca.demand_signal - 47.56).abs() < 0.01);
     }
 
     #[test]
     fn cross_analysis_ground() {
         // S1=80, S2=60 → ground = 80*60/100 = 48
-        let ca = compute_cross_analysis(80.0, 60.0, 82.0, 58.0, 50.0);
+        let ca = compute_cross_analysis(&axis_scores(80.0, 60.0, 82.0, 58.0, 0.0), 50.0);
         assert!((ca.ground_safety - 48.0).abs() < 0.01);
     }
 }

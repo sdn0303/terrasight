@@ -22,6 +22,7 @@
 /// assert_eq!(compute_cagr(100_000.0, 100_000.0, 5), 0.0);
 /// assert_eq!(compute_cagr(0.0, 100.0, 5), 0.0);
 /// ```
+#[must_use]
 pub fn compute_cagr(oldest_price: f64, latest_price: f64, years: u32) -> f64 {
     if oldest_price <= 0.0 || years == 0 {
         return 0.0;
