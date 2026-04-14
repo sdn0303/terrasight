@@ -113,7 +113,9 @@ async function handleInit(layers: LayerSpec[]): Promise<void> {
   // resolve at compile time). The cast to IWasmModule is safe: the shape is
   // declared in wasm.d.ts and validated against the wasm-bindgen output.
   const wasmGluePath = "/wasm/realestate_wasm.js";
-  const wasm = (await import(/* webpackIgnore: true */ wasmGluePath)) as IWasmModule;
+  const wasm = (await import(
+    /* webpackIgnore: true */ wasmGluePath
+  )) as IWasmModule;
 
   await wasm.default();
   engine = new wasm.SpatialEngine();
@@ -217,14 +219,22 @@ self.onmessage = (event: MessageEvent<unknown>) => {
         send({ type: "stats-result", id: msg.id, stats });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        send({ type: "stats-error", id: msg.id, error: `compute_stats failed: ${message}` });
+        send({
+          type: "stats-error",
+          id: msg.id,
+          error: `compute_stats failed: ${message}`,
+        });
       }
       break;
     }
 
     case "load-geojson": {
       if (!engine) {
-        send({ type: "load-geojson-error", id: msg.id, error: "not initialized" });
+        send({
+          type: "load-geojson-error",
+          id: msg.id,
+          error: "not initialized",
+        });
         break;
       }
       try {
@@ -267,10 +277,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     default: {
       // Exhaustive check
       const _exhaustive: never = msg;
-      console.warn(
-        "[SpatialEngine worker] Unknown message type",
-        _exhaustive,
-      );
+      console.warn("[SpatialEngine worker] Unknown message type", _exhaustive);
     }
   }
 };

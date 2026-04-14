@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  LineChart,
   Line,
+  LineChart,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
 } from "recharts";
 import type { TrendResponse } from "@/lib/schemas";
 

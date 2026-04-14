@@ -100,9 +100,7 @@ beforeEach(() => {
 describe("useHealth", () => {
   it("fetches and returns health data", async () => {
     mockFetchHealth.mockResolvedValueOnce(HEALTH_OK);
-    const { useHealth } = await import(
-      "@/features/health/api/use-health"
-    );
+    const { useHealth } = await import("@/features/health/api/use-health");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useHealth(), { wrapper });
@@ -113,9 +111,7 @@ describe("useHealth", () => {
 
   it("forwards AbortSignal to fetchHealth", async () => {
     mockFetchHealth.mockResolvedValueOnce(HEALTH_OK);
-    const { useHealth } = await import(
-      "@/features/health/api/use-health"
-    );
+    const { useHealth } = await import("@/features/health/api/use-health");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useHealth(), { wrapper });
@@ -131,9 +127,7 @@ describe("useHealth", () => {
 describe("useStats", () => {
   it("fetches stats when bbox is provided", async () => {
     mockFetchStats.mockResolvedValueOnce(STATS_FIXTURE);
-    const { useStats } = await import(
-      "@/features/stats/api/use-stats"
-    );
+    const { useStats } = await import("@/features/stats/api/use-stats");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useStats(BBOX, 12), { wrapper });
@@ -143,9 +137,7 @@ describe("useStats", () => {
   });
 
   it("does not fetch when bbox is null (enabled: false)", async () => {
-    const { useStats } = await import(
-      "@/features/stats/api/use-stats"
-    );
+    const { useStats } = await import("@/features/stats/api/use-stats");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useStats(null, 12), { wrapper });
@@ -156,15 +148,16 @@ describe("useStats", () => {
 
   it("forwards AbortSignal to fetchStats", async () => {
     mockFetchStats.mockResolvedValueOnce(STATS_FIXTURE);
-    const { useStats } = await import(
-      "@/features/stats/api/use-stats"
-    );
+    const { useStats } = await import("@/features/stats/api/use-stats");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useStats(BBOX, 12), { wrapper });
 
     await waitFor(() =>
-      expect(mockFetchStats).toHaveBeenCalledWith(BBOX, expect.any(AbortSignal)),
+      expect(mockFetchStats).toHaveBeenCalledWith(
+        BBOX,
+        expect.any(AbortSignal),
+      ),
     );
   });
 });
@@ -174,9 +167,7 @@ describe("useStats", () => {
 describe("useScore", () => {
   it("fetches score when lat/lng are provided", async () => {
     mockFetchScore.mockResolvedValueOnce(SCORE_FIXTURE);
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useScore(35.681, 139.767), {
@@ -188,9 +179,7 @@ describe("useScore", () => {
   });
 
   it("does not fetch when lat is null", async () => {
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useScore(null, 139.767), {
@@ -201,9 +190,7 @@ describe("useScore", () => {
   });
 
   it("does not fetch when lng is null", async () => {
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useScore(35.681, null), {
@@ -215,9 +202,7 @@ describe("useScore", () => {
 
   it("forwards AbortSignal to fetchScore", async () => {
     mockFetchScore.mockResolvedValueOnce(SCORE_FIXTURE);
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useScore(35.681, 139.767), { wrapper });
@@ -238,9 +223,7 @@ describe("useScore", () => {
 describe("useTrend", () => {
   it("fetches trend when lat/lng are provided", async () => {
     mockFetchTrend.mockResolvedValueOnce(TREND_FIXTURE);
-    const { useTrend } = await import(
-      "@/features/trend/api/use-trend"
-    );
+    const { useTrend } = await import("@/features/trend/api/use-trend");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useTrend(35.681, 139.767), {
@@ -252,9 +235,7 @@ describe("useTrend", () => {
   });
 
   it("does not fetch when lat is null", async () => {
-    const { useTrend } = await import(
-      "@/features/trend/api/use-trend"
-    );
+    const { useTrend } = await import("@/features/trend/api/use-trend");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useTrend(null, 139.767), {
@@ -266,9 +247,7 @@ describe("useTrend", () => {
 
   it("passes years parameter through", async () => {
     mockFetchTrend.mockResolvedValueOnce(TREND_FIXTURE);
-    const { useTrend } = await import(
-      "@/features/trend/api/use-trend"
-    );
+    const { useTrend } = await import("@/features/trend/api/use-trend");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useTrend(35.681, 139.767, 10), { wrapper });
@@ -288,17 +267,18 @@ describe("useTrend", () => {
 
 describe("useAreaData", () => {
   it("fetches area data when bbox and layers are provided", async () => {
-    const areaFixture = { landprice: { type: "FeatureCollection", features: [] } };
+    const areaFixture = {
+      landprice: { type: "FeatureCollection", features: [] },
+    };
     mockFetchAreaData.mockResolvedValueOnce(areaFixture);
     const { useAreaData } = await import(
       "@/features/area-data/api/use-area-data"
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(
-      () => useAreaData(BBOX, ["landprice"], 12),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useAreaData(BBOX, ["landprice"], 12), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(areaFixture);
@@ -310,10 +290,9 @@ describe("useAreaData", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(
-      () => useAreaData(null, ["landprice"], 12),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useAreaData(null, ["landprice"], 12), {
+      wrapper,
+    });
 
     expect(result.current.fetchStatus).toBe("idle");
   });
@@ -332,7 +311,9 @@ describe("useAreaData", () => {
   });
 
   it("forwards AbortSignal to fetchAreaData", async () => {
-    const areaFixture = { landprice: { type: "FeatureCollection", features: [] } };
+    const areaFixture = {
+      landprice: { type: "FeatureCollection", features: [] },
+    };
     mockFetchAreaData.mockResolvedValueOnce(areaFixture);
     const { useAreaData } = await import(
       "@/features/area-data/api/use-area-data"

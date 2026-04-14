@@ -8,7 +8,8 @@ export function AreaHighlight() {
 
   if (!selectedArea) return null;
 
-  const sourceId = selectedArea.level === "prefecture" ? "n03-pref" : "n03-muni";
+  const sourceId =
+    selectedArea.level === "prefecture" ? "n03-pref" : "n03-muni";
   const property = selectedArea.level === "prefecture" ? "prefCode" : "code";
 
   return (

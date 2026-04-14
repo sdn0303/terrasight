@@ -8,7 +8,9 @@ export interface LandPriceStats {
   count: number;
 }
 
-export function computeLandPriceStats(fc: FeatureCollection | undefined): LandPriceStats {
+export function computeLandPriceStats(
+  fc: FeatureCollection | undefined,
+): LandPriceStats {
   const empty: LandPriceStats = {
     avg_per_sqm: 0,
     median_per_sqm: 0,

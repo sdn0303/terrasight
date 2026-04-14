@@ -1,5 +1,3 @@
-
-
 import {
   Layers as LayersIcon,
   Map as MapIcon,
@@ -9,9 +7,9 @@ import {
   Table2,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
+import { useNavigationLevel } from "@/hooks/use-navigation-level";
 import { CARD_RADIUS, PAGE_INSET, RAIL_WIDTH } from "@/lib/layout";
 import { GLOW_SHADOW, GRADIENT } from "@/lib/theme-tokens";
-import { useNavigationLevel } from "@/hooks/use-navigation-level";
 import { type LeftPanelKind, useUIStore } from "@/stores/ui-store";
 
 type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;

@@ -1,5 +1,3 @@
-
-
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { MunicipalitySchema } from "@/lib/api/schemas/municipality";

@@ -1,5 +1,3 @@
-
-
 import { BottomSheet } from "@/components/layout/bottom-sheet";
 import { DenseTable } from "@/components/table/dense-table";
 import { propertyColumns } from "@/components/table/property-columns";

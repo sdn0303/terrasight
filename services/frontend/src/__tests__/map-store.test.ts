@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { useMapStore } from "@/stores/map-store";
+import { beforeEach, describe, expect, it } from "vitest";
 import { LAYERS } from "@/lib/layers";
+import { useMapStore } from "@/stores/map-store";
 
 const realDefaultLayers = new Set(
   LAYERS.filter((l) => l.defaultEnabled).map((l) => l.id),

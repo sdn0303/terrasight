@@ -1,5 +1,3 @@
-
-
 import type { Signal } from "@/lib/schemas";
 import { GLOW_SHADOW, signalGradient } from "@/lib/theme-tokens";
 

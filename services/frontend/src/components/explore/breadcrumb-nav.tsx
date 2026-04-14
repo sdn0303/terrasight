@@ -2,8 +2,8 @@
 
 import { ChevronRight } from "lucide-react";
 import { useNavigationLevel } from "@/hooks/use-navigation-level";
-import { usePrefectureStore } from "@/stores/prefecture-store";
 import { useMapStore } from "@/stores/map-store";
+import { usePrefectureStore } from "@/stores/prefecture-store";
 import { useUIStore } from "@/stores/ui-store";
 
 /** Zoom level for the national (L1) view. */
@@ -107,10 +107,7 @@ export function BreadcrumbNav() {
       {level === "L4" && (
         <>
           <Separator />
-          <span
-            className="text-ds-text-primary"
-            aria-current="page"
-          >
+          <span className="text-ds-text-primary" aria-current="page">
             物件詳細
           </span>
         </>

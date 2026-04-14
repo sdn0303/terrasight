@@ -1,5 +1,3 @@
-
-
 import { Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { PageChip } from "@/components/layout/page-chip";

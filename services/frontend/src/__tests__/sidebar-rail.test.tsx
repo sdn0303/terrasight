@@ -127,7 +127,9 @@ describe("SidebarRail", () => {
     await user.tab();
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Finder");
     await user.tab();
-    expect(document.activeElement?.getAttribute("aria-label")).toBe("Opportunities");
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "Opportunities",
+    );
     await user.tab();
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Layers");
     await user.tab();

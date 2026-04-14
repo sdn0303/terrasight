@@ -50,10 +50,7 @@ export function RadarComparison({ axesList, labels }: RadarComparisonProps) {
           {axesList.map((_, i) => (
             <Radar
               key={`P${i}`}
-              name={
-                labels?.[i] ??
-                `Point ${String.fromCharCode(65 + i)}`
-              }
+              name={labels?.[i] ?? `Point ${String.fromCharCode(65 + i)}`}
               dataKey={`P${i}`}
               stroke={COLORS[i % COLORS.length]}
               fill={COLORS[i % COLORS.length]}

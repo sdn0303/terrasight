@@ -1,5 +1,3 @@
-
-
 import { Compass, Minus, Plus } from "lucide-react";
 
 interface ZoomOrientControlsProps {

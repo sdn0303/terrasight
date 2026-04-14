@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { spatialEngine } from "@/lib/wasm/spatial-engine";
-import type { BBox } from "@/lib/wasm/spatial-engine";
 import { useSpatialEngineState } from "@/hooks/use-spatial-engine";
+import type { BBox } from "@/lib/wasm/spatial-engine";
+import { spatialEngine } from "@/lib/wasm/spatial-engine";
 
 export function useWasmTls(bbox: BBox | null, preset = "balance") {
   const { ready } = useSpatialEngineState();

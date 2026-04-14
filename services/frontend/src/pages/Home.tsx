@@ -1,5 +1,3 @@
-
-
 import { useEffect } from "react";
 import { BreadcrumbNav } from "@/components/explore/breadcrumb-nav";
 import { FinderPanel } from "@/components/finder/finder-panel";
@@ -18,10 +16,10 @@ import { LayerRenderer } from "@/components/map/layer-renderer";
 import { MapView } from "@/components/map/map-view";
 import { OpportunitiesSheet } from "@/components/opportunities/opportunities-sheet";
 import { ThemesPanel } from "@/components/theme/themes-panel";
-import { MunicipalityMapLayer } from "@/features/municipality/components/municipality-map-layer";
 import { MunicipalityList } from "@/features/municipality/components/municipality-list";
-import { PrefectureMapLayer } from "@/features/prefecture/components/prefecture-map-layer";
+import { MunicipalityMapLayer } from "@/features/municipality/components/municipality-map-layer";
 import { PrefectureList } from "@/features/prefecture/components/prefecture-list";
+import { PrefectureMapLayer } from "@/features/prefecture/components/prefecture-map-layer";
 import { useMapInteraction } from "@/hooks/use-map-interaction";
 import { useMapPage } from "@/hooks/use-map-page";
 import { useMediaQuery } from "@/hooks/use-media-query";

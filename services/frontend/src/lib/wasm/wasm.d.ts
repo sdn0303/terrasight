@@ -21,9 +21,20 @@ export interface ISpatialEngine {
   ): string;
   feature_count(layer_id: string): number;
   loaded_layers(): string;
-  compute_stats(south: number, west: number, north: number, east: number): string;
+  compute_stats(
+    south: number,
+    west: number,
+    north: number,
+    east: number,
+  ): string;
   load_geojson_layer(layer_id: string, geojson: string): number;
-  compute_tls(south: number, west: number, north: number, east: number, preset: string): string;
+  compute_tls(
+    south: number,
+    west: number,
+    north: number,
+    east: number,
+    preset: string,
+  ): string;
 }
 
 export interface IWasmModule {
@@ -52,8 +63,19 @@ declare module "/wasm/realestate_wasm.js" {
     ): string;
     feature_count(layer_id: string): number;
     loaded_layers(): string;
-    compute_stats(south: number, west: number, north: number, east: number): string;
+    compute_stats(
+      south: number,
+      west: number,
+      north: number,
+      east: number,
+    ): string;
     load_geojson_layer(layer_id: string, geojson: string): number;
-    compute_tls(south: number, west: number, north: number, east: number, preset: string): string;
+    compute_tls(
+      south: number,
+      west: number,
+      north: number,
+      east: number,
+      preset: string,
+    ): string;
   }
 }

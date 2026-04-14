@@ -76,14 +76,18 @@
   --accent-danger: #e04030;
   --accent-warning: #ffd000;
   --accent-success: #10b981;
-  --hover-accent: rgba(99, 102, 241, 0.10);
+  --hover-accent: rgba(99, 102, 241, 0.1);
   --font-mono: "Geist Mono", monospace, system-ui;
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
 
   /* ─── Sidebar gradient ─────────────────────── */
   --accent-gradient-start: #1e1b4b;
   --accent-gradient-end: #0f0d24;
-  --bg-sidebar: linear-gradient(180deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
+  --bg-sidebar: linear-gradient(
+    180deg,
+    var(--accent-gradient-start) 0%,
+    var(--accent-gradient-end) 100%
+  );
   --surface-elevated: rgba(99, 102, 241, 0.05);
 
   /* ─── Layer color tokens ─────────────────────── */
@@ -122,7 +126,7 @@
   --secondary-foreground: #e2e8f0;
   --muted: #1e1b4b;
   --muted-foreground: #94a3b8;
-  --accent: rgba(99, 102, 241, 0.10);
+  --accent: rgba(99, 102, 241, 0.1);
   --accent-foreground: #e2e8f0;
   --destructive: #e04030;
   --border: rgba(99, 102, 241, 0.15);
@@ -171,8 +175,10 @@
   --tint-emerald: #d1fae5;
 
   /* Shadows (strong for main cards, medium for chips, subtle for overlays) */
-  --shadow-card-strong: 0 40px 100px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.5);
-  --shadow-card-medium: 0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.4);
+  --shadow-card-strong:
+    0 40px 100px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.5);
+  --shadow-card-medium:
+    0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.4);
   --shadow-card-subtle: 0 10px 24px rgba(0, 0, 0, 0.18);
 
   /* Glow shadows for gradient elements */

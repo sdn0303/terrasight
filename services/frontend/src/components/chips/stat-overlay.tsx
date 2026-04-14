@@ -1,5 +1,3 @@
-
-
 import { PageChip } from "@/components/layout/page-chip";
 
 interface StatOverlayProps {

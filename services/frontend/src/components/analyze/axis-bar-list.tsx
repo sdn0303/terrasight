@@ -1,7 +1,10 @@
 "use client";
 
 // TODO: replace with lib/i18n.ts (Task 1.6)
-function useTranslations(_ns?: string) { return (key: string) => key; }
+function useTranslations(_ns?: string) {
+  return (key: string) => key;
+}
+
 import { useState } from "react";
 import type { TlsResponse } from "@/lib/schemas";
 import { AxisDetail } from "./axis-detail";

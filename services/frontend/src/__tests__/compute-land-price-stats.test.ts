@@ -1,4 +1,4 @@
-import type { FeatureCollection, Feature, Point } from "geojson";
+import type { Feature, FeatureCollection, Point } from "geojson";
 import { describe, expect, it } from "vitest";
 import {
   computeLandPriceStats,
@@ -60,7 +60,9 @@ describe("computeLandPriceStats", () => {
     expect(result.count).toBe(3);
     expect(result.min_per_sqm).toBe(100_000);
     expect(result.max_per_sqm).toBe(900_000);
-    expect(result.avg_per_sqm).toBe(Math.round((100_000 + 200_000 + 900_000) / 3));
+    expect(result.avg_per_sqm).toBe(
+      Math.round((100_000 + 200_000 + 900_000) / 3),
+    );
     // Median of [100k, 200k, 900k] is 200k
     expect(result.median_per_sqm).toBe(200_000);
   });
@@ -94,21 +96,14 @@ describe("computeLandPriceStats", () => {
   });
 
   it("filters out features with null price_per_sqm", () => {
-    const fc = makeFC([
-      makePoint(null),
-      makePoint(800_000),
-    ]);
+    const fc = makeFC([makePoint(null), makePoint(800_000)]);
     const result = computeLandPriceStats(fc);
     expect(result.count).toBe(1);
     expect(result.avg_per_sqm).toBe(800_000);
   });
 
   it("filters out features with non-positive price_per_sqm", () => {
-    const fc = makeFC([
-      makePoint(0),
-      makePoint(-50_000),
-      makePoint(600_000),
-    ]);
+    const fc = makeFC([makePoint(0), makePoint(-50_000), makePoint(600_000)]);
     const result = computeLandPriceStats(fc);
     // Only 600_000 passes the p > 0 filter
     expect(result.count).toBe(1);

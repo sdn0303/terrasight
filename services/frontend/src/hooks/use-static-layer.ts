@@ -1,14 +1,15 @@
 "use client";
 
-import type { Feature, FeatureCollection } from "geojson";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { deserialize } from "flatgeobuf/lib/mjs/geojson";
+import type { Feature, FeatureCollection } from "geojson";
+import { useMemo } from "react";
 import { layerUrl } from "@/lib/data-url";
 import { canonicalLayerId } from "@/lib/layer-ids";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 
 const NATIONAL_LAYERS = new Set(["fault", "volcano", "seismic"]);
+
 import { useSpatialEngineReady } from "@/hooks/use-spatial-engine";
 import { useMapStore } from "@/stores/map-store";
 import { usePrefectureStore } from "@/stores/prefecture-store";

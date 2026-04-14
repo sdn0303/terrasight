@@ -1,5 +1,3 @@
-
-
 import type { OpportunityRiskLevel } from "@/lib/schemas";
 
 interface RiskPillProps {

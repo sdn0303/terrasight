@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── Mocks ───────────────────────────────────────────
 
@@ -20,7 +20,7 @@ vi.mock("@/hooks/use-media-query", () => ({
 
 // ─── Fixtures ────────────────────────────────────────
 
-const TEST_BBOX = { south: 35.65, west: 139.70, north: 35.70, east: 139.80 };
+const TEST_BBOX = { south: 35.65, west: 139.7, north: 35.7, east: 139.8 };
 
 const STATS = {
   land_price: {
@@ -57,7 +57,9 @@ describe("DashboardStats", () => {
     const { DashboardStats } = await import("@/components/dashboard-stats");
     render(<DashboardStats bbox={TEST_BBOX} zoom={12} />);
 
-    expect(screen.getByLabelText("Area statistics loading")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Area statistics loading"),
+    ).toBeInTheDocument();
   });
 
   it("renders stat cards with data on desktop", async () => {

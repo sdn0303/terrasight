@@ -1,7 +1,5 @@
-
-
-import { DATA_MODES, useDataModeStore } from "@/stores/data-mode-store";
 import type { NavigationLevel } from "@/hooks/use-navigation-level";
+import { DATA_MODES, useDataModeStore } from "@/stores/data-mode-store";
 
 interface DataModeBarProps {
   level: NavigationLevel;

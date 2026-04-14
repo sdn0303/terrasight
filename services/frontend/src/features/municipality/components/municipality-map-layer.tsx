@@ -1,5 +1,3 @@
-
-
 import type {
   DataDrivenPropertyValueSpecification,
   FilterSpecification,
@@ -76,7 +74,8 @@ export function useMunicipalityLayerClick(): (e: MapLayerMouseEvent) => void {
       const feature = e.features?.[0];
       if (!feature?.properties) return;
       // TODO: Verify city_code/cityCode and cityName field names against real data.
-      const rawCode = feature.properties.city_code ?? feature.properties.cityCode;
+      const rawCode =
+        feature.properties.city_code ?? feature.properties.cityCode;
       const rawName = feature.properties.cityName;
       const code = typeof rawCode === "string" ? rawCode : undefined;
       const name = typeof rawName === "string" ? rawName : undefined;

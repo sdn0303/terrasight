@@ -566,7 +566,9 @@ export class SpatialEngineAdapter {
         this.pending.delete(msg.id);
         if (pending.kind !== "load-geojson") {
           pending.reject(
-            new Error("Unexpected load-geojson-result for non-load-geojson pending entry"),
+            new Error(
+              "Unexpected load-geojson-result for non-load-geojson pending entry",
+            ),
           );
           break;
         }

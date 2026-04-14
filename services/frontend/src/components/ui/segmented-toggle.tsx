@@ -1,5 +1,3 @@
-
-
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,

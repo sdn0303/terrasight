@@ -1,15 +1,17 @@
-
-
-import { usePrefectureStore } from "@/stores/prefecture-store";
-import { useMapStore } from "@/stores/map-store";
-import { useDataModeStore } from "@/stores/data-mode-store";
 import { useMunicipalities } from "@/features/municipalities/api/use-municipalities";
 import { useTransactionSummary } from "@/features/transactions/api/use-transaction-summary";
+import { useDataModeStore } from "@/stores/data-mode-store";
+import { useMapStore } from "@/stores/map-store";
+import { usePrefectureStore } from "@/stores/prefecture-store";
 
 export function MunicipalityList() {
   const prefCode = usePrefectureStore((s) => s.selectedPrefCode);
   const dataMode = useDataModeStore((s) => s.mode);
-  const { data: municipalities, isLoading, isError } = useMunicipalities(prefCode);
+  const {
+    data: municipalities,
+    isLoading,
+    isError,
+  } = useMunicipalities(prefCode);
   const { data: transactionSummary } = useTransactionSummary(
     dataMode === "transactions" ? prefCode : null,
   );
@@ -34,11 +36,7 @@ export function MunicipalityList() {
   }
 
   if (!municipalities?.length) {
-    return (
-      <div className="p-4 text-sm text-white/60">
-        データなし
-      </div>
-    );
+    return <div className="p-4 text-sm text-white/60">データなし</div>;
   }
 
   return (

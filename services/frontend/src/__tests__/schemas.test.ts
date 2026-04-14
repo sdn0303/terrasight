@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   HealthResponse,
-  TlsResponse,
   StatsResponse,
+  TlsResponse,
   TrendResponse,
 } from "@/lib/schemas";
 

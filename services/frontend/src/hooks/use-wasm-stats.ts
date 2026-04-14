@@ -1,11 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { spatialEngine } from "@/lib/wasm/spatial-engine";
-import type { BBox } from "@/lib/wasm/spatial-engine";
-import { WasmStatsSchema } from "@/lib/api/schemas/wasm-stats";
-import type { WasmStats } from "@/lib/api/schemas/wasm-stats";
 import { useSpatialEngineState } from "@/hooks/use-spatial-engine";
+import type { WasmStats } from "@/lib/api/schemas/wasm-stats";
+import { WasmStatsSchema } from "@/lib/api/schemas/wasm-stats";
+import type { BBox } from "@/lib/wasm/spatial-engine";
+import { spatialEngine } from "@/lib/wasm/spatial-engine";
 
 export function useWasmStats(bbox: BBox | null) {
   const { ready } = useSpatialEngineState();

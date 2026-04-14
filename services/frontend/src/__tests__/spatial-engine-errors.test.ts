@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { SpatialEngineAdapter } from "@/lib/wasm/spatial-engine";
 
 /**
@@ -41,7 +41,11 @@ describe("SpatialEngineAdapter error isolation", () => {
     expect(adapter.pendingCount).toBe(2);
 
     // Send query-error for id=1 only
-    adapter.simulateMessage({ type: "query-error", id: 1, error: "layer not found" });
+    adapter.simulateMessage({
+      type: "query-error",
+      id: 1,
+      error: "layer not found",
+    });
 
     // id=1 should reject
     await expect(promise1).rejects.toThrow("layer not found");
@@ -61,7 +65,11 @@ describe("SpatialEngineAdapter error isolation", () => {
       (adapter as any).pending.set(11, { kind: "query", resolve, reject });
     });
 
-    adapter.simulateMessage({ type: "stats-error", id: 10, error: "compute failed" });
+    adapter.simulateMessage({
+      type: "stats-error",
+      id: 10,
+      error: "compute failed",
+    });
 
     await expect(promise1).rejects.toThrow("compute failed");
     expect(adapter.pendingCount).toBe(1); // id=11 survives
@@ -85,8 +93,13 @@ describe("SpatialEngineAdapter error isolation", () => {
   });
 
   it("computeStats throws unconditionally in Phase 1", async () => {
-    await expect(adapter.computeStats({
-      south: 35.5, west: 139.5, north: 35.9, east: 140.0,
-    })).rejects.toThrow("WASM stats disabled in Phase 1");
+    await expect(
+      adapter.computeStats({
+        south: 35.5,
+        west: 139.5,
+        north: 35.9,
+        east: 140.0,
+      }),
+    ).rejects.toThrow("WASM stats disabled in Phase 1");
   });
 });

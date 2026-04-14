@@ -1,7 +1,5 @@
-
-
-import { usePrefectureStore } from "@/stores/prefecture-store";
 import { useMapStore } from "@/stores/map-store";
+import { usePrefectureStore } from "@/stores/prefecture-store";
 
 // 47都道府県リスト（コード順）
 const PREFECTURES = [
