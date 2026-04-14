@@ -22,6 +22,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use sqlx::PgPool;
+use terrasight_geo::GeoBBox;
 use terrasight_server::db::spatial::bind_bbox;
 
 use crate::domain::constants::{STATS_RISK_WEIGHT_FLOOD, STATS_RISK_WEIGHT_STEEP};
@@ -69,6 +70,7 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<LandPriceStats, DomainError> {
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let row = run_query(
             STATS_QUERY_TIMEOUT,
             "land_price_stats query",
@@ -87,10 +89,7 @@ impl StatsRepository for PgStatsRepository {
               AND ($5::text IS NULL OR pref_code = $5)
             "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
@@ -116,6 +115,7 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<RiskStats, DomainError> {
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let bbox_area_row = run_query(
             STATS_QUERY_TIMEOUT,
             "bbox_area query",
@@ -123,10 +123,7 @@ impl StatsRepository for PgStatsRepository {
                 sqlx::query_as::<_, AreaRow>(
                     "SELECT ST_Area(ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography) AS area",
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .fetch_one(&self.pool),
         )
@@ -154,10 +151,7 @@ impl StatsRepository for PgStatsRepository {
               AND ($5::text IS NULL OR pref_code = $5)
             "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
@@ -177,10 +171,7 @@ impl StatsRepository for PgStatsRepository {
               AND ($5::text IS NULL OR pref_code = $5)
             "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
@@ -215,6 +206,7 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<FacilityStats, DomainError> {
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let schools = run_query(
             STATS_QUERY_TIMEOUT,
             "schools_count query",
@@ -222,10 +214,7 @@ impl StatsRepository for PgStatsRepository {
                 sqlx::query_as::<_, CountRow>(
                     "SELECT COUNT(*) AS count FROM schools WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
@@ -240,10 +229,7 @@ impl StatsRepository for PgStatsRepository {
                 sqlx::query_as::<_, CountRow>(
                     "SELECT COUNT(*) AS count FROM medical_facilities WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND ($5::text IS NULL OR pref_code = $5)",
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .fetch_one(&self.pool),
@@ -278,6 +264,7 @@ impl StatsRepository for PgStatsRepository {
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
     ) -> Result<HashMap<String, f64>, DomainError> {
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
         let rows = run_query(
             STATS_QUERY_TIMEOUT,
             "zoning_distribution query",
@@ -295,10 +282,7 @@ impl StatsRepository for PgStatsRepository {
             ORDER BY ratio DESC
             "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .fetch_all(&self.pool),

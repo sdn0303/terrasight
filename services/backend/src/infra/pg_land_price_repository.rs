@@ -100,12 +100,8 @@ impl LandPriceRepository for PgLandPriceRepository {
         zoom: ZoomLevel,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         // ZoomLevel::get() returns u32; Web Mercator zoom is always 0–22, so as u8 is safe.
         let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get() as u8);
 
@@ -124,10 +120,7 @@ impl LandPriceRepository for PgLandPriceRepository {
                     LIMIT $7
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(year.value())
             .bind(pref_code.map(PrefCode::as_str))
@@ -164,12 +157,8 @@ impl LandPriceRepository for PgLandPriceRepository {
         zoom: ZoomLevel,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let year_count = i64::from((to_year.value() - from_year.value() + 1).max(1));
         // ZoomLevel::get() returns u32; Web Mercator zoom is always 0–22, so as u8 is safe.
         let base_limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get() as u8);
@@ -190,10 +179,7 @@ impl LandPriceRepository for PgLandPriceRepository {
                     LIMIT $8
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(from_year.value())
             .bind(to_year.value())

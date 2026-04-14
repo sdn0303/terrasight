@@ -20,6 +20,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
+use terrasight_geo::GeoCoord;
 use terrasight_server::db::spatial::bind_coord;
 
 use crate::domain::constants::RADIUS_TREND_SEARCH_M;
@@ -91,6 +92,10 @@ impl TrendRepository for PgTrendRepository {
     ) -> Result<Option<(TrendLocation, Vec<TrendPoint>)>, DomainError> {
         let years = years.value();
         // Search radius: RADIUS_TREND_SEARCH_M, SRID: SRID_WGS84 (4326)
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let nearest = run_query(
             TREND_QUERY_TIMEOUT,
             "nearest_trend_point query",
@@ -105,8 +110,7 @@ impl TrendRepository for PgTrendRepository {
             LIMIT 1
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(RADIUS_TREND_SEARCH_M)
             .fetch_optional(&self.pool),

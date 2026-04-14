@@ -25,6 +25,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
+use terrasight_geo::GeoCoord;
 use terrasight_server::db::spatial::bind_coord;
 
 use crate::domain::constants::{
@@ -153,6 +154,10 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_nearest_prices(&self, coord: &Coord) -> Result<Vec<PriceRecord>, DomainError> {
         // Search radius: TLS_PRICE_SEARCH_RADIUS_M, SRID: 4326
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let rows = run_query(
             TLS_QUERY_TIMEOUT,
             "tls nearest_prices query",
@@ -173,8 +178,7 @@ impl TlsRepository for PgTlsRepository {
             ORDER BY lp.survey_year
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_PRICE_SEARCH_RADIUS_M)
             .fetch_all(&self.pool),
@@ -198,6 +202,10 @@ impl TlsRepository for PgTlsRepository {
     async fn find_flood_depth_rank(&self, coord: &Coord) -> Result<Option<i32>, DomainError> {
         // MAX depth_rank within TLS_RISK_SEARCH_RADIUS_M buffer. Returns NULL when no flood zone intersects.
         // depth_rank is text in the schema; safe cast ignores non-numeric values.
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls flood_depth_rank query",
@@ -209,8 +217,7 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_RISK_SEARCH_RADIUS_M)
             .fetch_one(&self.pool),
@@ -232,6 +239,10 @@ impl TlsRepository for PgTlsRepository {
     async fn has_steep_slope_nearby(&self, coord: &Coord) -> Result<bool, DomainError> {
         // TLS_RISK_SEARCH_RADIUS_M buffer, SRID: 4326
         // Uses EXISTS instead of COUNT to short-circuit on first match.
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls steep_slope_nearby query",
@@ -245,8 +256,7 @@ impl TlsRepository for PgTlsRepository {
             ) AS exists
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_RISK_SEARCH_RADIUS_M)
             .fetch_one(&self.pool),
@@ -267,6 +277,10 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_schools_nearby(&self, coord: &Coord) -> Result<SchoolStats, DomainError> {
         // TLS_SCHOOL_SEARCH_RADIUS_M radius, SRID: 4326
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls schools_nearby query",
@@ -280,8 +294,7 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_SCHOOL_SEARCH_RADIUS_M)
             .fetch_one(&self.pool),
@@ -310,6 +323,10 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_medical_nearby(&self, coord: &Coord) -> Result<MedicalStats, DomainError> {
         // TLS_PRICE_SEARCH_RADIUS_M radius, SRID: 4326
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls medical_nearby query",
@@ -323,8 +340,7 @@ impl TlsRepository for PgTlsRepository {
             WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_PRICE_SEARCH_RADIUS_M)
             .fetch_one(&self.pool),
@@ -353,6 +369,10 @@ impl TlsRepository for PgTlsRepository {
     #[tracing::instrument(skip(self))]
     async fn find_zoning_far(&self, coord: &Coord) -> Result<Option<f64>, DomainError> {
         // Find the zoning polygon that contains the point; return its floor_area_ratio.
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls zoning_far query",
@@ -365,8 +385,7 @@ impl TlsRepository for PgTlsRepository {
             LIMIT 1
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .fetch_optional(&self.pool),
         )
@@ -391,6 +410,10 @@ impl TlsRepository for PgTlsRepository {
     async fn calc_price_z_score(&self, coord: &Coord) -> Result<ZScoreResult, DomainError> {
         // Uses the denormalized zone_type column on land_prices to avoid the slow
         // ST_Contains join against the zoning table that was causing 503 errors.
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls price_z_score query",
@@ -423,8 +446,7 @@ impl TlsRepository for PgTlsRepository {
             LEFT JOIN zone_stats zs ON true
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_PRICE_SEARCH_RADIUS_M)
             .fetch_one(&self.pool),
@@ -454,6 +476,10 @@ impl TlsRepository for PgTlsRepository {
     async fn count_recent_transactions(&self, coord: &Coord) -> Result<i64, DomainError> {
         // Count land_prices within TLS_TRANSACTION_SEARCH_RADIUS_M where year >= (max_year - 1).
         // This captures the latest full year and prior year for recency assessment.
+        let geo_coord = GeoCoord {
+            lng: coord.lng(),
+            lat: coord.lat(),
+        };
         let row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls recent_transactions query",
@@ -466,8 +492,7 @@ impl TlsRepository for PgTlsRepository {
               AND survey_year >= (SELECT MAX(survey_year) - 1 FROM land_prices)
             "#,
                 ),
-                coord.lng(),
-                coord.lat(),
+                &geo_coord,
             )
             .bind(TLS_TRANSACTION_SEARCH_RADIUS_M)
             .fetch_one(&self.pool),

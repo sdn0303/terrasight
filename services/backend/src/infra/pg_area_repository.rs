@@ -186,12 +186,8 @@ impl PgAreaRepository {
         zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -207,10 +203,7 @@ impl PgAreaRepository {
                     LIMIT $6
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .bind(limit + 1)
@@ -231,12 +224,8 @@ impl PgAreaRepository {
         zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let limit = compute_feature_limit(LayerKind::Zoning, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -252,10 +241,7 @@ impl PgAreaRepository {
                     LIMIT $6
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .bind(limit + 1)
@@ -276,12 +262,8 @@ impl PgAreaRepository {
         zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let limit = compute_feature_limit(LayerKind::Flood, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -297,10 +279,7 @@ impl PgAreaRepository {
                     LIMIT $6
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .bind(limit + 1)
@@ -321,12 +300,8 @@ impl PgAreaRepository {
         zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let limit = compute_feature_limit(LayerKind::SteepSlope, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -342,10 +317,7 @@ impl PgAreaRepository {
                     LIMIT $6
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .bind(limit + 1)
@@ -366,12 +338,8 @@ impl PgAreaRepository {
         zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let limit = compute_feature_limit(LayerKind::Schools, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -387,10 +355,7 @@ impl PgAreaRepository {
                     LIMIT $6
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .bind(limit + 1)
@@ -411,12 +376,8 @@ impl PgAreaRepository {
         zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(&GeoBBox::new(
-            bbox.south(),
-            bbox.west(),
-            bbox.north(),
-            bbox.east(),
-        ));
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
         let limit = compute_feature_limit(LayerKind::Medical, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -432,10 +393,7 @@ impl PgAreaRepository {
                     LIMIT $6
                     "#,
                 ),
-                bbox.west(),
-                bbox.south(),
-                bbox.east(),
-                bbox.north(),
+                &geo_bbox,
             )
             .bind(pref_code.map(PrefCode::as_str))
             .bind(limit + 1)
