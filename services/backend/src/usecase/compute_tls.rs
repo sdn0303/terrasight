@@ -593,7 +593,15 @@ pub(crate) struct SubScoreOutput {
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 /// Compute CAGR from a sorted price record slice. Returns 0.0 when fewer than 2 records.
+///
+/// # Panics
+///
+/// Debug-asserts that `prices` is sorted by year ascending.
 fn compute_price_cagr(prices: &[PriceRecord]) -> f64 {
+    debug_assert!(
+        prices.windows(2).all(|w| w[0].year <= w[1].year),
+        "prices must be sorted by year ascending"
+    );
     if prices.len() < 2 {
         return 0.0;
     }

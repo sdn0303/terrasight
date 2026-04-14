@@ -87,7 +87,7 @@ pub fn rate_limit_layer(config: &RateLimitConfig) -> DefaultGovernorLayer {
             .per_second(per_second)
             .burst_size(burst_size)
             .finish()
-            .expect("GovernorConfig is valid: burst_size >= 1 and period > 0"),
+            .expect("INVARIANT: GovernorConfig is valid — burst_size >= 1 and period > 0"),
     );
 
     GovernorLayer::new(governor_config)

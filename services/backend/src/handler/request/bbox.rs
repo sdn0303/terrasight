@@ -84,7 +84,9 @@ impl CoordQuery {
     ///
     /// Unknown strings fall back to [`WeightPreset::Balance`].
     pub fn parse_preset(&self) -> WeightPreset {
-        self.preset.parse().unwrap() // Infallible
+        self.preset
+            .parse()
+            .expect("INVARIANT: WeightPreset::FromStr is infallible")
     }
 }
 

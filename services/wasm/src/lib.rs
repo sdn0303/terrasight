@@ -182,8 +182,7 @@ impl SpatialEngine {
     /// Example: `["geology","landform"]`
     pub fn loaded_layers(&self) -> String {
         let ids: Vec<&str> = self.layers.keys().map(String::as_str).collect();
-        // serde_json is infallible for Vec<&str>
-        serde_json::to_string(&ids).unwrap_or_else(|_| "[]".to_string())
+        serde_json::to_string(&ids).expect("INVARIANT: Vec<&str> serialization is infallible")
     }
 
     /// Compute area statistics for the given bounding box.
@@ -259,7 +258,7 @@ impl SpatialEngine {
         fgb_bytes: &[u8],
     ) -> Result<u32, WasmError> {
         let features = parse_fgb(fgb_bytes)?;
-        let count = features.len() as u32;
+        let count = u32::try_from(features.len()).expect("INVARIANT: feature count fits in u32");
         let index = LayerIndex::from_parsed(features, layer_id);
         self.layers.insert(layer_id.to_string(), index);
         Ok(count)
@@ -272,7 +271,7 @@ impl SpatialEngine {
         geojson: &str,
     ) -> Result<u32, WasmError> {
         let features = fgb_reader::parse_geojson_feature_collection(geojson)?;
-        let count = features.len() as u32;
+        let count = u32::try_from(features.len()).expect("INVARIANT: feature count fits in u32");
         let index = LayerIndex::from_parsed(features, layer_id);
         self.layers.insert(layer_id.to_string(), index);
         Ok(count)
@@ -322,8 +321,9 @@ impl SpatialEngine {
     /// Internal compute_tls implementation returning `Result<_, WasmError>`.
     pub(crate) fn compute_tls_inner(&self, bbox: &BBox, preset: &str) -> Result<String, WasmError> {
         let stats = self.compute_area_stats(bbox);
-        // FromStr for WeightPreset is infallible — unknown strings fall back to Balance.
-        let weight_preset: tls::WeightPreset = preset.parse().unwrap();
+        let weight_preset: tls::WeightPreset = preset
+            .parse()
+            .expect("INVARIANT: WeightPreset::FromStr is infallible");
         let result = tls::compute_tls(&stats, weight_preset, &tls::NormalizationParams::TOKYO);
         Ok(serde_json::to_string(&result)?)
     }
@@ -381,8 +381,11 @@ impl SpatialEngine {
             .layers
             .get(constants::LAYER_SCHOOLS)
             .map(|idx| {
-                idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
-                    .len() as u32
+                u32::try_from(
+                    idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
+                        .len(),
+                )
+                .expect("INVARIANT: hit count fits in u32")
             })
             .unwrap_or(0);
 
@@ -391,8 +394,11 @@ impl SpatialEngine {
             .layers
             .get(constants::LAYER_MEDICAL)
             .map(|idx| {
-                idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
-                    .len() as u32
+                u32::try_from(
+                    idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
+                        .len(),
+                )
+                .expect("INVARIANT: hit count fits in u32")
             })
             .unwrap_or(0);
 
@@ -402,9 +408,12 @@ impl SpatialEngine {
             .get(constants::LAYER_RAILWAY)
             .or_else(|| self.layers.get(constants::LAYER_STATION))
             .map(|layer| {
-                layer
-                    .query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
-                    .len() as u32
+                u32::try_from(
+                    layer
+                        .query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
+                        .len(),
+                )
+                .expect("INVARIANT: hit count fits in u32")
             })
             .unwrap_or(0);
 

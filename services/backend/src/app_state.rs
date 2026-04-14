@@ -149,6 +149,7 @@ impl AppState {
             score.clone(),
             opportunities_cache,
         ));
+        let tx_repo = Arc::new(PgTransactionRepository::new(pool.clone()));
 
         Self {
             appraisals: Arc::new(GetAppraisalsUsecase::new(Arc::new(
@@ -176,12 +177,8 @@ impl AppState {
             stats: Arc::new(GetStatsUsecase::new(Arc::new(PgStatsRepository::new(
                 pool.clone(),
             )))),
-            transaction_summary: Arc::new(GetTransactionSummaryUsecase::new(Arc::new(
-                PgTransactionRepository::new(pool.clone()),
-            ))),
-            transactions: Arc::new(GetTransactionsUsecase::new(Arc::new(
-                PgTransactionRepository::new(pool.clone()),
-            ))),
+            transaction_summary: Arc::new(GetTransactionSummaryUsecase::new(tx_repo.clone())),
+            transactions: Arc::new(GetTransactionsUsecase::new(tx_repo)),
             trend: Arc::new(GetTrendUsecase::new(trend_repo)),
             reinfolib,
         }

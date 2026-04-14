@@ -84,7 +84,10 @@ impl OpportunitiesQuery {
         let zones = parse_zones_csv(self.zones.as_deref())?;
         let station_max = self.station_max.map(Meters::new);
         let price_range = parse_price_range(self.price_min, self.price_max)?;
-        let preset: WeightPreset = self.preset.parse().unwrap(); // Infallible
+        let preset: WeightPreset = self
+            .preset
+            .parse()
+            .expect("INVARIANT: WeightPreset::FromStr is infallible");
         let pref_code = self.pref_code.as_deref().map(PrefCode::new).transpose()?;
         let cities = self
             .cities
