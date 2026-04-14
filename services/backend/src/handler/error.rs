@@ -1,15 +1,45 @@
+//! [`AppError`] type and [`DomainError`] → HTTP status mapping.
+//!
+//! [`AppError`] is a type alias for
+//! [`ApiError<DomainError>`](terrasight_server::http::error::ApiError).
+//! All HTTP error responses in the Terrasight API flow through this module:
+//!
+//! 1. Domain / usecase code returns `Result<T, DomainError>`.
+//! 2. The handler propagates with `?`, which invokes `From<DomainError> for AppError`.
+//! 3. Axum calls [`IntoResponse`](axum::response::IntoResponse) on the `AppError`,
+//!    which uses the [`ErrorMapping`] impl below to select the HTTP status code
+//!    and machine-readable `error.code` string.
+//!
+//! ## Error code mapping
+//!
+//! | [`DomainError`] variant | HTTP status | `error.code` |
+//! |------------------------|-------------|--------------|
+//! | `InvalidCoordinate` | 400 | `INVALID_PARAMS` |
+//! | `BBoxTooLarge` | 400 | `BBOX_TOO_LARGE` |
+//! | `InvalidYear` | 400 | `INVALID_PARAMS` |
+//! | `MissingParameter` | 400 | `INVALID_PARAMS` |
+//! | `Validation` | 400 | `INVALID_PARAMS` |
+//! | `InvalidPrefCode` | 400 | `INVALID_PARAMS` |
+//! | `InvalidCityCode` | 400 | `INVALID_PARAMS` |
+//! | `NotFound` | 404 | `NOT_FOUND` |
+//! | `Timeout` | 408 | `TIMEOUT` |
+//! | `Database` | 503 | `DB_UNAVAILABLE` |
+
 use axum::http::StatusCode;
-use realestate_api_core::error::{ApiError, ErrorMapping};
+use terrasight_server::http::error::{ApiError, ErrorMapping};
 
 use crate::domain::error::DomainError;
 
-/// Implement `ErrorMapping` for `DomainError` so `ApiError<DomainError>`
-/// produces the correct HTTP status and machine-readable error code.
+/// Maps [`DomainError`] variants to HTTP status codes and machine-readable
+/// error codes for use by [`ApiError`].
+///
+/// The mapping is exhaustive: adding a new [`DomainError`] variant without
+/// updating this impl produces a compile error.
 impl ErrorMapping for DomainError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::InvalidCoordinate(_) => StatusCode::BAD_REQUEST,
-            Self::BBoxTooLarge => StatusCode::BAD_REQUEST,
+            Self::BBoxTooLarge { .. } => StatusCode::BAD_REQUEST,
             Self::InvalidYear(_) => StatusCode::BAD_REQUEST,
             Self::MissingParameter(_) => StatusCode::BAD_REQUEST,
             Self::Validation(_) => StatusCode::BAD_REQUEST,
@@ -24,7 +54,7 @@ impl ErrorMapping for DomainError {
     fn error_code(&self) -> &'static str {
         match self {
             Self::InvalidCoordinate(_) => "INVALID_PARAMS",
-            Self::BBoxTooLarge => "BBOX_TOO_LARGE",
+            Self::BBoxTooLarge { .. } => "BBOX_TOO_LARGE",
             Self::InvalidYear(_) => "INVALID_PARAMS",
             Self::MissingParameter(_) => "INVALID_PARAMS",
             Self::Validation(_) => "INVALID_PARAMS",

@@ -1,24 +1,41 @@
+//! Usecase: liveness and readiness health check.
+//!
+//! Orchestrates [`HealthRepository::check_connection`] and combines the result
+//! with static configuration flags (reinfolib API key presence) into a
+//! [`HealthStatus`] response. Called by `GET /api/v1/health`.
+
 use std::sync::Arc;
 
 use crate::domain::constants::{HEALTH_STATUS_DEGRADED, HEALTH_STATUS_OK};
-use crate::domain::entity::HealthStatus;
+use crate::domain::model::HealthStatus;
 use crate::domain::repository::HealthRepository;
 
-pub struct CheckHealthUsecase {
+/// Usecase for `GET /api/v1/health`.
+pub(crate) struct CheckHealthUsecase {
     health_repo: Arc<dyn HealthRepository>,
     reinfolib_key_set: bool,
 }
 
 impl CheckHealthUsecase {
-    pub fn new(health_repo: Arc<dyn HealthRepository>, reinfolib_key_set: bool) -> Self {
+    /// Construct the usecase.
+    ///
+    /// `reinfolib_key_set` reflects whether `REINFOLIB_API_KEY` was configured
+    /// at startup; it is included in the health response so operators can
+    /// distinguish the PostGIS-fallback path from the live-API path.
+    pub(crate) fn new(health_repo: Arc<dyn HealthRepository>, reinfolib_key_set: bool) -> Self {
         Self {
             health_repo,
             reinfolib_key_set,
         }
     }
 
+    /// Check database connectivity and return a [`HealthStatus`].
+    ///
+    /// Returns `"ok"` when the database responds within the health-check timeout,
+    /// or `"degraded"` otherwise. This method never fails — a degraded status is
+    /// always returned rather than propagating the underlying error.
     #[tracing::instrument(skip(self), fields(usecase = "check_health"))]
-    pub async fn execute(&self) -> HealthStatus {
+    pub(crate) async fn execute(&self) -> HealthStatus {
         let db_connected = self.health_repo.check_connection().await;
 
         if !db_connected {

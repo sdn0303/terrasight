@@ -1,4 +1,4 @@
-//! Response DTO for `GET /api/area-data`.
+//! Response DTO for `GET /api/v1/area-data`.
 //!
 //! Wraps a `HashMap<String, LayerResponseDto>` so each requested layer
 //! is serialised as a top-level JSON key whose value is a
@@ -8,8 +8,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::domain::entity::LayerResult;
-use crate::domain::value_object::LayerType;
+use crate::domain::model::{LayerResult, LayerType};
 use crate::handler::response::LayerResponseDto;
 
 /// Flat object keyed by layer name, one `LayerResponseDto` per layer.

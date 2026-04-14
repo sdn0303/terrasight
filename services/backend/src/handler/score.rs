@@ -1,3 +1,9 @@
+//! `GET /api/v1/score` handler.
+//!
+//! Computes the Total Location Score (TLS) for a geographic coordinate.
+//! Delegates to [`ComputeTlsUsecase`] which aggregates data from multiple
+//! domain repositories and applies the five-axis scoring formula.
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,12 +16,21 @@ use crate::handler::request::CoordQuery;
 use crate::handler::response::TlsResponse;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
 
-/// `GET /api/score?lat=35.68&lng=139.76`
+/// Handles `GET /api/v1/score`.
 ///
-/// Computes a Total Location Score (0–100) from five axes:
-/// disaster risk, terrain quality, livability, future potential, and price value.
+/// Computes the Total Location Score (0–100) for the supplied coordinate.
+/// The score is composed of five weighted axes: disaster risk, terrain
+/// quality, livability, future potential, and price value. The `preset`
+/// query parameter selects the weight distribution (defaults to
+/// `"balance"`; see [`WeightPreset`](terrasight_domain::scoring::tls::WeightPreset)).
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `lat` or `lng` is outside
+///   the valid WGS-84 range.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "score"))]
-pub async fn get_score(
+pub(crate) async fn get_score(
     State(usecase): State<Arc<ComputeTlsUsecase>>,
     Query(params): Query<CoordQuery>,
 ) -> Result<Json<TlsResponse>, AppError> {

@@ -1,8 +1,34 @@
+//! Axum application state and dependency injection container.
+//!
+//! [`AppState`] is the single composition root for the service. It wires every
+//! infra repository implementation to the domain trait it implements, constructs
+//! all usecases, and hands them to the Axum router via
+//! [`axum::extract::FromRef`] impls.
+//!
+//! ## Dependency injection pattern
+//!
+//! Every usecase is wrapped in `Arc<…>` so that Axum can clone the state into
+//! each handler task without copying the underlying objects. The `FromRef` impls
+//! at the bottom of this file allow handlers to extract only the usecase they
+//! need with `State<Arc<FooUsecase>>` rather than extracting the entire
+//! `AppState`.
+//!
+//! ```text
+//! AppState::new(pool, config)
+//!   ├─ PgAreaRepository ──────────→ GetAreaDataUsecase
+//!   ├─ PgLandPriceRepository ─────→ GetLandPricesUsecase (shared)
+//!   │                            └→ GetOpportunitiesUsecase
+//!   ├─ PgTlsRepository ───────────→ ComputeTlsUsecase (shared)
+//!   │                            └→ GetOpportunitiesUsecase
+//!   └─ …
+//! ```
+
 use std::sync::Arc;
 
 use axum::extract::FromRef;
-use mlit_client::jshis::JshisClient;
 use sqlx::PgPool;
+use terrasight_mlit::config::MlitConfig;
+use terrasight_mlit::jshis::JshisClient;
 
 use crate::config::Config;
 use crate::domain::reinfolib::ReinfolibDataSource;
@@ -32,9 +58,6 @@ use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
 use crate::usecase::get_transactions::GetTransactionsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
 
-/// Timeout (seconds) for J-SHIS API requests.
-const JSHIS_TIMEOUT_SECS: u64 = 30;
-
 /// Composition root: wires Infra → Domain traits → Usecases.
 ///
 /// All dependency injection happens here. Each usecase is wrapped in `Arc`
@@ -45,42 +68,59 @@ const JSHIS_TIMEOUT_SECS: u64 = 30;
 /// from a single `.with_state(AppState::new(…))` call on the router.
 #[derive(Clone)]
 pub struct AppState {
-    pub appraisals: Arc<GetAppraisalsUsecase>,
-    pub health: Arc<CheckHealthUsecase>,
-    pub area_data: Arc<GetAreaDataUsecase>,
-    pub area_stats: Arc<GetAreaStatsUsecase>,
-    pub land_prices: Arc<GetLandPricesUsecase>,
-    pub land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
-    pub municipalities: Arc<GetMunicipalitiesUsecase>,
-    pub opportunities: Arc<GetOpportunitiesUsecase>,
-    pub score: Arc<ComputeTlsUsecase>,
-    pub stats: Arc<GetStatsUsecase>,
-    pub transaction_summary: Arc<GetTransactionSummaryUsecase>,
-    pub transactions: Arc<GetTransactionsUsecase>,
-    pub trend: Arc<GetTrendUsecase>,
+    /// Handles `GET /api/v1/appraisals`.
+    pub(crate) appraisals: Arc<GetAppraisalsUsecase>,
+    /// Handles `GET /api/v1/health`.
+    pub(crate) health: Arc<CheckHealthUsecase>,
+    /// Handles `GET /api/v1/area-data`.
+    pub(crate) area_data: Arc<GetAreaDataUsecase>,
+    /// Handles `GET /api/v1/area-stats`.
+    pub(crate) area_stats: Arc<GetAreaStatsUsecase>,
+    /// Handles `GET /api/v1/land-prices`.
+    pub(crate) land_prices: Arc<GetLandPricesUsecase>,
+    /// Handles `GET /api/v1/land-prices/all-years`.
+    pub(crate) land_prices_by_year_range: Arc<GetLandPricesByYearRangeUsecase>,
+    /// Handles `GET /api/v1/municipalities`.
+    pub(crate) municipalities: Arc<GetMunicipalitiesUsecase>,
+    /// Handles `GET /api/v1/opportunities`. Reuses `score` internally.
+    pub(crate) opportunities: Arc<GetOpportunitiesUsecase>,
+    /// Handles `GET /api/v1/score`. Shared with `opportunities`.
+    pub(crate) score: Arc<ComputeTlsUsecase>,
+    /// Handles `GET /api/v1/stats`.
+    pub(crate) stats: Arc<GetStatsUsecase>,
+    /// Handles `GET /api/v1/transactions/summary`.
+    pub(crate) transaction_summary: Arc<GetTransactionSummaryUsecase>,
+    /// Handles `GET /api/v1/transactions`.
+    pub(crate) transactions: Arc<GetTransactionsUsecase>,
+    /// Handles `GET /api/v1/trend`.
+    pub(crate) trend: Arc<GetTrendUsecase>,
     /// Reinfolib geospatial data source.
     ///
     /// Backed by [`PostgisFallback`] when `REINFOLIB_API_KEY` is absent, or
     /// [`LiveReinfolib`] when the key is present. Handlers that expose the
     /// reinfolib layers inject this field directly.
-    pub reinfolib: Arc<dyn ReinfolibDataSource>,
+    pub(crate) reinfolib: Arc<dyn ReinfolibDataSource>,
 }
 
 impl AppState {
     /// Build the full dependency graph from a database pool and application config.
     ///
     /// The `config` reference is used to determine which reinfolib data source
-    /// to instantiate: [`PostgisFallback`] (no API key) or [`LiveReinfolib`]
+    /// to instantiate: `PostgisFallback` (no API key) or `LiveReinfolib`
     /// (API key present).
     pub fn new(pool: PgPool, config: &Config) -> Self {
         let reinfolib_key_set = config.reinfolib_api_key.is_some();
         let reinfolib = create_reinfolib_source(pool.clone(), config);
 
-        let jshis = match JshisClient::new(JSHIS_TIMEOUT_SECS) {
+        let mlit_config = MlitConfig {
+            reinfolib_api_key: config.reinfolib_api_key.clone(),
+            ..MlitConfig::default()
+        };
+        let jshis = match JshisClient::new(&mlit_config) {
             Ok(client) => {
                 tracing::info!(
                     "J-SHIS client initialised (timeout {}s)",
-                    JSHIS_TIMEOUT_SECS
+                    mlit_config.request_timeout_secs
                 );
                 Some(Arc::new(client))
             }
@@ -109,6 +149,7 @@ impl AppState {
             score.clone(),
             opportunities_cache,
         ));
+        let tx_repo = Arc::new(PgTransactionRepository::new(pool.clone()));
 
         Self {
             appraisals: Arc::new(GetAppraisalsUsecase::new(Arc::new(
@@ -136,12 +177,8 @@ impl AppState {
             stats: Arc::new(GetStatsUsecase::new(Arc::new(PgStatsRepository::new(
                 pool.clone(),
             )))),
-            transaction_summary: Arc::new(GetTransactionSummaryUsecase::new(Arc::new(
-                PgTransactionRepository::new(pool.clone()),
-            ))),
-            transactions: Arc::new(GetTransactionsUsecase::new(Arc::new(
-                PgTransactionRepository::new(pool.clone()),
-            ))),
+            transaction_summary: Arc::new(GetTransactionSummaryUsecase::new(tx_repo.clone())),
+            transactions: Arc::new(GetTransactionsUsecase::new(tx_repo)),
             trend: Arc::new(GetTrendUsecase::new(trend_repo)),
             reinfolib,
         }

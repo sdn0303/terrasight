@@ -1,14 +1,21 @@
 [package]
-name = "realestate-wasm"
+name = "terrasight-wasm"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
+authors = ["sdn03"]
+description = "WebAssembly spatial engine for Terrasight — R-tree indexing, stats, and TLS scoring"
+repository = "https://github.com/sdn0303/terrasight"
+license = "MIT"
+keywords = ["wasm", "geospatial", "spatial-index", "rtree"]
+categories = ["wasm", "science::geo"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-realestate-geo-math = { path = "../backend/lib/geo-math" }
+terrasight-geo = { path = "../backend/lib/geo" }
+terrasight-domain = { path = "../backend/lib/domain" }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 rstar = "0.12"

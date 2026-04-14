@@ -19,19 +19,16 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{
-    AdminAreaStats, FacilityStats, LandPriceStats, LayerResult, MedicalStats, OpportunityRecord,
-    PricePerSqm, PriceRecord, RiskStats, SchoolStats, TrendLocation, TrendPoint, ZScoreResult,
-    ZoneCode,
-};
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    AdminAreaStats, AreaCode, BBox, CityCode, Coord, FacilityStats, LandPriceStats, LayerResult,
+    LayerType, MedicalStats, OpportunityRecord, PrefCode, PricePerSqm, PriceRecord, RiskStats,
+    SchoolStats, TransactionDetail, TransactionSummary, TrendLocation, TrendPoint, Year,
+    YearsLookback, ZScoreResult, ZoneCode, ZoomLevel,
+};
 use crate::domain::repository::{
     AdminAreaStatsRepository, HealthRepository, LandPriceRepository, LayerRepository,
     StatsRepository, TlsRepository, TransactionRepository, TrendRepository,
-};
-use crate::domain::transaction::{TransactionDetail, TransactionSummary};
-use crate::domain::value_object::{
-    AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
 
 /// Pop the next queued response or panic if the queue is empty.
@@ -245,7 +242,6 @@ impl LandPriceRepository for MockLandPriceRepository {
         &self,
         _bbox: &BBox,
         _limit: u32,
-        _offset: u32,
         _price_range: Option<(PricePerSqm, PricePerSqm)>,
         _zones: &[ZoneCode],
         _pref_code: Option<&PrefCode>,
@@ -405,7 +401,7 @@ impl TransactionRepository for MockTransactionRepository {
 
     async fn find_transactions(
         &self,
-        _city_code: &str,
+        _city_code: &CityCode,
         _year_from: Option<&Year>,
         _limit: u32,
     ) -> Result<Vec<TransactionDetail>, DomainError> {

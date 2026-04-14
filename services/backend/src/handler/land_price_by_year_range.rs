@@ -1,3 +1,13 @@
+//! `GET /api/v1/land-prices/all-years` handler.
+//!
+//! Returns all land price records across a year range in a single response.
+//! Each feature carries a `properties.year` field so that MapLibre GL clients
+//! can animate the time-machine slider with `setFilter` — avoiding repeated
+//! round trips when the user scrubs through years.
+//!
+//! The URL path uses `/all-years` for backwards compatibility with the
+//! frontend; internally the handler and usecase are named `by_year_range`.
+
 use std::sync::Arc;
 
 use axum::{
@@ -5,13 +15,22 @@ use axum::{
     extract::{Query, State},
 };
 
-use crate::domain::value_object::LayerType;
+use crate::domain::model::LayerType;
 use crate::handler::error::AppError;
 use crate::handler::request::LandPriceByYearRangeQuery;
 use crate::handler::response::LayerResponseDto;
 use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
 
-/// `GET /api/v1/land-prices/all-years?bbox={sw_lng},{sw_lat},{ne_lng},{ne_lat}&from={year}&to={year}&zoom={zoom}`
+/// Handles `GET /api/v1/land-prices/all-years`.
+///
+/// Query parameters: `bbox` (comma-separated `sw_lng,sw_lat,ne_lng,ne_lat`),
+/// optional `from` and `to` year integers (defaults to
+/// `DEFAULT_FROM_YEAR..=DEFAULT_TO_YEAR`), and optional `zoom` (default `14`).
+///
+/// Returns a [`LayerResponseDto`] with all matching land-price polygon
+/// features. Point geometries are converted to ~30 m² squares. The
+/// `properties.year` field on each feature allows client-side time filtering
+/// without re-fetching.
 ///
 /// Returns a GeoJSON `LayerResponseDto` (FeatureCollection with truncation metadata)
 /// of land price polygons for the full year range. Each feature's `properties.year`
@@ -28,7 +47,7 @@ use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUseca
 /// - `400 Bad Request` — invalid year range, unparseable / out-of-range `bbox`
 /// - `503 Service Unavailable` — database error
 #[tracing::instrument(skip(usecase), fields(endpoint = "v1/land-prices/all-years"))]
-pub async fn get_land_prices_by_year_range(
+pub(crate) async fn get_land_prices_by_year_range(
     State(usecase): State<Arc<GetLandPricesByYearRangeUsecase>>,
     Query(params): Query<LandPriceByYearRangeQuery>,
 ) -> Result<Json<LayerResponseDto>, AppError> {

@@ -16,7 +16,7 @@
 //! after cache retrieval. This means every paginated view into the
 //! same filter set hits the same cache slot.
 //!
-//! Pagination is bounded by [`OPPORTUNITY_FETCH_POOL_SIZE`]: `offset`
+//! Pagination is bounded by [`OPPORTUNITY_FETCH_POOL_SIZE`]: offset
 //! values beyond the filtered pool size return empty results.
 //!
 //! ## Layering
@@ -41,26 +41,29 @@ use tokio::time::timeout;
 use crate::domain::constants::{
     OPPORTUNITY_FETCH_POOL_SIZE, OPPORTUNITY_TIMEOUT_SECS, OPPORTUNITY_TLS_CONCURRENCY,
 };
-use crate::domain::entity::{Opportunity, OpportunityRecord, Percent};
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    CachedOpportunitiesResponse, OpportunitiesCacheKey, OpportunitiesFilters, Opportunity,
+    OpportunityRecord, OpportunitySignal, Percent, RiskLevel, TlsScore,
+};
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{OpportunitySignal, RiskLevel, TlsScore};
-use crate::handler::request::OpportunitiesFilters;
-use crate::infra::opportunities_cache::{OpportunitiesCache, OpportunitiesCacheKey};
+use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
 
-/// Re-export the cached response type from its canonical location in
-/// the infra layer so call sites can import it from either module.
-pub use crate::infra::opportunities_cache::CachedOpportunitiesResponse;
-
-pub struct GetOpportunitiesUsecase {
+/// Usecase for `GET /api/v1/opportunities`.
+pub(crate) struct GetOpportunitiesUsecase {
     land_repo: Arc<dyn LandPriceRepository>,
     compute_tls: Arc<ComputeTlsUsecase>,
     cache: Arc<OpportunitiesCache>,
 }
 
 impl GetOpportunitiesUsecase {
-    pub fn new(
+    /// Construct the usecase with its three dependencies.
+    ///
+    /// - `land_repo` — fetches raw opportunity records from PostGIS.
+    /// - `compute_tls` — enriches each record with a TLS score (shared with `/api/v1/score`).
+    /// - `cache` — in-memory TTL cache keyed by the filter fingerprint.
+    pub(crate) fn new(
         land_repo: Arc<dyn LandPriceRepository>,
         compute_tls: Arc<ComputeTlsUsecase>,
         cache: Arc<OpportunitiesCache>,
@@ -72,27 +75,32 @@ impl GetOpportunitiesUsecase {
         }
     }
 
-    /// Fetch + enrich + cache the full filtered opportunity pool for
-    /// the given filters.
+    /// Fetch, enrich, and cache the full filtered opportunity pool.
     ///
     /// The returned [`CachedOpportunitiesResponse`] holds every record
     /// that survived TLS enrichment and `tls_min`/`risk_max` filtering.
-    /// The handler applies pagination to this pool afterwards.
+    /// The handler applies `limit`/`offset` pagination to this pool after
+    /// cache retrieval, so all paginated views of the same filter set share
+    /// one cache slot.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Database`] if the initial DB fetch fails, or
+    /// [`DomainError::Timeout`] if the full enrichment pipeline exceeds
+    /// [`OPPORTUNITY_TIMEOUT_SECS`](crate::domain::constants::OPPORTUNITY_TIMEOUT_SECS).
     #[tracing::instrument(skip(self), fields(usecase = "get_opportunities"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         filters: OpportunitiesFilters,
     ) -> Result<Arc<CachedOpportunitiesResponse>, DomainError> {
         // Fetch BEFORE the cache so DB errors propagate and only
         // successful results get cached. Always request the full fetch
-        // pool with offset=0; user pagination is applied after cache
-        // retrieval by the handler.
+        // pool; user pagination is applied after cache retrieval by the handler.
         let records = self
             .land_repo
             .find_for_opportunities(
                 &filters.bbox,
                 OPPORTUNITY_FETCH_POOL_SIZE,
-                0,
                 filters.price_range,
                 &filters.zones,
                 filters.pref_code.as_ref(),
@@ -195,10 +203,9 @@ impl GetOpportunitiesUsecase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::ZoneCode;
+    use crate::domain::model::{BBox, OpportunityLimit, OpportunityOffset, ZoneCode};
     use crate::domain::repository::mock::{MockLandPriceRepository, MockTlsRepository};
-    use crate::domain::scoring::tls::WeightPreset;
-    use crate::domain::value_object::{BBox, OpportunityLimit, OpportunityOffset};
+    use terrasight_domain::scoring::tls::WeightPreset;
 
     fn sample_filters() -> OpportunitiesFilters {
         OpportunitiesFilters {

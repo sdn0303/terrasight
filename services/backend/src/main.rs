@@ -1,17 +1,17 @@
 use http::HeaderValue;
-use realestate_api_core::middleware::rate_limit;
 use std::net::SocketAddr;
+use terrasight_server::http::middleware::rate_limit;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use realestate_api::config::Config;
+use terrasight_api::config::Config;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let config = Config::from_env();
-    realestate_api::logging::init(&config);
+    terrasight_api::logging::init(&config);
 
     tracing::info!(
         port = config.port,
@@ -22,10 +22,11 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let pool =
-        realestate_db::pool::create_pool(&config.database_url, config.db_max_connections).await?;
+        terrasight_server::db::pool::create_pool(&config.database_url, config.db_max_connections)
+            .await?;
 
     // Build the core router from lib.rs (routes + request-id + response-time).
-    let app = realestate_api::build_router(pool, &config);
+    let app = terrasight_api::build_router(pool, &config);
 
     // CORS: explicit origin whitelist in production, permissive in development.
     let cors_layer = match config.parsed_origins() {
@@ -62,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = app
         .layer(rate_limit)
-        .layer(realestate_telemetry::http::trace_layer())
+        .layer(terrasight_server::http::tracing::trace_layer())
         .layer(cors_layer)
         .layer(CompressionLayer::new());
 

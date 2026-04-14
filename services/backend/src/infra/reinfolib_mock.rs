@@ -26,11 +26,10 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 
 use crate::config::Config;
-use crate::domain::entity::GeoFeature;
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, GeoFeature, LayerType, ZoomLevel};
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
 
 /// Default zoom level used when `PostgisFallback` delegates to `LayerRepository`.
 ///
@@ -51,13 +50,13 @@ const FALLBACK_ZOOM: ZoomLevel = ZoomLevel::DEFAULT;
 /// The reinfolib XKT016 endpoint covers all disaster-hazard zone types in a
 /// single call. The PostGIS fallback approximates this by merging results from
 /// both the `flood_risk` and `steep_slope` tables.
-pub struct PostgisFallback {
+pub(crate) struct PostgisFallback {
     layer_repo: Arc<dyn LayerRepository>,
 }
 
 impl PostgisFallback {
     /// Create a new `PostgisFallback` backed by the given repository.
-    pub fn new(layer_repo: Arc<dyn LayerRepository>) -> Self {
+    pub(crate) fn new(layer_repo: Arc<dyn LayerRepository>) -> Self {
         Self { layer_repo }
     }
 }
@@ -133,33 +132,19 @@ impl ReinfolibDataSource for PostgisFallback {
 ///
 /// Replace the `Err(...)` stubs with real conversion code after validating
 /// against live API responses.
-pub struct LiveReinfolib {
-    /// The underlying HTTP client is kept behind `Arc` so `LiveReinfolib` itself
-    /// stays cheaply cloneable when wrapped in `Arc<dyn ReinfolibDataSource>`.
-    ///
-    /// The `mlit-client` crate is declared as a workspace member but is **not**
-    /// yet listed as a dependency of `realestate-api`. Uncomment the dependency
-    /// in `Cargo.toml` and replace this `_client` field with the real type when
-    /// implementing live conversion:
-    ///
-    /// ```toml
-    /// # In [dependencies]:
-    /// mlit-client = { path = "lib/mlit-client", features = ["reinfolib"] }
-    /// ```
-    ///
-    /// For now the struct holds the pool so it can be constructed without the
-    /// mlit-client dep — satisfying the factory's return type.
-    #[allow(dead_code)]
-    pool: PgPool,
-}
+///
+/// Once the `terrasight-mlit` crate is wired in, add the dependency to `Cargo.toml`
+/// and hold the client here:
+///
+/// ```toml
+/// # In [dependencies]:
+/// terrasight-mlit = { path = "lib/mlit", features = ["reinfolib"] }
+/// ```
+pub(crate) struct LiveReinfolib;
 
 impl LiveReinfolib {
-    /// Create a new `LiveReinfolib`.
-    ///
-    /// `pool` is retained for future use when the live client is integrated
-    /// (e.g. to fall back to PostGIS on partial API failures).
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub(crate) fn new() -> Self {
+        Self
     }
 }
 
@@ -179,7 +164,7 @@ impl ReinfolibDataSource for LiveReinfolib {
         //   raw.into_iter().map(raw_value_to_geo_feature).collect()
         Err(DomainError::Database(
             "LiveReinfolib::get_land_prices is not yet implemented — \
-             add mlit-client dependency and implement response conversion"
+             add terrasight-mlit dependency and implement response conversion"
                 .into(),
         ))
     }
@@ -232,13 +217,16 @@ impl ReinfolibDataSource for LiveReinfolib {
 /// let source = create_reinfolib_source(pool.clone(), &config);
 /// state.reinfolib = source;
 /// ```
-pub fn create_reinfolib_source(pool: PgPool, config: &Config) -> Arc<dyn ReinfolibDataSource> {
+pub(crate) fn create_reinfolib_source(
+    pool: PgPool,
+    config: &Config,
+) -> Arc<dyn ReinfolibDataSource> {
     if config.reinfolib_api_key.is_some() {
         tracing::info!(
             mode = "live",
             "reinfolib data source: using live MLIT API (REINFOLIB_API_KEY is set)"
         );
-        Arc::new(LiveReinfolib::new(pool))
+        Arc::new(LiveReinfolib::new())
     } else {
         tracing::warn!(
             mode = "fallback",
@@ -261,11 +249,13 @@ mod tests {
     use async_trait::async_trait;
 
     use super::PostgisFallback;
-    use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
     use crate::domain::error::DomainError;
+    use crate::domain::model::{
+        BBox, Coord, GeoFeature, GeoJsonGeometry, GeoJsonType, LayerResult, LayerType, PrefCode,
+        ZoomLevel,
+    };
     use crate::domain::reinfolib::ReinfolibDataSource;
     use crate::domain::repository::LayerRepository;
-    use crate::domain::value_object::{BBox, Coord, LayerType, PrefCode, ZoomLevel};
 
     // ── Stub LayerRepository ─────────────────────────────────────────────────
 
@@ -307,7 +297,7 @@ mod tests {
     fn stub_feature(geo_type: &str) -> GeoFeature {
         GeoFeature {
             geometry: GeoJsonGeometry {
-                r#type: geo_type.to_owned(),
+                r#type: GeoJsonType::from_db_str(geo_type),
                 coordinates: serde_json::json!([139.76, 35.68]),
             },
             properties: serde_json::json!({}),

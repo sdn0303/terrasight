@@ -1,0 +1,15 @@
+[package]
+name = "terrasight-domain"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+authors = ["sdn03"]
+description = "Shared domain types, constants, and scoring logic for Terrasight (Backend + WASM)"
+repository = "https://github.com/sdn0303/terrasight"
+license = "MIT"
+keywords = ["real-estate", "scoring", "domain"]
+categories = ["mathematics"]
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }

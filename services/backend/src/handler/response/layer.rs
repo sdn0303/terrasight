@@ -1,28 +1,32 @@
 //! GeoJSON layer response DTOs shared between the area-data and
 //! land-price endpoints.
 
-use realestate_geo_math::spatial::point_to_polygon;
 use serde::Serialize;
+use terrasight_geo::coord::GeoCoord;
+use terrasight_geo::spatial::point_to_polygon;
 
-use crate::domain::entity::LayerResult;
-use crate::domain::value_object::LayerType;
+use crate::domain::model::{LayerResult, LayerType};
 
-pub use realestate_api_core::response::{FeatureCollectionDto, FeatureDto};
+pub use terrasight_server::http::response::FeatureDto;
 
-/// GeoJSON FeatureCollection response with truncation metadata.
+/// GeoJSON `FeatureCollection` augmented with truncation metadata.
 ///
-/// Returned by area-data and land-prices handlers so that MapLibre GL clients
-/// can detect when the result has been capped and prompt the user to zoom in.
+/// Returned by the area-data and land-prices handlers so that MapLibre GL
+/// clients can detect when the server has capped the result set and prompt
+/// the user to zoom in for a complete view.
 #[derive(Debug, Serialize)]
 pub struct LayerResponseDto {
-    /// Always `"FeatureCollection"`.
+    /// GeoJSON type discriminator. Always `"FeatureCollection"`.
     pub r#type: String,
+    /// Array of GeoJSON `Feature` objects for this layer.
     pub features: Vec<FeatureDto>,
-    /// `true` when the repository capped the result at `limit`.
+    /// `true` when the repository applied the per-layer limit and there are
+    /// more records beyond what is returned.
     pub truncated: bool,
-    /// Number of features actually returned (after truncation).
+    /// Number of features in `features` (after any truncation).
     pub count: usize,
-    /// The per-layer limit that was applied.
+    /// The maximum feature count that was enforced for this layer at the
+    /// requested zoom level.
     pub limit: i64,
 }
 
@@ -57,6 +61,17 @@ impl LayerResponseDto {
     }
 }
 
+/// Extract `(longitude, latitude)` from a GeoJSON Point feature's coordinates.
+///
+/// Returns `None` if the coordinates array is missing or cannot be parsed as two
+/// finite `f64` values.
+fn extract_point_coords(feature: &FeatureDto) -> Option<(f64, f64)> {
+    let coords = feature.geometry.coordinates.as_array()?;
+    let lng = coords.first()?.as_f64()?;
+    let lat = coords.get(1)?.as_f64()?;
+    Some((lng, lat))
+}
+
 /// Convert a `Point` geometry inside a [`FeatureDto`] to a small `Polygon` square.
 ///
 /// Land price data is stored as point geometries. For better visual discoverability
@@ -70,17 +85,11 @@ pub fn point_feature_to_polygon_owned(mut feature: FeatureDto) -> FeatureDto {
         return feature;
     }
 
-    // Coordinates for a Point are a JSON array [lng, lat].
-    let coords = feature.geometry.coordinates.as_array();
-    let (lng, lat) = match coords {
-        Some(arr) if arr.len() >= 2 => match (arr[0].as_f64(), arr[1].as_f64()) {
-            (Some(lng), Some(lat)) => (lng, lat),
-            _ => return feature,
-        },
-        _ => return feature,
+    let Some((lng, lat)) = extract_point_coords(&feature) else {
+        return feature;
     };
 
-    let ring = point_to_polygon(lng, lat);
+    let ring = point_to_polygon(&GeoCoord { lng, lat });
     // GeoJSON Polygon coordinates: array of rings, each ring is array of [lng, lat] positions.
     let ring_json: Vec<serde_json::Value> = ring
         .iter()
@@ -96,7 +105,11 @@ pub fn point_feature_to_polygon_owned(mut feature: FeatureDto) -> FeatureDto {
 ///
 /// Bridges the domain entity to the lib's domain-independent DTO.
 ///
-/// [`GeoFeature`]: crate::domain::entity::GeoFeature
-pub fn geo_feature_to_dto(f: crate::domain::entity::GeoFeature) -> FeatureDto {
-    FeatureDto::new(f.geometry.r#type, f.geometry.coordinates, f.properties)
+/// [`GeoFeature`]: crate::domain::model::GeoFeature
+pub fn geo_feature_to_dto(f: crate::domain::model::GeoFeature) -> FeatureDto {
+    FeatureDto::new(
+        f.geometry.r#type.as_str().to_string(),
+        f.geometry.coordinates,
+        f.properties,
+    )
 }

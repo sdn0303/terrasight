@@ -4,48 +4,41 @@
 //! within WASM, matching the backend `/api/stats` response shape.
 
 use geo::{Area, BooleanOps, Coord, Polygon, Rect};
+use serde::Serialize;
+pub(crate) use terrasight_domain::types::{LandPriceStats, RiskStats};
 
 use crate::spatial_index::LayerStatsData;
 
-/// Computed land price statistics for a queried area.
-#[derive(Debug, serde::Serialize)]
-pub(crate) struct LandPriceStats {
-    pub(crate) avg_per_sqm: f64,
-    pub(crate) median_per_sqm: f64,
-    pub(crate) min_per_sqm: f64,
-    pub(crate) max_per_sqm: f64,
-    pub(crate) count: u32,
-}
-
-/// Computed risk statistics for a queried area.
-#[derive(Debug, serde::Serialize)]
-pub(crate) struct RiskStats {
-    pub(crate) flood_area_ratio: f64,
-    pub(crate) steep_slope_area_ratio: f64,
-    pub(crate) composite_risk: f64,
-}
-
 /// Facility counts for a queried area.
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub(crate) struct FacilityStats {
+    /// Number of school features whose envelopes intersect the query bbox.
     pub(crate) schools: u32,
+    /// Number of medical facility features whose envelopes intersect the query bbox.
     pub(crate) medical: u32,
+    /// Number of station features whose envelopes intersect the query bbox.
     pub(crate) stations_nearby: u32,
 }
 
 /// A single entry in the zoning distribution.
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub(crate) struct ZoningEntry {
+    /// Zone type string extracted from the `zone_type` GeoJSON property (e.g. `"商業地域"`).
     pub(crate) zone: String,
+    /// Fraction of the query bbox area covered by this zone type, clamped to `[0.0, 1.0]`.
     pub(crate) ratio: f64,
 }
 
 /// Aggregated area statistics returned by [`crate::SpatialEngine::compute_area_stats`].
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub(crate) struct AreaStats {
+    /// Land price statistics for features within the query bbox.
     pub(crate) land_price: LandPriceStats,
+    /// Flood and steep slope risk ratios for the query bbox.
     pub(crate) risk: RiskStats,
+    /// Counts of facility features (schools, medical, stations) within the query bbox.
     pub(crate) facilities: FacilityStats,
+    /// Zoning type distribution sorted descending by area ratio.
     pub(crate) zoning_distribution: Vec<ZoningEntry>,
 }
 
@@ -58,13 +51,7 @@ pub(crate) fn compute_land_price_stats(
     indices: &[u32],
 ) -> LandPriceStats {
     let LayerStatsData::PricePoints(prices) = stats_data else {
-        return LandPriceStats {
-            avg_per_sqm: 0.0,
-            median_per_sqm: 0.0,
-            min_per_sqm: 0.0,
-            max_per_sqm: 0.0,
-            count: 0,
-        };
+        return LandPriceStats::default();
     };
 
     let mut values: Vec<f64> = indices
@@ -76,13 +63,7 @@ pub(crate) fn compute_land_price_stats(
         .collect();
 
     if values.is_empty() {
-        return LandPriceStats {
-            avg_per_sqm: 0.0,
-            median_per_sqm: 0.0,
-            min_per_sqm: 0.0,
-            max_per_sqm: 0.0,
-            count: 0,
-        };
+        return LandPriceStats::default();
     }
 
     values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -94,16 +75,26 @@ pub(crate) fn compute_land_price_stats(
     } else {
         values[count / 2]
     };
-    let min = values[0];
-    let max = values[count - 1];
+    // SAFETY: values is non-empty (checked above), so first/last always exist.
+    let min = values[0] as i64;
+    let max = values[count - 1] as i64;
 
     LandPriceStats {
-        avg_per_sqm: avg,
-        median_per_sqm: median,
-        min_per_sqm: min,
-        max_per_sqm: max,
-        count: count as u32,
+        avg_per_sqm: Some(avg),
+        median_per_sqm: Some(median),
+        min_per_sqm: Some(min),
+        max_per_sqm: Some(max),
+        count: count as i64,
     }
+}
+
+/// Validate a bbox rect and return its area, or `None` if the area is non-positive.
+///
+/// Both `compute_area_ratio` and `compute_zoning_distribution` use this guard to
+/// short-circuit before any polygon intersection work.
+fn bbox_area(bbox_rect: &Rect<f64>) -> Option<f64> {
+    let area = bbox_rect.unsigned_area();
+    if area > 0.0 { Some(area) } else { None }
 }
 
 /// Compute the ratio of feature geometry area intersecting `bbox_rect` to the bbox area.
@@ -119,10 +110,9 @@ pub(crate) fn compute_area_ratio(
         return 0.0;
     };
 
-    let bbox_area = bbox_rect.unsigned_area();
-    if bbox_area <= 0.0 {
+    let Some(bbox_area) = bbox_area(bbox_rect) else {
         return 0.0;
-    }
+    };
 
     let bbox_polygon = rect_to_polygon(bbox_rect);
 
@@ -157,10 +147,9 @@ pub(crate) fn compute_zoning_distribution(
         return Vec::new();
     };
 
-    let bbox_area = bbox_rect.unsigned_area();
-    if bbox_area <= 0.0 {
+    let Some(bbox_area) = bbox_area(bbox_rect) else {
         return Vec::new();
-    }
+    };
 
     let bbox_polygon = rect_to_polygon(bbox_rect);
 
@@ -255,16 +244,16 @@ mod tests {
         let stats = compute_land_price_stats(&data, &indices);
 
         assert_eq!(stats.count, 5);
-        assert!(
-            (stats.avg_per_sqm - 300.0).abs() < 1e-9,
-            "avg should be 300"
-        );
-        assert!(
-            (stats.median_per_sqm - 300.0).abs() < 1e-9,
-            "median should be 300"
-        );
-        assert!((stats.min_per_sqm - 100.0).abs() < 1e-9);
-        assert!((stats.max_per_sqm - 500.0).abs() < 1e-9);
+        let avg = stats
+            .avg_per_sqm
+            .expect("avg should be Some for non-empty data");
+        assert!((avg - 300.0).abs() < 1e-9, "avg should be 300");
+        let median = stats
+            .median_per_sqm
+            .expect("median should be Some for non-empty data");
+        assert!((median - 300.0).abs() < 1e-9, "median should be 300");
+        assert_eq!(stats.min_per_sqm, Some(100));
+        assert_eq!(stats.max_per_sqm, Some(500));
     }
 
     #[test]
@@ -276,10 +265,10 @@ mod tests {
 
         assert_eq!(stats.count, 4);
         // Median of [100, 200, 300, 400] = (200 + 300) / 2 = 250
-        assert!(
-            (stats.median_per_sqm - 250.0).abs() < 1e-9,
-            "median should be 250"
-        );
+        let median = stats
+            .median_per_sqm
+            .expect("median should be Some for non-empty data");
+        assert!((median - 250.0).abs() < 1e-9, "median should be 250");
     }
 
     #[test]
@@ -291,24 +280,30 @@ mod tests {
         let stats = compute_land_price_stats(&data, &indices);
 
         assert_eq!(stats.count, 2, "zero-price features should be excluded");
-        assert!((stats.min_per_sqm - 100.0).abs() < 1e-9);
-        assert!((stats.max_per_sqm - 300.0).abs() < 1e-9);
+        assert_eq!(stats.min_per_sqm, Some(100));
+        assert_eq!(stats.max_per_sqm, Some(300));
     }
 
     #[test]
-    fn test_land_price_stats_empty_returns_zeros() {
+    fn test_land_price_stats_empty_returns_none() {
         let data = LayerStatsData::PricePoints(vec![]);
         let stats = compute_land_price_stats(&data, &[]);
         assert_eq!(stats.count, 0);
-        assert_eq!(stats.avg_per_sqm, 0.0);
+        assert_eq!(stats.avg_per_sqm, None);
+        assert_eq!(stats.median_per_sqm, None);
+        assert_eq!(stats.min_per_sqm, None);
+        assert_eq!(stats.max_per_sqm, None);
     }
 
     #[test]
-    fn test_land_price_stats_non_price_data_returns_zeros() {
+    fn test_land_price_stats_non_price_data_returns_none() {
         let data = LayerStatsData::None;
         let stats = compute_land_price_stats(&data, &[0, 1]);
         assert_eq!(stats.count, 0);
-        assert_eq!(stats.avg_per_sqm, 0.0);
+        assert_eq!(stats.avg_per_sqm, None);
+        assert_eq!(stats.median_per_sqm, None);
+        assert_eq!(stats.min_per_sqm, None);
+        assert_eq!(stats.max_per_sqm, None);
     }
 
     // -----------------------------------------------------------------------

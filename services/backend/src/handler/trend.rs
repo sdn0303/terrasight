@@ -1,3 +1,9 @@
+//! `GET /api/v1/trend` handler.
+//!
+//! Returns a CAGR-annotated time series of land price observations for the
+//! survey point nearest to the requested coordinate. Delegates to
+//! [`GetTrendUsecase`].
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,11 +16,26 @@ use crate::handler::request::TrendQuery;
 use crate::handler::response::TrendResponse;
 use crate::usecase::get_trend::GetTrendUsecase;
 
-/// `GET /api/trend?lat=35.68&lng=139.76&years=5`
+/// Handles `GET /api/v1/trend`.
 ///
-/// Returns land price trend data for the nearest observation point.
+/// Required query parameters: `lat` and `lng` (WGS-84 decimal degrees).
+/// Optional `years` lookback window (defaults to
+/// [`TREND_DEFAULT_YEARS`](crate::domain::constants::TREND_DEFAULT_YEARS)).
+///
+/// Returns a [`TrendResponse`] containing:
+/// - `location` — address and distance to the nearest survey point
+/// - `data` — sorted `(year, price_per_sqm)` time series
+/// - `cagr` — compound annual growth rate over the lookback window
+/// - `direction` — trend direction label (`"up"` or `"down"`)
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `lat` or `lng` is out of range.
+/// - [`AppError`] with `404 Not Found` when no observation point exists near
+///   the coordinate.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "trend"))]
-pub async fn get_trend(
+pub(crate) async fn get_trend(
     State(usecase): State<Arc<GetTrendUsecase>>,
     Query(params): Query<TrendQuery>,
 ) -> Result<Json<TrendResponse>, AppError> {

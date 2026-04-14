@@ -78,7 +78,7 @@ impl LayerIndex {
             .map(|(i, f)| {
                 features_json.push(f.geojson);
                 IndexedFeature {
-                    index: i as u32,
+                    index: u32::try_from(i).expect("INVARIANT: feature index fits in u32"),
                     envelope: AABB::from_corners([f.min_x, f.min_y], [f.max_x, f.max_y]),
                 }
             })
@@ -107,7 +107,7 @@ impl LayerIndex {
     /// Returns `{"type":"FeatureCollection","features":[...]}`.
     /// Indices that are out of bounds are silently skipped.
     pub(crate) fn get_features_geojson(&self, indices: &[u32]) -> String {
-        let capacity = indices.len() * 256; // rough estimate
+        let capacity = indices.len() * constants::GEOJSON_FEATURE_BYTES_ESTIMATE;
         let mut out = String::with_capacity(capacity + 40);
         out.push_str(constants::FC_HEADER);
 
@@ -148,7 +148,7 @@ impl LayerIndex {
 
     /// Total number of features stored in this index.
     pub(crate) fn feature_count(&self) -> u32 {
-        self.features_json.len() as u32
+        u32::try_from(self.features_json.len()).expect("INVARIANT: feature count fits in u32")
     }
 }
 

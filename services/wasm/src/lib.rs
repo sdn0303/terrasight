@@ -1,6 +1,6 @@
-//! # realestate-wasm
+//! # terrasight-wasm
 //!
-//! WebAssembly spatial engine for the real estate investment data visualiser.
+//! WebAssembly spatial engine for the Terrasight data visualisation platform.
 //!
 //! Exposes a [`SpatialEngine`] to JavaScript via `wasm-bindgen`. The engine
 //! ingests FlatGeobuf (`*.fgb`) byte arrays, builds an in-memory R-tree per
@@ -10,7 +10,7 @@
 //! ## Usage (JavaScript/TypeScript)
 //!
 //! ```js
-//! import init, { SpatialEngine } from '/wasm/realestate_wasm.js';
+//! import init, { SpatialEngine } from '/wasm/terrasight_wasm.js';
 //! await init();
 //!
 //! const engine = new SpatialEngine();
@@ -81,9 +81,10 @@ impl SpatialEngine {
     ///
     /// # Errors
     ///
-    /// Propagates parse errors from [`parse_fgb`] as JavaScript `Error` objects.
+    /// Propagates parse errors from `parse_fgb` as JavaScript `Error` objects.
     pub fn load_layer(&mut self, layer_id: &str, fgb_bytes: &[u8]) -> Result<u32, JsValue> {
-        self.load_layer_inner(layer_id, fgb_bytes)
+        let layer_id = constants::canonical_layer_id(layer_id);
+        self.load_layer_inner(&layer_id, fgb_bytes)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -98,7 +99,8 @@ impl SpatialEngine {
     ///
     /// Propagates parse errors as JavaScript `Error` objects.
     pub fn load_geojson_layer(&mut self, layer_id: &str, geojson: &str) -> Result<u32, JsValue> {
-        self.load_geojson_layer_inner(layer_id, geojson)
+        let layer_id = constants::canonical_layer_id(layer_id);
+        self.load_geojson_layer_inner(&layer_id, geojson)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -122,7 +124,8 @@ impl SpatialEngine {
     ) -> Result<String, JsValue> {
         let bbox =
             BBox::new(south, west, north, east).map_err(|e| JsValue::from_str(&e.to_string()))?;
-        self.query_inner(&bbox, layer_id)
+        let layer_id = constants::canonical_layer_id(layer_id);
+        self.query_inner(&bbox, &layer_id)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -163,9 +166,13 @@ impl SpatialEngine {
 
     /// Return the number of features in the specified layer, or `0` if the
     /// layer has not been loaded.
+    ///
+    /// The `layer_id` is normalised before lookup — both `"land-price"` and
+    /// `"landprice"` resolve to the same layer.
     pub fn feature_count(&self, layer_id: &str) -> u32 {
+        let layer_id = constants::canonical_layer_id(layer_id);
         self.layers
-            .get(layer_id)
+            .get(&layer_id)
             .map(LayerIndex::feature_count)
             .unwrap_or(0)
     }
@@ -175,8 +182,7 @@ impl SpatialEngine {
     /// Example: `["geology","landform"]`
     pub fn loaded_layers(&self) -> String {
         let ids: Vec<&str> = self.layers.keys().map(String::as_str).collect();
-        // serde_json is infallible for Vec<&str>
-        serde_json::to_string(&ids).unwrap_or_else(|_| "[]".to_string())
+        serde_json::to_string(&ids).expect("INVARIANT: Vec<&str> serialization is infallible")
     }
 
     /// Compute area statistics for the given bounding box.
@@ -246,29 +252,33 @@ impl SpatialEngine {
 impl SpatialEngine {
     /// Internal load implementation returning `Result<_, WasmError>` for testability
     /// without `JsValue` (which panics on non-wasm32 targets).
-    pub fn load_layer_inner(&mut self, layer_id: &str, fgb_bytes: &[u8]) -> Result<u32, WasmError> {
+    pub(crate) fn load_layer_inner(
+        &mut self,
+        layer_id: &str,
+        fgb_bytes: &[u8],
+    ) -> Result<u32, WasmError> {
         let features = parse_fgb(fgb_bytes)?;
-        let count = features.len() as u32;
+        let count = u32::try_from(features.len()).expect("INVARIANT: feature count fits in u32");
         let index = LayerIndex::from_parsed(features, layer_id);
         self.layers.insert(layer_id.to_string(), index);
         Ok(count)
     }
 
     /// Internal GeoJSON load implementation returning `Result<_, WasmError>` for testability.
-    pub fn load_geojson_layer_inner(
+    pub(crate) fn load_geojson_layer_inner(
         &mut self,
         layer_id: &str,
         geojson: &str,
     ) -> Result<u32, WasmError> {
         let features = fgb_reader::parse_geojson_feature_collection(geojson)?;
-        let count = features.len() as u32;
+        let count = u32::try_from(features.len()).expect("INVARIANT: feature count fits in u32");
         let index = LayerIndex::from_parsed(features, layer_id);
         self.layers.insert(layer_id.to_string(), index);
         Ok(count)
     }
 
     /// Internal query implementation returning `Result<_, WasmError>`.
-    pub fn query_inner(&self, bbox: &BBox, layer_id: &str) -> Result<String, WasmError> {
+    pub(crate) fn query_inner(&self, bbox: &BBox, layer_id: &str) -> Result<String, WasmError> {
         let index = self
             .layers
             .get(layer_id)
@@ -279,18 +289,23 @@ impl SpatialEngine {
     }
 
     /// Internal query_layers implementation returning `Result<_, WasmError>`.
-    pub fn query_layers_inner(&self, bbox: &BBox, layer_ids: &str) -> Result<String, WasmError> {
+    pub(crate) fn query_layers_inner(
+        &self,
+        bbox: &BBox,
+        layer_ids: &str,
+    ) -> Result<String, WasmError> {
         let mut result: HashMap<&str, serde_json::Value> = HashMap::new();
 
-        for layer_id in layer_ids
+        for raw_id in layer_ids
             .split(',')
             .map(str::trim)
             .filter(|s| !s.is_empty())
         {
-            if let Some(index) = self.layers.get(layer_id) {
+            let canonical = constants::canonical_layer_id(raw_id);
+            if let Some(index) = self.layers.get(canonical.as_str()) {
                 let indices =
                     index.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-                result.insert(layer_id, index.get_features_as_value(&indices));
+                result.insert(raw_id, index.get_features_as_value(&indices));
             }
         }
 
@@ -298,17 +313,17 @@ impl SpatialEngine {
     }
 
     /// Internal compute_stats implementation returning `Result<_, WasmError>`.
-    pub fn compute_stats_inner(&self, bbox: &BBox) -> Result<String, WasmError> {
+    pub(crate) fn compute_stats_inner(&self, bbox: &BBox) -> Result<String, WasmError> {
         let stats = self.compute_area_stats(bbox);
         Ok(serde_json::to_string(&stats)?)
     }
 
     /// Internal compute_tls implementation returning `Result<_, WasmError>`.
-    pub fn compute_tls_inner(&self, bbox: &BBox, preset: &str) -> Result<String, WasmError> {
+    pub(crate) fn compute_tls_inner(&self, bbox: &BBox, preset: &str) -> Result<String, WasmError> {
         let stats = self.compute_area_stats(bbox);
-        let weight_preset = preset
-            .parse::<tls::WeightPreset>()
-            .unwrap_or(tls::WeightPreset::Balance);
+        let weight_preset: tls::WeightPreset = preset
+            .parse()
+            .expect("INVARIANT: WeightPreset::FromStr is infallible");
         let result = tls::compute_tls(&stats, weight_preset, &tls::NormalizationParams::TOKYO);
         Ok(serde_json::to_string(&result)?)
     }
@@ -366,8 +381,11 @@ impl SpatialEngine {
             .layers
             .get(constants::LAYER_SCHOOLS)
             .map(|idx| {
-                idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
-                    .len() as u32
+                u32::try_from(
+                    idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
+                        .len(),
+                )
+                .expect("INVARIANT: hit count fits in u32")
             })
             .unwrap_or(0);
 
@@ -376,8 +394,11 @@ impl SpatialEngine {
             .layers
             .get(constants::LAYER_MEDICAL)
             .map(|idx| {
-                idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
-                    .len() as u32
+                u32::try_from(
+                    idx.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
+                        .len(),
+                )
+                .expect("INVARIANT: hit count fits in u32")
             })
             .unwrap_or(0);
 
@@ -387,9 +408,12 @@ impl SpatialEngine {
             .get(constants::LAYER_RAILWAY)
             .or_else(|| self.layers.get(constants::LAYER_STATION))
             .map(|layer| {
-                layer
-                    .query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
-                    .len() as u32
+                u32::try_from(
+                    layer
+                        .query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east())
+                        .len(),
+                )
+                .expect("INVARIANT: hit count fits in u32")
             })
             .unwrap_or(0);
 
@@ -661,7 +685,10 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         assert_eq!(v["land_price"]["count"], 0);
-        assert_eq!(v["land_price"]["avg_per_sqm"], 0.0);
+        assert!(
+            v["land_price"]["avg_per_sqm"].is_null(),
+            "avg_per_sqm should be null when no data"
+        );
         assert_eq!(v["risk"]["flood_area_ratio"], 0.0);
         assert_eq!(v["risk"]["steep_slope_area_ratio"], 0.0);
         assert_eq!(v["risk"]["composite_risk"], 0.0);
@@ -792,10 +819,11 @@ mod tests {
             ]
         }"#;
         let count = engine
-            .load_geojson_layer_inner("test-layer", geojson)
+            .load_geojson_layer_inner("testlayer", geojson)
             .expect("load_geojson_layer_inner should succeed");
         assert_eq!(count, 1);
-        assert_eq!(engine.feature_count("test-layer"), 1);
+        // feature_count normalises via canonical_layer_id; use the same canonical form.
+        assert_eq!(engine.feature_count("testlayer"), 1);
     }
 
     #[test]

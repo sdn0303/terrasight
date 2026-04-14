@@ -1,28 +1,38 @@
+//! Usecase: fetch individual transaction records for a city.
+//!
+//! Delegates to [`TransactionRepository::find_transactions`] with a
+//! clamped `limit`. Called by `GET /api/v1/transactions`.
+
 use std::sync::Arc;
 
 use crate::domain::constants::{DEFAULT_TRANSACTION_LIMIT, MAX_TRANSACTION_LIMIT};
 use crate::domain::error::DomainError;
+use crate::domain::model::{CityCode, TransactionDetail, Year};
 use crate::domain::repository::TransactionRepository;
-use crate::domain::transaction::TransactionDetail;
-use crate::domain::value_object::Year;
 
+/// Usecase for `GET /api/v1/transactions`.
 pub struct GetTransactionsUsecase {
     repo: Arc<dyn TransactionRepository>,
 }
 
 impl GetTransactionsUsecase {
+    /// Construct the usecase with the given repository.
     pub fn new(repo: Arc<dyn TransactionRepository>) -> Self {
         Self { repo }
     }
 
     /// Fetch individual transaction records for the given city code.
     ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
+    ///
     /// `limit` is clamped to `[1, MAX_TRANSACTION_LIMIT]`; `0` or `None`
     /// falls back to `DEFAULT_TRANSACTION_LIMIT`.
     #[tracing::instrument(skip(self), fields(usecase = "get_transactions"))]
     pub async fn execute(
         &self,
-        city_code: &str,
+        city_code: &CityCode,
         year_from: Option<&Year>,
         limit: Option<u32>,
     ) -> Result<Vec<TransactionDetail>, DomainError> {
@@ -43,9 +53,10 @@ mod tests {
     use crate::domain::repository::mock::MockTransactionRepository;
 
     fn sample_detail() -> TransactionDetail {
+        use crate::domain::model::{AreaName, CityCode};
         TransactionDetail {
-            city_code: "13101".into(),
-            city_name: "千代田区".into(),
+            city_code: CityCode::new("13101").unwrap(),
+            city_name: AreaName::parse("千代田区").unwrap(),
             district_name: None,
             property_type: "宅地(土地)".into(),
             total_price: 80_000_000,
@@ -62,22 +73,26 @@ mod tests {
 
     #[tokio::test]
     async fn execute_returns_details() {
+        use crate::domain::model::CityCode;
         let repo =
             Arc::new(MockTransactionRepository::new().with_transactions(Ok(vec![sample_detail()])));
         let usecase = GetTransactionsUsecase::new(repo);
-        let result = usecase.execute("13101", None, None).await.unwrap();
+        let city = CityCode::new("13101").unwrap();
+        let result = usecase.execute(&city, None, None).await.unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].city_name, "千代田区");
+        assert_eq!(result[0].city_name.as_str(), "千代田区");
     }
 
     #[tokio::test]
     async fn execute_propagates_db_error() {
+        use crate::domain::model::CityCode;
         let repo = Arc::new(
             MockTransactionRepository::new()
                 .with_transactions(Err(DomainError::Database("boom".into()))),
         );
         let usecase = GetTransactionsUsecase::new(repo);
-        let err = usecase.execute("13101", None, None).await.unwrap_err();
+        let city = CityCode::new("13101").unwrap();
+        let err = usecase.execute(&city, None, None).await.unwrap_err();
         assert!(matches!(err, DomainError::Database(_)));
     }
 }

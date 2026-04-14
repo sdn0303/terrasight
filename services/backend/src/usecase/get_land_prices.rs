@@ -1,17 +1,22 @@
+//! Usecase: fetch land price GeoJSON features for a single year.
+//!
+//! Delegates to [`LandPriceRepository::find_by_year_and_bbox`]. Called by
+//! `GET /api/v1/land-prices`.
+
 use std::sync::Arc;
 
-use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, LayerResult, PrefCode, Year, ZoomLevel};
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 
-/// Fetch land price GeoJSON features for a given year, bounding box, and zoom level.
-pub struct GetLandPricesUsecase {
+/// Usecase for `GET /api/v1/land-prices`.
+pub(crate) struct GetLandPricesUsecase {
     land_price_repo: Arc<dyn LandPriceRepository>,
 }
 
 impl GetLandPricesUsecase {
-    pub fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
+    /// Construct the usecase with the given repository.
+    pub(crate) fn new(land_price_repo: Arc<dyn LandPriceRepository>) -> Self {
         Self { land_price_repo }
     }
 
@@ -25,7 +30,7 @@ impl GetLandPricesUsecase {
     ///
     /// Propagates [`DomainError`] from the repository (typically a database error).
     #[tracing::instrument(skip(self), fields(usecase = "get_land_prices"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         year: Year,
         bbox: BBox,

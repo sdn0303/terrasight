@@ -1,30 +1,52 @@
+//! Usecase: compute the Total Location Score (TLS) for a coordinate.
+//!
+//! Orchestrates all PostGIS proximity queries (via [`TlsRepository`]) and
+//! optional J-SHIS API calls (seismic hazard, ground quality) to produce a
+//! five-axis TLS score with grade, cross-analysis, and per-sub-score detail.
+//!
+//! ## Parallelism
+//!
+//! PostGIS queries are issued with `tokio::try_join!` (8 concurrent queries).
+//! J-SHIS calls (seismic + surface ground) run in a second `tokio::join!`.
+//! Both sets execute in parallel with each other via an outer `tokio::join!`.
+//!
+//! J-SHIS failures degrade gracefully — affected sub-scores receive their
+//! unavailable-default value (100) rather than failing the entire request.
+//!
+//! ## Reuse
+//!
+//! [`ComputeTlsUsecase`] is shared between the `/api/v1/score` single-point
+//! endpoint and the `/api/v1/opportunities` batch pipeline (see
+//! [`GetOpportunitiesUsecase`](crate::usecase::get_opportunities::GetOpportunitiesUsecase)).
+//! It is therefore wrapped in `Arc` in [`AppState`](crate::app_state::AppState).
+
 use std::sync::Arc;
 
-use mlit_client::jshis::JshisClient;
-use realestate_geo_math::finance::compute_cagr;
 use serde_json::json;
+use terrasight_geo::finance::compute_cagr;
+use terrasight_mlit::jshis::JshisClient;
 
-use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
+use crate::domain::model::{Coord, MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::repository::TlsRepository;
-use crate::domain::scoring::axis::{
+use terrasight_domain::scoring::axis::{
     SubAvailability, compute_s1, compute_s2, compute_s3, compute_s4, compute_s5,
 };
-use crate::domain::scoring::constants::{
+use terrasight_domain::scoring::constants::{
     S1_WEIGHT_FLOOD, S1_WEIGHT_LANDSLIDE, S1_WEIGHT_LIQUEFACTION, S1_WEIGHT_SEISMIC,
     S1_WEIGHT_TSUNAMI,
 };
-use crate::domain::scoring::sub_scores::{
+use terrasight_domain::scoring::sub_scores::{
     score_avs30, score_education, score_far, score_flood, score_landslide, score_liquefaction,
     score_medical, score_price_trend, score_relative_value, score_seismic, score_tsunami,
     score_volume,
 };
-use crate::domain::scoring::tls::{
-    CrossAnalysis, Grade, WeightPreset, compute_cross_analysis, compute_tls,
+use terrasight_domain::scoring::tls::{
+    AxisScores, CrossAnalysis, Grade, WeightPreset, compute_cross_analysis, compute_tls,
 };
-use crate::domain::value_object::Coord;
 
-pub struct ComputeTlsUsecase {
+/// Usecase for `GET /api/v1/score` and the opportunity-enrichment pipeline.
+pub(crate) struct ComputeTlsUsecase {
     repo: Arc<dyn TlsRepository>,
     /// J-SHIS seismic hazard client.
     ///
@@ -41,7 +63,7 @@ impl ComputeTlsUsecase {
     /// - `repo`: PostGIS-backed TLS repository for spatial queries.
     /// - `jshis`: Optional J-SHIS client. Pass `None` to skip live seismic
     ///   and ground data (useful in tests or when network access is unavailable).
-    pub fn new(repo: Arc<dyn TlsRepository>, jshis: Option<Arc<JshisClient>>) -> Self {
+    pub(crate) fn new(repo: Arc<dyn TlsRepository>, jshis: Option<Arc<JshisClient>>) -> Self {
         Self { repo, jshis }
     }
 
@@ -56,7 +78,7 @@ impl ComputeTlsUsecase {
     /// [`RawInputs`] method, and the final aggregation + grade + cross
     /// analysis is composed from the resulting [`AxisOutput`]s.
     #[tracing::instrument(skip(self), fields(usecase = "compute_tls", preset = ?preset))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         coord: &Coord,
         preset: WeightPreset,
@@ -71,22 +93,16 @@ impl ComputeTlsUsecase {
         let future = inputs.build_future_axis(weights.future);
         let (price, relative_value_score) = inputs.build_price_axis(weights.price);
 
-        let tls = compute_tls(
-            disaster.score,
-            terrain.score,
-            livability.score,
-            future.score,
-            price.score,
-            preset,
-        );
+        let axis_scores = AxisScores {
+            s1_disaster: disaster.score,
+            s2_terrain: terrain.score,
+            s3_livability: livability.score,
+            s4_future: future.score,
+            s5_profitability: price.score,
+        };
+        let tls = compute_tls(&axis_scores, preset);
         let grade = Grade::from_score(tls);
-        let cross_analysis = compute_cross_analysis(
-            disaster.score,
-            terrain.score,
-            livability.score,
-            future.score,
-            relative_value_score,
-        );
+        let cross_analysis = compute_cross_analysis(&axis_scores, relative_value_score);
 
         let output = TlsOutput {
             score: tls,
@@ -539,44 +555,52 @@ impl RawInputs {
 // ─── Output types ────────────────────────────────────────────────────────────
 
 /// Full TLS result returned by [`ComputeTlsUsecase::execute`].
-pub struct TlsOutput {
-    pub score: f64,
-    pub grade: Grade,
-    pub axes: AxesOutput,
-    pub cross_analysis: CrossAnalysis,
-    pub weight_preset: WeightPreset,
-    pub data_freshness: String,
+pub(crate) struct TlsOutput {
+    pub(crate) score: f64,
+    pub(crate) grade: Grade,
+    pub(crate) axes: AxesOutput,
+    pub(crate) cross_analysis: CrossAnalysis,
+    pub(crate) weight_preset: WeightPreset,
+    pub(crate) data_freshness: String,
 }
 
 /// Five-axis breakdown of the TLS.
-pub struct AxesOutput {
-    pub disaster: AxisOutput,
-    pub terrain: AxisOutput,
-    pub livability: AxisOutput,
-    pub future: AxisOutput,
-    pub price: AxisOutput,
+pub(crate) struct AxesOutput {
+    pub(crate) disaster: AxisOutput,
+    pub(crate) terrain: AxisOutput,
+    pub(crate) livability: AxisOutput,
+    pub(crate) future: AxisOutput,
+    pub(crate) price: AxisOutput,
 }
 
 /// Single axis with its score, weight, confidence, and sub-score detail.
-pub struct AxisOutput {
-    pub score: f64,
-    pub weight: f64,
-    pub confidence: f64,
-    pub sub_scores: Vec<SubScoreOutput>,
+pub(crate) struct AxisOutput {
+    pub(crate) score: f64,
+    pub(crate) weight: f64,
+    pub(crate) confidence: f64,
+    pub(crate) sub_scores: Vec<SubScoreOutput>,
 }
 
 /// One sub-score within an axis.
-pub struct SubScoreOutput {
-    pub id: &'static str,
-    pub score: f64,
-    pub available: bool,
-    pub detail: serde_json::Value,
+pub(crate) struct SubScoreOutput {
+    pub(crate) id: &'static str,
+    pub(crate) score: f64,
+    pub(crate) available: bool,
+    pub(crate) detail: serde_json::Value,
 }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 /// Compute CAGR from a sorted price record slice. Returns 0.0 when fewer than 2 records.
+///
+/// # Panics
+///
+/// Debug-asserts that `prices` is sorted by year ascending.
 fn compute_price_cagr(prices: &[PriceRecord]) -> f64 {
+    debug_assert!(
+        prices.windows(2).all(|w| w[0].year <= w[1].year),
+        "prices must be sorted by year ascending"
+    );
     if prices.len() < 2 {
         return 0.0;
     }
@@ -593,7 +617,7 @@ fn compute_price_cagr(prices: &[PriceRecord]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::ZScoreResult;
+    use crate::domain::model::ZScoreResult;
     use crate::domain::repository::mock::MockTlsRepository;
 
     fn sample_coord() -> Coord {
@@ -608,14 +632,10 @@ mod tests {
                 PriceRecord {
                     year: 2019,
                     price_per_sqm: 1000,
-                    address: "A".into(),
-                    distance_m: 10.0,
                 },
                 PriceRecord {
                     year: 2023,
                     price_per_sqm: 1200,
-                    address: "A".into(),
-                    distance_m: 10.0,
                 },
             ])
         };

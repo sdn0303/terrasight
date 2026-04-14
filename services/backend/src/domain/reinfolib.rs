@@ -1,3 +1,16 @@
+//! Domain abstraction over the MLIT reinfolib (不動産情報ライブラリ) data source.
+//!
+//! The [`ReinfolibDataSource`] trait decouples the usecase and handler layers
+//! from the "do we have a live API key?" question. Two implementations exist
+//! in the `infra` layer:
+//!
+//! - `PostgisFallback` — reads from local PostGIS tables. Used in development
+//!   and CI when no `REINFOLIB_API_KEY` environment variable is set.
+//! - `LiveReinfolib` — calls the real MLIT HTTP API. Used in production.
+//!
+//! All methods return `Vec<GeoFeature>` using RFC 7946 `[longitude, latitude]`
+//! coordinate order, regardless of the underlying source.
+
 /// Trait abstracting the reinfolib (不動産情報ライブラリ) data source.
 ///
 /// Callers receive `GeoFeature` collections regardless of whether the data
@@ -21,9 +34,8 @@
 /// [`get_hazard_areas`]: ReinfolibDataSource::get_hazard_areas
 use async_trait::async_trait;
 
-use crate::domain::entity::GeoFeature;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::BBox;
+use crate::domain::model::{BBox, GeoFeature};
 
 /// Data provider for reinfolib-compatible geospatial layers.
 ///

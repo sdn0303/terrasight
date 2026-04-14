@@ -46,11 +46,11 @@ src/domain/value_object.rs     src/domain/value_object.rs
 
 ### proj-telemetry-conventions
 
-> **Use `realestate-telemetry` for logging, metrics, and HTTP tracing.**
+> **Use `terrasight-server` for logging, metrics, and HTTP tracing.**
 
 - `tracing::{debug,info,warn,error}!` with structured key-value fields
-- Subscriber via `realestate_telemetry::log::init_global_logger`
-- HTTP spans via `realestate_telemetry::http::trace_layer()`
+- Subscriber via `terrasight_server::log::init_global_logger`
+- HTTP spans via `terrasight_server::http::tracing::trace_layer()`
 - No `println!`, `eprintln!`, or direct `env_logger`
 
 ### proj-trace-with-inspect
@@ -141,6 +141,176 @@ handler → usecase → domain ← infra
 - `Arc<dyn Trait>` only at layer boundaries
 - Generic type params need 2+ call sites
 - Macros are a last resort
+
+## Documentation (proj-doc-*)
+
+Sources: [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/documentation.html),
+[RFC 1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md),
+[RFC 1946](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md),
+[rustdoc book](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html),
+[Rust by Example](https://doc.rust-lang.org/rust-by-example/meta/doc.html)
+
+### proj-doc-coverage
+
+> **All public items have `///` doc comments. `//!` at every module/crate top.**
+
+| Level | Syntax | Purpose | Guideline |
+|-------|--------|---------|-----------|
+| Crate | `//!` in `lib.rs` | Ecosystem positioning, Quick Start, Feature Flags | C-CRATE-DOC |
+| Module | `//!` in each `.rs` file | Module overview, type relationships | RFC 1574 |
+| Item | `///` on struct/fn/trait/enum | Individual API usage | C-EXAMPLE |
+
+Doc comments are not decorative — they are the primary interface for
+subagents and future developers reading `.rs` files directly.
+
+### proj-doc-item-structure
+
+> **Standard structure for item-level doc comments.**
+
+```rust
+/// One-line summary (shown in search results and module listings).
+///
+/// Detailed explanation: motivation, use-case, constraints.
+/// Do NOT repeat the type signature — rustdoc renders it automatically.
+///
+/// # Examples
+///
+/// ```
+/// # use terrasight_domain::scoring::tls::compute_tls;
+/// let score = compute_tls(&input)?;
+/// assert!(score.total > 0.0);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns [`DomainError::Validation`] if `input` is empty.
+///
+/// # Panics
+///
+/// Panics if `index` is out of bounds.
+///
+/// # Safety
+///
+/// (unsafe fn only) Caller must ensure the pointer is valid.
+pub fn example(input: &str) -> Result<Foo, Error> { /* ... */ }
+```
+
+Section order (RFC 1574): **Examples → Panics → Errors → Safety**.
+Use plural headings (`# Examples` not `# Example`).
+Verbs in third person present (`Returns` not `Return`).
+
+### proj-doc-crate-level
+
+> **Crate `lib.rs` starts with `//!` block: one-line summary, Quick Start, Feature Flags.**
+
+```rust
+//! # terrasight-domain
+//!
+//! Shared domain types, scoring logic, and constants for the Terrasight platform.
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use terrasight_domain::scoring::tls::compute_tls;
+//! // ...
+//! ```
+//!
+//! ## Feature Flags
+//!
+//! | Flag | Default | Description |
+//! |------|---------|-------------|
+//! | ... | ... | ... |
+```
+
+Opening line: no technical details, let the reader judge relevance instantly.
+
+### proj-doc-examples (C-EXAMPLE, C-QUESTION-MARK)
+
+> **Every public item has at least one `# Examples` with `?` error handling.**
+
+- Use `?` — never `unwrap()` in examples (users copy-paste)
+- Hide setup with `# ` prefix lines
+- Use `assert!` / `assert_eq!` to make examples double as regression tests
+- Show **why** to use the API, not just mechanical invocation
+
+```rust
+/// # Examples
+///
+/// ```
+/// # use terrasight_geo::spatial::{LayerKind, compute_feature_limit};
+/// let limit = compute_feature_limit(LayerKind::LandPrice, 0.01, 14);
+/// assert!(limit >= 100);
+/// ```
+```
+
+Doc test annotations:
+- ```` ```no_run ```` — compiles but doesn't execute (DB/network required)
+- ```` ```ignore ```` — skips compilation (pseudocode, external deps)
+- ```` ```compile_fail ```` — asserts compilation error (type safety demos)
+
+### proj-doc-intra-links (RFC 1946)
+
+> **Use Rust item paths, not HTML paths, for cross-references.**
+
+```rust
+/// Returns [`DomainError::Validation`] if the bbox exceeds
+/// [`BBOX_MAX_SIDE_DEG`](crate::constants::BBOX_MAX_SIDE_DEG).
+///
+/// See [`BBox::new`] for constructor validation.
+```
+
+Disambiguators for name collisions: `[struct@Foo]`, `[fn@bar]`, `[macro@baz!]`.
+
+### proj-doc-module-level
+
+> **Every `.rs` file begins with `//!` explaining what this module does and why.**
+
+```rust
+//! PostgreSQL repository for land price spatial queries.
+//!
+//! Implements [`LandPriceRepository`](crate::domain::repository::LandPriceRepository)
+//! using PostGIS `ST_MakeEnvelope` for bounding-box queries with N+1 truncation.
+```
+
+For module index files (e.g., `infra.rs`, `handler.rs`), document the
+architectural role and list key submodules.
+
+### proj-doc-visibility
+
+> **Use `pub(crate)` to control API surface — not `#[doc(hidden)]`.**
+
+`pub(crate)` items are excluded from `rustdoc` automatically.
+Reserve `#[doc(hidden)]` for re-export control only.
+
+### proj-doc-verification
+
+> **CI must enforce documentation quality.**
+
+```bash
+# Build docs with warnings-as-errors (catches broken intra-doc links)
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace
+
+# Run doc-tests
+cargo test --doc
+
+# Optional: warn on missing docs
+# Add to lib.rs: #![warn(missing_docs)]
+```
+
+### proj-doc-antipatterns
+
+> **Avoid these documentation mistakes.**
+
+| Anti-pattern | Fix |
+|-------------|-----|
+| Repeating the type signature in prose | rustdoc renders it — describe intent |
+| `unwrap()` in examples | Use `?` + hidden `fn main()` |
+| HTML path links (`struct.Foo.html`) | Intra-doc links (`[`Foo`]`) |
+| No `# Examples` on public items | Every public item needs at least one |
+| Commenting "what" only (`// increment i`) | Write "why" and "when" |
+| `#[doc(hidden)]` on internal items | Use `pub(crate)` visibility |
+| README and lib.rs docs diverge | Use `#[doc = include_str!("../README.md")]` |
 
 ## Cargo.toml Profiles
 

@@ -1,20 +1,31 @@
+//! Usecase: fetch municipalities for a prefecture.
+//!
+//! Delegates to [`MunicipalityRepository::find_municipalities`]. Returns a
+//! list of [`Municipality`] records ordered by `city_code`. Called by
+//! `GET /api/v1/municipalities`.
+
 use std::sync::Arc;
 
 use crate::domain::error::DomainError;
-use crate::domain::municipality::Municipality;
+use crate::domain::model::{Municipality, PrefCode};
 use crate::domain::repository::MunicipalityRepository;
-use crate::domain::value_object::PrefCode;
 
+/// Usecase for `GET /api/v1/municipalities`.
 pub struct GetMunicipalitiesUsecase {
     municipality_repo: Arc<dyn MunicipalityRepository>,
 }
 
 impl GetMunicipalitiesUsecase {
+    /// Construct the usecase with the given repository.
     pub fn new(municipality_repo: Arc<dyn MunicipalityRepository>) -> Self {
         Self { municipality_repo }
     }
 
     /// Fetch all municipalities for the given prefecture.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from the repository.
     #[tracing::instrument(skip(self), fields(usecase = "get_municipalities"))]
     pub async fn execute(&self, pref_code: &PrefCode) -> Result<Vec<Municipality>, DomainError> {
         self.municipality_repo
@@ -41,10 +52,11 @@ mod tests {
     use crate::domain::error::DomainError;
 
     fn sample_municipality() -> Municipality {
+        use crate::domain::model::{AreaName, CityCode, PrefCode};
         Municipality {
-            city_code: "13101".into(),
-            city_name: "千代田区".into(),
-            pref_code: "13".into(),
+            city_code: CityCode::new("13101").unwrap(),
+            city_name: AreaName::parse("千代田区").unwrap(),
+            pref_code: PrefCode::new("13").unwrap(),
         }
     }
 
@@ -85,7 +97,7 @@ mod tests {
         let usecase = GetMunicipalitiesUsecase::new(Arc::new(OkRepo));
         let result = usecase.execute(&pref()).await.unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].city_code, "13101");
+        assert_eq!(result[0].city_code.as_str(), "13101");
     }
 
     #[tokio::test]

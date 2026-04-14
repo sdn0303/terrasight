@@ -1,3 +1,9 @@
+//! `GET /api/v1/transactions/summary` handler.
+//!
+//! Returns pre-aggregated transaction statistics bucketed by city, year,
+//! and property type for a prefecture. Used by the frontend's trend charts
+//! and comparison tables. Delegates to [`GetTransactionSummaryUsecase`].
+
 use std::sync::Arc;
 
 use axum::{
@@ -10,10 +16,21 @@ use crate::handler::request::transaction::TransactionSummaryQuery;
 use crate::handler::response::transaction::TransactionSummaryResponse;
 use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
 
-/// `GET /api/v1/transactions/summary?pref_code=13&year_from=2020&property_type=…`
+/// Handles `GET /api/v1/transactions/summary`.
 ///
-/// Returns aggregated transaction summaries (city / year / property_type buckets)
-/// for the given prefecture, optionally filtered by year and property type.
+/// Required query parameter: `pref_code` (2-digit prefecture code). Optional
+/// `year_from` (integer) and `property_type` (raw Japanese string such as
+/// `"宅地(土地)"`) further narrow the aggregation.
+///
+/// Returns a JSON array of [`TransactionSummaryResponse`] objects, each
+/// representing one `(city_code, transaction_year, property_type)` bucket
+/// with count, average, and median price metrics.
+///
+/// # Errors
+///
+/// - [`AppError`] with `400 Bad Request` when `pref_code` is invalid or
+///   `year_from` is outside the valid range.
+/// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "transactions/summary"))]
 pub async fn get_transaction_summary(
     State(usecase): State<Arc<GetTransactionSummaryUsecase>>,

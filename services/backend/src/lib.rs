@@ -1,19 +1,52 @@
-//! Real Estate Investment API — library entry point.
+//! # terrasight-api
+//!
+//! Real estate investment data API for the Terrasight platform.
 //!
 //! Exposes [`build_router`] so that both `main.rs` and integration tests
-//! can construct the same Axum router against a real database pool.
+//! can construct the same Axum router against a real PostgreSQL/PostGIS pool.
+//!
+//! ## Architecture
+//!
+//! ```text
+//! handler → usecase → domain ← infra
+//! ```
+//!
+//! | Layer | Location | Role |
+//! |-------|----------|------|
+//! | Handler | `src/handler/` | HTTP, request validation, `DomainError → AppError` |
+//! | Usecase | `src/usecase/` | Business logic, parallel queries with `tokio::join!` |
+//! | Domain | `src/domain/` | Entities, value objects, repository traits (no I/O) |
+//! | Infra | `src/infra/` | PostgreSQL + PostGIS repository implementations |
+//!
+//! ## API Endpoints
+//!
+//! | Method | Path | Usecase |
+//! |--------|------|---------|
+//! | `GET` | `/api/v1/health` | `check_health` |
+//! | `GET` | `/api/v1/area-data` | `get_area_data` |
+//! | `GET` | `/api/v1/area-stats` | `get_area_stats` |
+//! | `GET` | `/api/v1/land-prices` | `get_land_prices` |
+//! | `GET` | `/api/v1/land-prices/all-years` | `get_land_prices_by_year_range` |
+//! | `GET` | `/api/v1/opportunities` | `get_opportunities` |
+//! | `GET` | `/api/v1/score` | `compute_tls` |
+//! | `GET` | `/api/v1/stats` | `get_stats` |
+//! | `GET` | `/api/v1/trend` | `get_trend` |
+//! | `GET` | `/api/v1/transactions/summary` | `get_transaction_summary` |
+//! | `GET` | `/api/v1/transactions` | `get_transactions` |
+//! | `GET` | `/api/v1/appraisals` | `get_appraisals` |
+//! | `GET` | `/api/v1/municipalities` | `get_municipalities` |
 
 pub mod app_state;
 pub mod config;
 pub mod domain;
-pub mod handler;
-pub mod infra;
+pub(crate) mod handler;
+pub(crate) mod infra;
 pub mod logging;
-pub mod usecase;
+pub(crate) mod usecase;
 
 use axum::{Router, routing::get};
-use realestate_api_core::middleware::{request_id, response_time};
 use sqlx::PgPool;
+use terrasight_server::http::middleware::{request_id, response_time};
 
 use app_state::AppState;
 
@@ -28,9 +61,12 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
     let state = AppState::new(pool, config);
 
     Router::new()
-        .route("/api/health", get(handler::health::health))
-        .route("/api/area-data", get(handler::area_data::get_area_data))
-        .route("/api/area-stats", get(handler::area_stats::get_area_stats))
+        .route("/api/v1/health", get(handler::health::health))
+        .route("/api/v1/area-data", get(handler::area_data::get_area_data))
+        .route(
+            "/api/v1/area-stats",
+            get(handler::area_stats::get_area_stats),
+        )
         .route(
             "/api/v1/land-prices",
             get(handler::land_price::get_land_prices),
@@ -43,9 +79,9 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
             "/api/v1/opportunities",
             get(handler::opportunities::get_opportunities),
         )
-        .route("/api/score", get(handler::score::get_score))
-        .route("/api/stats", get(handler::stats::get_stats))
-        .route("/api/trend", get(handler::trend::get_trend))
+        .route("/api/v1/score", get(handler::score::get_score))
+        .route("/api/v1/stats", get(handler::stats::get_stats))
+        .route("/api/v1/trend", get(handler::trend::get_trend))
         .route(
             "/api/v1/transactions/summary",
             get(handler::transaction_summary::get_transaction_summary),

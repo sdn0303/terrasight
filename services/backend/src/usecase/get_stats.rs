@@ -1,24 +1,36 @@
+//! Usecase: aggregate statistics for a bounding box.
+//!
+//! Issues all four stats queries (land price, risk, facilities, zoning
+//! distribution) in parallel via `tokio::try_join!` and assembles the result
+//! into an [`AreaStats`] struct. Called by `GET /api/v1/stats`.
+
 use std::sync::Arc;
 
-use crate::domain::entity::AreaStats;
 use crate::domain::error::DomainError;
+use crate::domain::model::{AreaStats, BBox, PrefCode};
 use crate::domain::repository::StatsRepository;
-use crate::domain::value_object::{BBox, PrefCode};
 
-pub struct GetStatsUsecase {
+/// Usecase for `GET /api/v1/stats`.
+pub(crate) struct GetStatsUsecase {
     stats_repo: Arc<dyn StatsRepository>,
 }
 
 impl GetStatsUsecase {
-    pub fn new(stats_repo: Arc<dyn StatsRepository>) -> Self {
+    /// Construct the usecase with the given stats repository.
+    pub(crate) fn new(stats_repo: Arc<dyn StatsRepository>) -> Self {
         Self { stats_repo }
     }
 
-    /// Aggregate area statistics for the given bounding box.
+    /// Aggregate land-price stats, risk ratios, facility counts, and zoning distribution.
     ///
-    /// All 4 stats queries execute in parallel.
+    /// All four queries run concurrently via `tokio::try_join!`. If any query
+    /// fails the entire call fails immediately (fail-fast semantics).
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`DomainError`] from any of the four repository calls.
     #[tracing::instrument(skip(self), fields(usecase = "get_stats"))]
-    pub async fn execute(
+    pub(crate) async fn execute(
         &self,
         bbox: &BBox,
         pref_code: Option<&PrefCode>,
@@ -54,7 +66,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
+    use crate::domain::model::{FacilityStats, LandPriceStats, RiskStats};
     use crate::domain::repository::mock::MockStatsRepository;
 
     fn sample_bbox() -> BBox {

@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{CityCode, PrefCode};
+use crate::domain::model::{CityCode, PrefCode};
 
 /// Query parameters for `GET /api/v1/appraisals`.
 ///
@@ -21,19 +21,19 @@ impl AppraisalsQuery {
     /// `pref_code` is validated via [`PrefCode::new`].
     /// `city_code`, when present, is validated via [`CityCode::new`] and its
     /// prefecture prefix is checked against `pref_code`.
-    pub fn into_domain(self) -> Result<(PrefCode, Option<String>), DomainError> {
+    pub fn into_domain(self) -> Result<(PrefCode, Option<CityCode>), DomainError> {
         let pref = PrefCode::new(&self.pref_code)?;
-        if let Some(ref code) = self.city_code {
-            let city = CityCode::new(code)?;
-            if city.pref_code() != pref.as_str() {
-                return Err(DomainError::InvalidCityCode(format!(
-                    "city_code {} does not belong to pref_code {}",
-                    code,
-                    pref.as_str(),
-                )));
-            }
+        let city = self.city_code.as_deref().map(CityCode::new).transpose()?;
+        if let Some(ref c) = city
+            && c.pref_code() != pref.as_str()
+        {
+            return Err(DomainError::InvalidCityCode(format!(
+                "city_code {} does not belong to pref_code {}",
+                c.as_str(),
+                pref.as_str(),
+            )));
         }
-        Ok((pref, self.city_code))
+        Ok((pref, city))
     }
 }
 
@@ -60,7 +60,7 @@ mod tests {
         };
         let (pref, city) = q.into_domain().unwrap();
         assert_eq!(pref.as_str(), "13");
-        assert_eq!(city.as_deref(), Some("13101"));
+        assert_eq!(city.as_ref().map(|c| c.as_str()), Some("13101"));
     }
 
     #[test]

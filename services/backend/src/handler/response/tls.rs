@@ -1,71 +1,108 @@
-//! Response DTOs for `GET /api/score` (the TLS scoring endpoint).
+//! Response DTOs for `GET /api/v1/score` (the TLS scoring endpoint).
 
 use serde::Serialize;
 
 use crate::domain::constants::SCORE_DISCLAIMER;
-use crate::domain::scoring::tls::CrossAnalysis;
 use crate::usecase::compute_tls::{AxesOutput, AxisOutput, SubScoreOutput, TlsOutput};
+use terrasight_domain::scoring::tls::CrossAnalysis;
 
-/// Response for `GET /api/score` (TLS system).
+/// Top-level response for `GET /api/v1/score` (TLS scoring endpoint).
 #[derive(Debug, Serialize)]
 pub struct TlsResponse {
+    /// Geographic coordinate echo-back.
     pub location: LocationDto,
+    /// Aggregated TLS score and grade.
     pub tls: TlsSummaryDto,
+    /// Per-axis breakdown of the TLS computation.
     pub axes: AxesDto,
+    /// Cross-axis composite indicators.
     pub cross_analysis: CrossAnalysisDto,
+    /// Scoring metadata: timestamp, weight preset, data freshness, disclaimer.
     pub metadata: TlsMetadataDto,
 }
 
+/// Echo-back of the coordinate that was scored.
 #[derive(Debug, Serialize)]
 pub struct LocationDto {
+    /// Latitude supplied in the request (WGS-84 decimal degrees).
     pub lat: f64,
+    /// Longitude supplied in the request (WGS-84 decimal degrees).
     pub lng: f64,
 }
 
+/// Aggregated TLS score nested inside [`TlsResponse`].
 #[derive(Debug, Serialize)]
 pub struct TlsSummaryDto {
+    /// Total Location Score (0.0 – 100.0).
     pub score: f64,
+    /// Letter grade derived from the score: `"S"`, `"A"`, `"B"`, `"C"`, or `"D"`.
     pub grade: &'static str,
+    /// Human-readable label for the grade in Japanese.
     pub label: &'static str,
 }
 
+/// Five-axis TLS breakdown nested inside [`TlsResponse`].
 #[derive(Debug, Serialize)]
 pub struct AxesDto {
+    /// Disaster risk axis.
     pub disaster: AxisDto,
+    /// Terrain quality axis.
     pub terrain: AxisDto,
+    /// Livability (amenities, transit) axis.
     pub livability: AxisDto,
+    /// Future potential (redevelopment, population trend) axis.
     pub future: AxisDto,
+    /// Price value axis.
     pub price: AxisDto,
 }
 
+/// Score, weight, and sub-scores for a single TLS axis.
 #[derive(Debug, Serialize)]
 pub struct AxisDto {
+    /// Weighted axis score contribution (0.0 – 100.0).
     pub score: f64,
+    /// Normalised weight applied to this axis (sum of all weights = 1.0).
     pub weight: f64,
+    /// Data confidence for this axis (0.0 – 1.0; lower means sparse data).
     pub confidence: f64,
+    /// Individual sub-score components that make up this axis.
     pub sub: Vec<SubScoreDto>,
 }
 
+/// One sub-score component inside an [`AxisDto`].
 #[derive(Debug, Serialize)]
 pub struct SubScoreDto {
+    /// Stable identifier for this sub-score (e.g. `"flood_risk"`).
     pub id: &'static str,
+    /// Sub-score value (0.0 – 100.0).
     pub score: f64,
+    /// `false` when the underlying data source had no records for this point.
     pub available: bool,
+    /// Arbitrary JSON detail blob; schema varies per sub-score type.
     pub detail: serde_json::Value,
 }
 
+/// Cross-axis composite indicators nested inside [`TlsResponse`].
 #[derive(Debug, Serialize)]
 pub struct CrossAnalysisDto {
+    /// Value-discovery score: high TLS at a low price signals undervaluation.
     pub value_discovery: f64,
+    /// Demand signal derived from price trend and livability.
     pub demand_signal: f64,
+    /// Ground safety composite from terrain and disaster axes.
     pub ground_safety: f64,
 }
 
+/// Scoring metadata nested inside [`TlsResponse`].
 #[derive(Debug, Serialize)]
 pub struct TlsMetadataDto {
+    /// RFC 3339 timestamp of when this score was computed.
     pub calculated_at: String,
+    /// Weight preset used for this computation (e.g. `"balance"`, `"investment"`).
     pub weight_preset: String,
+    /// Human-readable note on the age of the underlying data.
     pub data_freshness: String,
+    /// Standard investment disclaimer text.
     pub disclaimer: String,
 }
 
@@ -119,10 +156,7 @@ impl TlsResponse {
             cross_analysis: cross_analysis_to_dto(t.cross_analysis),
             metadata: TlsMetadataDto {
                 calculated_at: chrono::Utc::now().to_rfc3339(),
-                weight_preset: serde_json::to_value(t.weight_preset)
-                    .ok()
-                    .and_then(|v| v.as_str().map(String::from))
-                    .unwrap_or_else(|| "balance".to_string()),
+                weight_preset: t.weight_preset.as_str().to_string(),
                 data_freshness: t.data_freshness,
                 disclaimer: SCORE_DISCLAIMER.to_string(),
             },

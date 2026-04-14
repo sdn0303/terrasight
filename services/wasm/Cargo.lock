@@ -498,26 +498,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "realestate-geo-math"
-version = "0.1.0"
-
-[[package]]
-name = "realestate-wasm"
-version = "0.1.0"
-dependencies = [
- "flatgeobuf",
- "geo",
- "geozero",
- "js-sys",
- "realestate-geo-math",
- "rstar",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "robust"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -657,6 +637,35 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys",
+]
+
+[[package]]
+name = "terrasight-domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "terrasight-geo"
+version = "0.1.0"
+
+[[package]]
+name = "terrasight-wasm"
+version = "0.1.0"
+dependencies = [
+ "flatgeobuf",
+ "geo",
+ "geozero",
+ "js-sys",
+ "rstar",
+ "serde",
+ "serde_json",
+ "terrasight-domain",
+ "terrasight-geo",
+ "thiserror 2.0.18",
+ "wasm-bindgen",
 ]
 
 [[package]]

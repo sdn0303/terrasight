@@ -1,30 +1,59 @@
-//! Request DTO for `GET /api/area-data`.
+//! Request DTO for `GET /api/v1/area-data`.
+//!
+//! [`AreaDataQuery`] deserializes the bounding box fields, comma-separated
+//! layer list, zoom level, and optional prefecture code from the query string.
+//! Validation and conversion to domain types is performed by
+//! [`AreaDataQuery::into_domain`].
 
 use serde::Deserialize;
 
+use crate::domain::constants::DEFAULT_ZOOM_LEVEL;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
+use crate::domain::model::{BBox, LayerType, PrefCode, ZoomLevel};
 
-/// Area data query with layers parameter.
+/// Query parameters for `GET /api/v1/area-data`.
+///
+/// The bounding box is expressed as four individual latitude/longitude
+/// fields. The `layers` field is a comma-separated list of layer names
+/// (e.g. `"landprice,flood,zoning"`); unknown layer names are silently
+/// skipped with a `WARN` log.
 #[derive(Debug, Deserialize)]
 pub struct AreaDataQuery {
+    /// Southern latitude bound (WGS-84 decimal degrees).
     pub south: f64,
+    /// Western longitude bound (WGS-84 decimal degrees).
     pub west: f64,
+    /// Northern latitude bound (WGS-84 decimal degrees).
     pub north: f64,
+    /// Eastern longitude bound (WGS-84 decimal degrees).
     pub east: f64,
+    /// Comma-separated layer names to fetch (e.g. `"landprice,zoning,flood"`).
+    /// Must contain at least one recognised layer name after parsing, otherwise
+    /// `into_domain` returns [`DomainError::MissingParameter`].
     #[serde(default)]
     pub layers: String,
-    /// Map zoom level used to compute per-layer feature limits.
-    /// Defaults to 14 (street level) when not provided.
+    /// Map zoom level used to derive per-layer feature limits.
+    /// Defaults to `14` (street level) when not provided.
     #[serde(default = "default_zoom")]
     pub zoom: u32,
-    /// Optional prefecture code filter (e.g. `"13"` for Tokyo).
+    /// Optional 2-digit prefecture code filter (e.g. `"13"` for Tokyo).
     #[serde(default)]
     pub pref_code: Option<String>,
 }
 
 impl AreaDataQuery {
-    /// Convert to domain types: validated BBox + parsed LayerType list + ZoomLevel + optional PrefCode.
+    /// Convert to validated domain types.
+    ///
+    /// Parses and validates the bounding box, splits `layers` by comma,
+    /// silently drops unknown layer names, and clamps `zoom` to the
+    /// [`ZoomLevel`] range.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::MissingParameter`] when `layers` is empty or
+    /// contains only unrecognised names. Propagates [`DomainError::InvalidCoordinate`],
+    /// [`DomainError::BBoxTooLarge`], and [`DomainError::InvalidPrefCode`]
+    /// from the domain value object constructors.
     pub fn into_domain(
         self,
     ) -> Result<(BBox, Vec<LayerType>, ZoomLevel, Option<PrefCode>), DomainError> {
@@ -54,7 +83,7 @@ impl AreaDataQuery {
 }
 
 pub(super) fn default_zoom() -> u32 {
-    14
+    DEFAULT_ZOOM_LEVEL
 }
 
 #[cfg(test)]

@@ -1,0 +1,60 @@
+[package]
+name = "terrasight-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+authors = ["sdn03"]
+description = "Server infrastructure: DB pool, HTTP middleware, telemetry"
+repository = "https://github.com/sdn0303/terrasight"
+license = "MIT"
+keywords = ["server", "middleware", "telemetry"]
+categories = ["web-programming::http-server"]
+
+[features]
+default = ["db", "http", "metrics", "log"]
+db = ["dep:sqlx"]
+http = [
+    "dep:axum",
+    "dep:tower",
+    "dep:tower-http",
+    "dep:tower_governor",
+    "dep:governor",
+    "dep:uuid",
+    "dep:http",
+    "dep:pin-project-lite",
+]
+metrics = [
+    "dep:metrics",
+    "dep:metrics-exporter-prometheus",
+    "dep:axum",
+    "dep:tokio",
+]
+log = ["dep:tracing-subscriber"]
+
+[dependencies]
+terrasight-geo = { path = "../geo" }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+# db feature
+sqlx = { workspace = true, optional = true }
+
+# http feature
+axum = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+tower_governor = { workspace = true, optional = true }
+governor = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+http = { workspace = true, optional = true }
+pin-project-lite = { workspace = true, optional = true }
+
+# metrics feature
+metrics = { workspace = true, optional = true }
+metrics-exporter-prometheus = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+
+# log feature
+tracing-subscriber = { workspace = true, optional = true }

@@ -1,9 +1,0 @@
-[package]
-name = "realestate-geo-math"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.94"
-description = "Pure computation utilities: finance (CAGR), rounding, spatial calculations"
-
-[dependencies]
-# None — pure functions only

@@ -1,24 +1,41 @@
-//! Total Location Score (TLS) computation.
+//! Total Location Score (TLS) computation for a query area.
+//!
+//! The TLS is a composite investment-readiness score in `[0.0, 1.0]` derived
+//! from five sub-scores: land price affordability, disaster risk, facility
+//! accessibility, zoning suitability, and transport convenience.
+//!
+//! Each sub-score is normalized to `[0.0, 1.0]` using [`NormalizationParams`]
+//! and then weighted according to the selected [`WeightPreset`].
 
 use crate::constants;
 use crate::stats::{AreaStats, ZoningEntry};
 
+// Re-export the canonical WeightPreset from the shared domain crate.
+// The WASM TLS uses different score dimensions (price/risk/facility/zoning/transport)
+// than the backend's 5-axis system (S1-S5), so the weight *values* differ
+// while the preset *names* and FromStr parsing remain unified.
+pub(crate) use terrasight_domain::scoring::tls::WeightPreset;
+
 // ── Normalization parameters ──
 
 /// Per-prefecture normalization parameters for TLS sub-score computation.
+///
+/// These bounds define the expected data range within a prefecture.
+/// Values outside `[price_floor, price_ceiling]` are clamped before
+/// normalization, and facility counts are capped at their respective cap.
 pub(crate) struct NormalizationParams {
-    /// Land price floor (yen/m²) — below this gets maximum score.
+    /// Land price floor (yen/m²) — at or below this receives the maximum price score.
     pub price_floor: f64,
-    /// Land price ceiling (yen/m²) — above this gets minimum score.
+    /// Land price ceiling (yen/m²) — at or above this receives the minimum price score.
     pub price_ceiling: f64,
-    /// Facility count cap — at or above this gets maximum score.
+    /// Facility count cap — at or above this total (schools + medical) receives maximum score.
     pub facility_cap: u32,
-    /// Station count cap — at or above this gets maximum score.
+    /// Station count cap — at or above this count receives the maximum transport score.
     pub station_cap: u32,
 }
 
 impl NormalizationParams {
-    /// Tokyo defaults.
+    /// Default normalization parameters calibrated for the Tokyo metropolitan area.
     pub const TOKYO: Self = Self {
         price_floor: 300_000.0,
         price_ceiling: 3_000_000.0,
@@ -29,58 +46,54 @@ impl NormalizationParams {
 
 // ── TLS result types ──
 
+/// The result of a TLS computation for a query area.
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct TlsResult {
+    /// Weighted composite score in `[0.0, 1.0]`. Higher is better for investment.
     pub total_score: f64,
+    /// Breakdown of the five individual sub-scores that make up `total_score`.
     pub sub_scores: SubScores,
 }
 
+/// Normalized sub-scores `[0.0, 1.0]` that contribute to the TLS total.
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct SubScores {
+    /// Land price affordability score: `1.0` means cheap, `0.0` means expensive.
     pub price_score: f64,
+    /// Disaster safety score: `1.0` means no risk, `0.0` means maximum risk.
     pub risk_score: f64,
+    /// Facility accessibility score: `1.0` means at or above the facility cap.
     pub facility_score: f64,
+    /// Commercial zoning score: fraction of the query area covered by commercial zones.
     pub zoning_score: f64,
+    /// Transport convenience score: `1.0` means at or above the station cap.
     pub transport_score: f64,
 }
 
-// ── Weight presets ──
+// ── WASM-specific weight mapping ──
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum WeightPreset {
-    Balance,
-    Investment,
-    Residential,
-    Disaster,
-}
-
-impl WeightPreset {
-    pub fn weights(&self) -> [f64; 5] {
-        match self {
-            Self::Balance => [0.20, 0.20, 0.20, 0.20, 0.20],
-            Self::Investment => [0.35, 0.15, 0.10, 0.25, 0.15],
-            Self::Residential => [0.15, 0.25, 0.25, 0.15, 0.20],
-            Self::Disaster => [0.10, 0.40, 0.15, 0.15, 0.20],
-        }
-    }
-}
-
-impl std::str::FromStr for WeightPreset {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "balance" => Ok(Self::Balance),
-            "investment" => Ok(Self::Investment),
-            "residential" => Ok(Self::Residential),
-            "disaster" => Ok(Self::Disaster),
-            _ => Err(format!("unknown weight preset: {s}")),
-        }
+/// Returns the five WASM TLS weights `[price, risk, facility, zoning, transport]`
+/// for a given [`WeightPreset`].
+///
+/// These weights differ from the backend's 5-axis (S1-S5) weights because the
+/// WASM spatial engine computes a simplified score from [`AreaStats`] directly,
+/// while the backend uses the full sub-score composition pipeline.
+fn wasm_weights(preset: WeightPreset) -> [f64; 5] {
+    match preset {
+        WeightPreset::Balance => [0.20, 0.20, 0.20, 0.20, 0.20],
+        WeightPreset::Investment => [0.35, 0.15, 0.10, 0.25, 0.15],
+        WeightPreset::Residential => [0.15, 0.25, 0.25, 0.15, 0.20],
+        WeightPreset::DisasterFocus => [0.10, 0.40, 0.15, 0.15, 0.20],
     }
 }
 
 // ── Normalization functions ──
 
+/// Normalize an average land price to a `[0.0, 1.0]` score.
+///
+/// A price at or below `params.price_floor` returns `1.0` (most affordable).
+/// A price at or above `params.price_ceiling` returns `0.0` (least affordable).
+/// Returns `0.5` if `price_floor == price_ceiling` (degenerate range).
 fn normalize_price(avg_per_sqm: f64, params: &NormalizationParams) -> f64 {
     let range = params.price_ceiling - params.price_floor;
     if range <= 0.0 {
@@ -90,6 +103,9 @@ fn normalize_price(avg_per_sqm: f64, params: &NormalizationParams) -> f64 {
     1.0 - (clamped - params.price_floor) / range
 }
 
+/// Normalize combined school and medical counts to a `[0.0, 1.0]` score.
+///
+/// Returns `0.0` if `params.facility_cap` is zero to avoid division by zero.
 fn normalize_facilities(schools: u32, medical: u32, params: &NormalizationParams) -> f64 {
     if params.facility_cap == 0 {
         return 0.0;
@@ -98,6 +114,9 @@ fn normalize_facilities(schools: u32, medical: u32, params: &NormalizationParams
     total / params.facility_cap as f64
 }
 
+/// Normalize a station count to a `[0.0, 1.0]` transport score.
+///
+/// Returns `0.0` if `params.station_cap` is zero to avoid division by zero.
 fn normalize_transport(stations: u32, params: &NormalizationParams) -> f64 {
     if params.station_cap == 0 {
         return 0.0;
@@ -106,6 +125,10 @@ fn normalize_transport(stations: u32, params: &NormalizationParams) -> f64 {
     capped / params.station_cap as f64
 }
 
+/// Compute a zoning score from the distribution by summing commercial zone ratios.
+///
+/// Sums the `ratio` field of all entries whose `zone` string contains
+/// [`crate::constants::COMMERCIAL_ZONE_KEYWORD`], then clamps to `[0.0, 1.0]`.
 fn compute_zoning_score(dist: &[ZoningEntry]) -> f64 {
     dist.iter()
         .filter(|e| e.zone.contains(constants::COMMERCIAL_ZONE_KEYWORD))
@@ -116,14 +139,22 @@ fn compute_zoning_score(dist: &[ZoningEntry]) -> f64 {
 
 // ── Main TLS computation ──
 
+/// Compute the Total Location Score for a query area.
+///
+/// Each sub-score is independently normalized to `[0.0, 1.0]` using `params`,
+/// then combined as a weighted sum using the weights from `preset`. The final
+/// `total_score` is clamped to `[0.0, 1.0]`.
+///
+/// A higher score indicates a more investment-ready location given the
+/// selected weight preset's priorities.
 pub(crate) fn compute_tls(
     stats: &AreaStats,
     preset: WeightPreset,
     params: &NormalizationParams,
 ) -> TlsResult {
-    let weights = preset.weights();
+    let weights = wasm_weights(preset);
 
-    let price_score = normalize_price(stats.land_price.avg_per_sqm, params);
+    let price_score = normalize_price(stats.land_price.avg_per_sqm.unwrap_or(0.0), params);
     let risk_score = 1.0 - stats.risk.composite_risk;
     let facility_score =
         normalize_facilities(stats.facilities.schools, stats.facilities.medical, params);
@@ -160,10 +191,10 @@ mod tests {
     fn sample_stats() -> AreaStats {
         AreaStats {
             land_price: LandPriceStats {
-                avg_per_sqm: 500_000.0,
-                median_per_sqm: 480_000.0,
-                min_per_sqm: 200_000.0,
-                max_per_sqm: 1_200_000.0,
+                avg_per_sqm: Some(500_000.0),
+                median_per_sqm: Some(480_000.0),
+                min_per_sqm: Some(200_000),
+                max_per_sqm: Some(1_200_000),
                 count: 42,
             },
             risk: RiskStats {
@@ -232,7 +263,11 @@ mod tests {
     fn disaster_preset_weights_risk_higher() {
         let stats = sample_stats();
         let balance = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
-        let disaster = compute_tls(&stats, WeightPreset::Disaster, &NormalizationParams::TOKYO);
+        let disaster = compute_tls(
+            &stats,
+            WeightPreset::DisasterFocus,
+            &NormalizationParams::TOKYO,
+        );
         // Disaster preset gives 0.40 weight to risk vs 0.20 for balance
         // With low risk (0.15), higher weight → more impact on total
         assert!(disaster.total_score != balance.total_score);
@@ -240,11 +275,27 @@ mod tests {
 
     #[test]
     fn weight_preset_from_str() {
-        assert!("balance".parse::<WeightPreset>().is_ok());
-        assert!("investment".parse::<WeightPreset>().is_ok());
-        assert!("residential".parse::<WeightPreset>().is_ok());
-        assert!("disaster".parse::<WeightPreset>().is_ok());
-        assert!("unknown".parse::<WeightPreset>().is_err());
+        assert_eq!(
+            "balance".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Balance
+        );
+        assert_eq!(
+            "investment".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Investment
+        );
+        assert_eq!(
+            "residential".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Residential
+        );
+        assert_eq!(
+            "disaster".parse::<WeightPreset>().unwrap(),
+            WeightPreset::DisasterFocus
+        );
+        // Unknown strings fall back to Balance (domain crate convention).
+        assert_eq!(
+            "unknown".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Balance
+        );
     }
 
     #[test]
@@ -254,7 +305,7 @@ mod tests {
             WeightPreset::Balance,
             WeightPreset::Investment,
             WeightPreset::Residential,
-            WeightPreset::Disaster,
+            WeightPreset::DisasterFocus,
         ] {
             let result = compute_tls(&stats, preset, &NormalizationParams::TOKYO);
             assert!(
@@ -268,11 +319,11 @@ mod tests {
     fn extreme_price_normalization() {
         let mut stats = sample_stats();
         // Very low price → high score
-        stats.land_price.avg_per_sqm = 100_000.0;
+        stats.land_price.avg_per_sqm = Some(100_000.0);
         let low = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
 
         // Very high price → low score
-        stats.land_price.avg_per_sqm = 5_000_000.0;
+        stats.land_price.avg_per_sqm = Some(5_000_000.0);
         let high = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
 
         assert!(low.sub_scores.price_score > high.sub_scores.price_score);
@@ -294,10 +345,10 @@ mod tests {
     fn zero_stats_does_not_panic() {
         let stats = AreaStats {
             land_price: LandPriceStats {
-                avg_per_sqm: 0.0,
-                median_per_sqm: 0.0,
-                min_per_sqm: 0.0,
-                max_per_sqm: 0.0,
+                avg_per_sqm: None,
+                median_per_sqm: None,
+                min_per_sqm: None,
+                max_per_sqm: None,
                 count: 0,
             },
             risk: RiskStats {
