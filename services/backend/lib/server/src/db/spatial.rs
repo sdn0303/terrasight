@@ -2,7 +2,7 @@
 //!
 //! Wraps the repetitive `.bind()` chains required by
 //! `ST_MakeEnvelope($1,$2,$3,$4,4326)` and `ST_MakePoint($1,$2)` so that
-//! call sites pass typed structs ([`GeoBBox`], [`GeoCoord`]) instead of
+//! call sites pass typed structs (`GeoBBox`, `GeoCoord`) instead of
 //! positional `f64` arguments, eliminating parameter-ordering bugs.
 
 use sqlx::Postgres;

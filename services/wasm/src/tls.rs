@@ -263,7 +263,11 @@ mod tests {
     fn disaster_preset_weights_risk_higher() {
         let stats = sample_stats();
         let balance = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
-        let disaster = compute_tls(&stats, WeightPreset::DisasterFocus, &NormalizationParams::TOKYO);
+        let disaster = compute_tls(
+            &stats,
+            WeightPreset::DisasterFocus,
+            &NormalizationParams::TOKYO,
+        );
         // Disaster preset gives 0.40 weight to risk vs 0.20 for balance
         // With low risk (0.15), higher weight → more impact on total
         assert!(disaster.total_score != balance.total_score);
@@ -271,12 +275,27 @@ mod tests {
 
     #[test]
     fn weight_preset_from_str() {
-        assert_eq!("balance".parse::<WeightPreset>().unwrap(), WeightPreset::Balance);
-        assert_eq!("investment".parse::<WeightPreset>().unwrap(), WeightPreset::Investment);
-        assert_eq!("residential".parse::<WeightPreset>().unwrap(), WeightPreset::Residential);
-        assert_eq!("disaster".parse::<WeightPreset>().unwrap(), WeightPreset::DisasterFocus);
+        assert_eq!(
+            "balance".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Balance
+        );
+        assert_eq!(
+            "investment".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Investment
+        );
+        assert_eq!(
+            "residential".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Residential
+        );
+        assert_eq!(
+            "disaster".parse::<WeightPreset>().unwrap(),
+            WeightPreset::DisasterFocus
+        );
         // Unknown strings fall back to Balance (domain crate convention).
-        assert_eq!("unknown".parse::<WeightPreset>().unwrap(), WeightPreset::Balance);
+        assert_eq!(
+            "unknown".parse::<WeightPreset>().unwrap(),
+            WeightPreset::Balance
+        );
     }
 
     #[test]

@@ -12,7 +12,7 @@ use crate::domain::value_object::{CityCode, PrefCode};
 ///
 /// Used as a lightweight lookup record — not an aggregate root. Business
 /// rules about valid code ranges are enforced by
-/// [`CityCode`](crate::domain::value_object::CityCode).
+/// [`CityCode`].
 #[derive(Debug, Clone)]
 pub struct Municipality {
     /// JIS X 0402 5-digit municipality code (e.g. `"13101"` for 千代田区).

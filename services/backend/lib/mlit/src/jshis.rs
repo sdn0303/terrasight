@@ -168,7 +168,7 @@ impl JshisClient {
     /// Create a new client from a shared [`MlitConfig`].
     ///
     /// J-SHIS requires no API key; only `config.request_timeout_secs` is used.
-    /// This constructor signature is consistent with [`ReinfolibClient::new`].
+    /// This constructor signature is consistent with [`crate::reinfolib::ReinfolibClient::new`].
     ///
     /// # Errors
     ///

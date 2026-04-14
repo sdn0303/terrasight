@@ -2887,6 +2887,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "terrasight-geo",
  "thiserror 2.0.18",
  "tokio",
  "tower",
