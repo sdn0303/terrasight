@@ -26,7 +26,7 @@ use crate::usecase::get_trend::GetTrendUsecase;
 /// - `location` — address and distance to the nearest survey point
 /// - `data` — sorted `(year, price_per_sqm)` time series
 /// - `cagr` — compound annual growth rate over the lookback window
-/// - `direction` — trend direction label (`"rising"`, `"stable"`, `"falling"`)
+/// - `direction` — trend direction label (`"up"` or `"down"`)
 ///
 /// # Errors
 ///

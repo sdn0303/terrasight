@@ -2,8 +2,8 @@
 //!
 //! Municipality records are used by the `/api/v1/municipalities` endpoint to
 //! populate the city filter dropdown in the Terrasight frontend. They are
-//! derived from the `municipalities` table, which is populated from JIS X 0402
-//! reference data during the data pipeline setup.
+//! derived from the `admin_boundaries` table via `SELECT DISTINCT` on
+//! `city_code` / `city_name` / `pref_code`.
 
 use super::primitives::{AreaName, CityCode, PrefCode};
 

@@ -15,22 +15,14 @@
 //!
 //! | Module | Purpose |
 //! |--------|---------|
-//! | [`entity`] | Core domain entities, value types, and the `nonempty_string_type!` macro |
-//! | [`value_object`] | Validated newtypes that enforce domain invariants at construction |
+//! | [`model`] | All domain model types — entities, value objects, and DTOs (flat re-exports) |
 //! | [`error`] | Crate-wide [`DomainError`](error::DomainError) hierarchy |
 //! | [`constants`] | Named constants for scoring thresholds, search radii, and API limits |
 //! | [`repository`] | Async trait contracts for data access (implemented by the `infra` layer) |
-//! | [`appraisal`] | Official land appraisal record type (MLIT 鑑定評価) |
-//! | [`municipality`] | Municipality lookup type (JIS X 0402 市区町村) |
-//! | [`transaction`] | Real-estate transaction summary and detail types |
 //! | [`reinfolib`] | [`ReinfolibDataSource`](reinfolib::ReinfolibDataSource) trait abstracting the MLIT reinfolib API |
 
-pub mod appraisal;
 pub mod constants;
-pub mod entity;
 pub mod error;
-pub mod municipality;
+pub mod model;
 pub mod reinfolib;
 pub mod repository;
-pub mod transaction;
-pub mod value_object;

@@ -14,7 +14,7 @@ pub struct TrendResponse {
     /// Compound annual growth rate over the lookback window as a decimal
     /// (e.g. `0.023` for 2.3 % annual growth).
     pub cagr: f64,
-    /// Trend direction label: `"rising"`, `"stable"`, or `"falling"`.
+    /// Trend direction label: `"up"` or `"down"`.
     pub direction: String,
 }
 

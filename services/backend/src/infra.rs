@@ -22,7 +22,7 @@
 //! | [`pg_transaction_repository`] | [`TransactionRepository`](crate::domain::repository::TransactionRepository) |
 //! | [`query_helpers`] | Shared `run_query` timeout wrapper and `apply_limit` N+1 helper |
 //! | [`row_types`] | Shared `FromRow` structs used across repositories |
-//! | [`geo_convert`] | PostGIS `ST_AsGeoJSON` → domain [`GeoFeature`](crate::domain::entity::GeoFeature) |
+//! | [`geo_convert`] | PostGIS `ST_AsGeoJSON` → domain [`GeoFeature`](crate::domain::model::GeoFeature) |
 //! | [`map_db_err`] | `sqlx::Error` → [`DomainError::Database`](crate::domain::error::DomainError) |
 //! | [`opportunities_cache`] | In-memory TTL cache for `/api/v1/opportunities` |
 //! | [`reinfolib_mock`] | [`ReinfolibDataSource`](crate::domain::reinfolib::ReinfolibDataSource) implementations and factory |
