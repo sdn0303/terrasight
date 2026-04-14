@@ -7,11 +7,12 @@
 use crate::domain::error::DomainError;
 
 /// Convert a sqlx database error into a [`DomainError::Database`] with a
-/// redacted message produced by `terrasight_server::db::error::map_db_err`.
+/// generic client-safe message.
 ///
-/// Emits a single `error`-level log line with the original error string so
-/// the redacted client message stays scannable in production logs.
+/// The original `sqlx::Error` is logged at `error` level with full details
+/// (table names, constraint names, connection strings) but **never** forwarded
+/// to the HTTP response. Clients receive only `"database error"`.
 pub(crate) fn map_db_err(e: sqlx::Error) -> DomainError {
     tracing::error!(error = %e, "database query failed");
-    DomainError::Database(terrasight_server::db::error::map_db_err(e).into_message())
+    DomainError::Database("database error".into())
 }

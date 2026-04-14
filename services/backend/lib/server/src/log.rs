@@ -19,8 +19,9 @@
 //! ```
 //!
 //! Call [`init_global_logger`] exactly once before any `tracing` macros are
-//! invoked.  Subsequent calls are silently ignored to allow test harnesses that
-//! run multiple `#[tokio::test]` functions in the same process.
+//! invoked.  Subsequent calls log a `WARN` and return without effect, to
+//! allow test harnesses that run multiple `#[tokio::test]` functions in the
+//! same process.
 
 mod logger;
 
