@@ -2,9 +2,8 @@
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::Coord;
+use crate::domain::model::{Coord, MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 
 /// Repository for the Total Location Score (TLS) sub-score data queries.
 ///

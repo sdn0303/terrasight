@@ -4,9 +4,8 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, PrefCode};
+use crate::domain::model::{BBox, FacilityStats, LandPriceStats, PrefCode, RiskStats};
 
 /// Repository for aggregate area statistics.
 ///

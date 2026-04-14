@@ -6,8 +6,7 @@
 //! data (`land_prices` table) in that they include cost and yield
 //! decompositions produced by licensed appraisers.
 
-use crate::domain::entity::{Address, AreaName, ZoneCode};
-use crate::domain::value_object::CityCode;
+use super::primitives::{Address, AreaName, CityCode, ZoneCode};
 
 /// Official land appraisal detail record (鑑定評価明細).
 ///

@@ -3,8 +3,7 @@
 use async_trait::async_trait;
 
 use crate::domain::error::DomainError;
-use crate::domain::transaction::{TransactionDetail, TransactionSummary};
-use crate::domain::value_object::{CityCode, PrefCode, Year};
+use crate::domain::model::{CityCode, PrefCode, TransactionDetail, TransactionSummary, Year};
 
 /// Repository for real-estate transaction data.
 ///

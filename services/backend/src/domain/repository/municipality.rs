@@ -3,8 +3,7 @@
 use async_trait::async_trait;
 
 use crate::domain::error::DomainError;
-use crate::domain::municipality::Municipality;
-use crate::domain::value_object::PrefCode;
+use crate::domain::model::{Municipality, PrefCode};
 
 /// Repository for municipality lookup data.
 ///

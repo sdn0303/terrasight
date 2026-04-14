@@ -2,9 +2,8 @@
 
 use async_trait::async_trait;
 
-use crate::domain::entity::AdminAreaStats;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::AreaCode;
+use crate::domain::model::{AdminAreaStats, AreaCode};
 
 /// Repository for administrative area aggregate statistics.
 ///

@@ -20,8 +20,8 @@
 pub enum DomainError {
     /// A geographic coordinate (latitude or longitude) was out of the WGS-84 range.
     ///
-    /// Produced by [`BBox::new`](crate::domain::value_object::BBox::new) and
-    /// [`Coord::new`](crate::domain::value_object::Coord::new). Maps to HTTP 400.
+    /// Produced by [`BBox::new`](crate::domain::model::BBox::new) and
+    /// [`Coord::new`](crate::domain::model::Coord::new). Maps to HTTP 400.
     #[error("Invalid coordinate: {0}")]
     InvalidCoordinate(String),
 
@@ -36,7 +36,7 @@ pub enum DomainError {
 
     /// A year value was outside the valid land-price data range.
     ///
-    /// Produced by [`Year::new`](crate::domain::value_object::Year::new).
+    /// Produced by [`Year::new`](crate::domain::model::Year::new).
     /// Maps to HTTP 400.
     #[error("Invalid year: {0}")]
     InvalidYear(String),
@@ -80,14 +80,14 @@ pub enum DomainError {
 
     /// A prefecture code string was not a valid 2-digit code in `01`–`47`.
     ///
-    /// Produced by [`PrefCode::new`](crate::domain::value_object::PrefCode::new).
+    /// Produced by [`PrefCode::new`](crate::domain::model::PrefCode::new).
     /// Maps to HTTP 400.
     #[error("invalid prefecture code: {0}")]
     InvalidPrefCode(String),
 
     /// A municipality code string was not a valid 5-digit JIS X 0402 code.
     ///
-    /// Produced by [`CityCode::new`](crate::domain::value_object::CityCode::new).
+    /// Produced by [`CityCode::new`](crate::domain::model::CityCode::new).
     /// Maps to HTTP 400.
     #[error("invalid city code: {0}")]
     InvalidCityCode(String),

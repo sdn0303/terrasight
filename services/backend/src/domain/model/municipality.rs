@@ -5,8 +5,7 @@
 //! derived from the `municipalities` table, which is populated from JIS X 0402
 //! reference data during the data pipeline setup.
 
-use crate::domain::entity::AreaName;
-use crate::domain::value_object::{CityCode, PrefCode};
+use super::primitives::{AreaName, CityCode, PrefCode};
 
 /// A Japanese municipality (市区町村) identified by its JIS X 0402 code.
 ///

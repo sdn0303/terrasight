@@ -2,9 +2,8 @@
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{TrendLocation, TrendPoint};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{Coord, YearsLookback};
+use crate::domain::model::{Coord, TrendLocation, TrendPoint, YearsLookback};
 
 /// Repository for price trend time-series queries.
 ///

@@ -2,9 +2,10 @@
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{LayerResult, OpportunityRecord, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
+use crate::domain::model::{
+    BBox, LayerResult, OpportunityRecord, PrefCode, PricePerSqm, Year, ZoneCode, ZoomLevel,
+};
 
 /// Repository for land price spatial queries (dedicated `/api/v1/landprice` endpoint).
 ///

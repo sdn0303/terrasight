@@ -2,9 +2,8 @@
 
 use async_trait::async_trait;
 
-use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
+use crate::domain::model::{BBox, LayerResult, LayerType, PrefCode, ZoomLevel};
 
 /// Repository for map layer GeoJSON features.
 ///

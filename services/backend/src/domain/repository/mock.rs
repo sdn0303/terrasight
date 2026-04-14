@@ -19,19 +19,16 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 
-use crate::domain::entity::{
-    AdminAreaStats, FacilityStats, LandPriceStats, LayerResult, MedicalStats, OpportunityRecord,
-    PricePerSqm, PriceRecord, RiskStats, SchoolStats, TrendLocation, TrendPoint, ZScoreResult,
-    ZoneCode,
-};
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    AdminAreaStats, AreaCode, BBox, CityCode, Coord, FacilityStats, LandPriceStats, LayerResult,
+    LayerType, MedicalStats, OpportunityRecord, PrefCode, PricePerSqm, PriceRecord, RiskStats,
+    SchoolStats, TransactionDetail, TransactionSummary, TrendLocation, TrendPoint, Year,
+    YearsLookback, ZScoreResult, ZoneCode, ZoomLevel,
+};
 use crate::domain::repository::{
     AdminAreaStatsRepository, HealthRepository, LandPriceRepository, LayerRepository,
     StatsRepository, TlsRepository, TransactionRepository, TrendRepository,
-};
-use crate::domain::transaction::{TransactionDetail, TransactionSummary};
-use crate::domain::value_object::{
-    AreaCode, BBox, CityCode, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
 
 /// Pop the next queued response or panic if the queue is empty.

@@ -7,8 +7,7 @@
 //! - [`TransactionSummary`] — city-level aggregate from a materialised view.
 //! - [`TransactionDetail`] — individual transaction records.
 
-use crate::domain::entity::AreaName;
-use crate::domain::value_object::CityCode;
+use super::primitives::{AreaName, CityCode};
 
 /// Aggregated real-estate transaction statistics per city, year, and property type.
 ///

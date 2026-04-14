@@ -2,9 +2,8 @@
 
 use async_trait::async_trait;
 
-use crate::domain::appraisal::AppraisalDetail;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{CityCode, PrefCode};
+use crate::domain::model::{AppraisalDetail, CityCode, PrefCode};
 
 /// Repository for official land appraisal (鑑定評価) records.
 ///

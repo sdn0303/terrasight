@@ -34,9 +34,8 @@
 /// [`get_hazard_areas`]: ReinfolibDataSource::get_hazard_areas
 use async_trait::async_trait;
 
-use crate::domain::entity::GeoFeature;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::BBox;
+use crate::domain::model::{BBox, GeoFeature};
 
 /// Data provider for reinfolib-compatible geospatial layers.
 ///
