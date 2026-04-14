@@ -6,25 +6,25 @@
 //!
 //! ## Traits
 //!
-//! | Module | Trait | Infra impl |
-//! |--------|-------|------------|
-//! | [`admin_area`] | [`AdminAreaStatsRepository`] | `PgAdminAreaStatsRepository` |
-//! | [`appraisal`] | [`AppraisalRepository`] | `PgAppraisalRepository` |
-//! | [`health`] | [`HealthRepository`] | `PgHealthRepository` |
-//! | [`land_price`] | [`LandPriceRepository`] | `PgLandPriceRepository` |
-//! | [`layer`] | [`LayerRepository`] | `PgLayerRepository` |
-//! | [`municipality`] | [`MunicipalityRepository`] | `PgMunicipalityRepository` |
-//! | [`stats`] | [`StatsRepository`] | `PgStatsRepository` |
-//! | [`tls`] | [`TlsRepository`] | `PgTlsRepository` |
-//! | [`transaction`] | [`TransactionRepository`] | `PgTransactionRepository` |
-//! | [`trend`] | [`TrendRepository`] | `PgTrendRepository` |
+//! | Trait | Infra impl |
+//! |-------|------------|
+//! | [`AdminAreaStatsRepository`] | `PgAdminAreaStatsRepository` |
+//! | [`AppraisalRepository`] | `PgAppraisalRepository` |
+//! | [`HealthRepository`] | `PgHealthRepository` |
+//! | [`LandPriceRepository`] | `PgLandPriceRepository` |
+//! | [`LayerRepository`] | `PgLayerRepository` |
+//! | [`MunicipalityRepository`] | `PgMunicipalityRepository` |
+//! | [`StatsRepository`] | `PgStatsRepository` |
+//! | [`TlsRepository`] | `PgTlsRepository` |
+//! | [`TransactionRepository`] | `PgTransactionRepository` |
+//! | [`TrendRepository`] | `PgTrendRepository` |
 //!
 //! ## Design principles
 //!
 //! - Traits are scoped to a single aggregate root (one table family per trait).
 //! - All methods are `async` (via `async_trait`) and return `Result<_, DomainError>`.
 //! - The infra layer must never let `sqlx::Error` or other framework errors
-//!   escape — they are converted to [`DomainError::Database`] at the boundary.
+//!   escape — they are converted to `DomainError::Database` at the boundary.
 //! - `mock` (test-only) provides in-process test doubles for every trait in
 //!   this module, gated behind `#[cfg(test)]`.
 
