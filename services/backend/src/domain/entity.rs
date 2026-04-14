@@ -37,11 +37,17 @@ use crate::domain::value_object::{AreaCode, Coord, OpportunitySignal, RiskLevel,
 /// are empty after trimming.  It also derives `Debug`, `Clone`, `PartialEq`,
 /// `Eq`, `Hash`, and `Display`.
 macro_rules! nonempty_string_type {
-    ($Name:ident, $err_msg:literal) => {
+    ($(#[doc = $doc:literal])* $Name:ident, $err_msg:literal) => {
+        $(#[doc = $doc])*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $Name(String);
 
         impl $Name {
+            /// Parse a string into a validated, whitespace-trimmed value.
+            ///
+            /// # Errors
+            ///
+            /// Returns [`DomainError::Validation`] if the input is empty after trimming.
             pub fn parse(s: &str) -> Result<Self, DomainError> {
                 let trimmed = s.trim();
                 if trimmed.is_empty() {
@@ -50,6 +56,7 @@ macro_rules! nonempty_string_type {
                 Ok(Self(trimmed.to_owned()))
             }
 
+            /// Borrows the inner string slice.
             pub fn as_str(&self) -> &str {
                 &self.0
             }
@@ -63,17 +70,29 @@ macro_rules! nonempty_string_type {
     };
 }
 
-// AreaName — human-readable area name (e.g. "新宿区", "Shinjuku").
-// Whitespace-trimmed and non-empty by construction.
-nonempty_string_type!(AreaName, "area name must be non-empty");
+nonempty_string_type!(
+    /// Human-readable area name (e.g. "新宿区", "Shinjuku").
+    ///
+    /// Whitespace-trimmed and non-empty by construction.
+    AreaName,
+    "area name must be non-empty"
+);
 
-// Address — postal or street address, trimmed and non-empty by construction.
-// Used as the human-readable label for land price observation points.
-nonempty_string_type!(Address, "address must be non-empty");
+nonempty_string_type!(
+    /// Postal or street address, trimmed and non-empty by construction.
+    ///
+    /// Used as the human-readable label for land price observation points.
+    Address,
+    "address must be non-empty"
+);
 
-// ZoneCode — urban-planning zone code (用途地域コード), e.g. "Y1".
-// Trimmed and non-empty by construction. Code set defined by MLIT.
-nonempty_string_type!(ZoneCode, "zone code must be non-empty");
+nonempty_string_type!(
+    /// Urban-planning zone code (用途地域コード), e.g. `"商業地域"`.
+    ///
+    /// Trimmed and non-empty by construction. Code set defined by MLIT.
+    ZoneCode,
+    "zone code must be non-empty"
+);
 
 /// Land price per square meter, stored in JPY (integer yen).
 ///
