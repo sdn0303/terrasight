@@ -1,63 +1,77 @@
-# Urban Stratigraphy Design System
+# Terrasight Design System
 
-## Design Philosophy
+## 1. Design Philosophy
 
-Urban Stratigraphy treats the city as layered geological strata. Just as geologists read the earth through cross-sections of rock, soil, and sediment, this platform lets real estate investors read Tokyo through stacked data layers -- land prices, flood risk, soil composition, infrastructure, and zoning. The Japanese title "地層" (chisou, meaning "geological stratum") anchors this metaphor throughout the interface.
+Terrasight presents real estate investment data through a clean, information-first interface inspired by mapleads and rakumachi. The layout centers on a full-screen map with overlaid panels that slide in contextually -- no persistent chrome that competes with the data.
 
-The visual language is dark, dense, and information-first. A near-black canvas recedes so that map data and color-coded layers dominate the visual hierarchy. Monospaced type for data, sans-serif for headings, and cyan accents on dark surfaces evoke a command-center aesthetic.
+The visual language draws from mapleads: white panel surfaces, generous border-radius (12-16px), soft drop shadows, and an indigo/blue accent system. Panels appear only when the user requests them; the default state is map-dominant.
 
-## Color Tokens
+Information architecture follows rakumachi's thematic model: instead of toggling individual layers, users switch between exclusive themes (地価, ハザード, 取引事例, etc.). Each theme activates a curated set of layers and surfaces theme-linked detail panels.
+
+**Multi-theme map support**: Light (default), Dark, and Satellite map styles are available via a Map Style Switcher.
+
+Key design principles:
+- Map-first: the map fills the viewport at all times; panels overlay without replacing it
+- Theme-based exclusivity: activating one theme deactivates the previous one (rakumachi pattern)
+- Progressive disclosure: detail panels appear only on user action (click, table row selection)
+- Clean surfaces: white backgrounds, soft shadows `rgba(0,0,0,0.08)`, no hard borders on light mode
+
+## 2. Color Tokens
 
 All color tokens are defined as CSS custom properties in `:root` scope.
 
 Source of truth: `services/frontend/src/app/globals.css`
 
-### Base Palette
+Palette constants are sourced from `src/lib/palette.ts`. CSS variables in `globals.css` and Mapbox paint expressions both derive from this file.
 
-| Token | Value | Usage |
-|---|---|---|
-| `--bg-primary` | `#0c0c14` | Page background, map canvas background |
-| `--bg-secondary` | `#13131e` | Panels, cards, popover surfaces |
-| `--bg-tertiary` | `#1a1a28` | Secondary/muted surface, hover states |
-| `--text-primary` | `#e4e4e7` | Body text, data values |
-| `--text-secondary` | `#a1a1aa` | Labels, descriptions |
-| `--text-muted` | `#52525b` | Disabled text, category headers |
-| `--text-heading` | `#f4f4f5` | Panel titles, headings |
-| `--border-primary` | `rgba(63, 63, 70, 0.5)` | Panel borders, dividers, input borders |
+### Base Palette (Light-first with Dark Mode Support)
+
+| Token | Light Value | Dark Value | Usage |
+|---|---|---|---|
+| `--bg-primary` | `#FFFFFF` | `#0c0c14` | Panel backgrounds, page background |
+| `--bg-secondary` | `#F9FAFB` | `#13131e` | Secondary surfaces, input backgrounds |
+| `--bg-tertiary` | `#F3F4F6` | `#1a1a28` | Hover states, muted surfaces |
+| `--text-primary` | `#111827` | `#e4e4e7` | Body text, data values |
+| `--text-secondary` | `#6B7280` | `#a1a1aa` | Labels, descriptions |
+| `--text-muted` | `#9CA3AF` | `#52525b` | Disabled text, category headers |
+| `--text-heading` | `#030712` | `#f4f4f5` | Panel titles, headings |
+| `--border-primary` | `rgba(0,0,0,0.08)` | `rgba(63,63,70,0.5)` | Panel borders, dividers |
+| `--shadow-panel` | `rgba(0,0,0,0.08)` | `rgba(0,0,0,0.4)` | Panel drop shadows |
 
 ### Accent Colors
 
 | Token | Value | Usage |
 |---|---|---|
-| `--accent-cyan` | `#22d3ee` | Primary accent, active indicators, interactive highlights, ring/focus |
+| `--accent-indigo` | `#6366F1` | Primary accent, active indicators, focus rings |
+| `--accent-indigo-tint` | `rgba(99,102,241,0.12)` | Active item highlight (sidebar, table row) |
+| `--hover-blue-tint` | `rgba(59,130,246,0.06)` | Hover state background |
 | `--accent-danger` | `#e04030` | Destructive actions, high-risk indicators |
-| `--accent-warning` | `#ffd000` | Warnings, demo mode badge, mid-risk flood depth |
+| `--accent-warning` | `#ffd000` | Warnings, mid-risk indicators |
 | `--accent-success` | `#10b981` | Success states |
-| `--hover-accent` | `rgba(34, 211, 238, 0.08)` | Active layer row background, hover highlight |
 
-### shadcn/ui Theme Mapping (Zinc Dark)
+### shadcn/ui Theme Mapping
 
-These tokens bridge the custom palette to shadcn/ui component internals:
+These tokens bridge the custom palette to shadcn/ui component internals (light mode defaults):
 
 | Token | Value | Maps to |
 |---|---|---|
-| `--background` | `#0c0c14` | Same as `--bg-primary` |
-| `--foreground` | `#e4e4e7` | Same as `--text-primary` |
-| `--card` / `--card-foreground` | `#13131e` / `#e4e4e7` | Card surfaces |
-| `--popover` / `--popover-foreground` | `#13131e` / `#e4e4e7` | Tooltip/popover surfaces |
-| `--primary` / `--primary-foreground` | `#22d3ee` / `#0c0c14` | Cyan-on-dark for primary buttons |
-| `--secondary` / `--secondary-foreground` | `#1a1a28` / `#e4e4e7` | Tertiary surface buttons |
-| `--muted` / `--muted-foreground` | `#1a1a28` / `#a1a1aa` | Muted backgrounds and text |
-| `--accent` / `--accent-foreground` | `rgba(34, 211, 238, 0.08)` / `#e4e4e7` | Accent surface |
+| `--background` | `#FFFFFF` | Same as `--bg-primary` |
+| `--foreground` | `#111827` | Same as `--text-primary` |
+| `--card` / `--card-foreground` | `#FFFFFF` / `#111827` | Card surfaces |
+| `--popover` / `--popover-foreground` | `#FFFFFF` / `#111827` | Tooltip/popover surfaces |
+| `--primary` / `--primary-foreground` | `#6366F1` / `#FFFFFF` | Indigo-on-white for primary buttons |
+| `--secondary` / `--secondary-foreground` | `#F3F4F6` / `#111827` | Secondary surface buttons |
+| `--muted` / `--muted-foreground` | `#F9FAFB` / `#6B7280` | Muted backgrounds and text |
+| `--accent` / `--accent-foreground` | `rgba(99,102,241,0.12)` / `#111827` | Accent surface |
 | `--destructive` | `#e04030` | Destructive variant |
-| `--border` | `rgba(63, 63, 70, 0.5)` | All borders |
-| `--input` | `rgba(63, 63, 70, 0.5)` | Input borders |
-| `--ring` | `#22d3ee` | Focus ring |
-| `--radius` | `0.5rem` | Base border-radius (sm: -4px, md: -2px, lg: base, xl: +4px) |
+| `--border` | `rgba(0,0,0,0.08)` | All borders |
+| `--input` | `rgba(0,0,0,0.08)` | Input borders |
+| `--ring` | `#6366F1` | Focus ring |
+| `--radius` | `0.75rem` | Base border-radius (12px) |
 
 ### Layer Color Tokens
 
-Each data layer has a dedicated color token used for the layer indicator dot in the panel and the map paint expression.
+Each data layer has a dedicated color token used for the layer indicator in the panel and the Mapbox paint expression. These values are intentional raw hex constants -- Mapbox paint expressions do not support CSS custom properties.
 
 | Token | Hex | Layer |
 |---|---|---|
@@ -93,7 +107,7 @@ Color heuristics by category:
 - **Infrastructure layers**: greens, teals, cyan
 - **Orientation layers**: neutrals, purples, greens
 
-## Typography
+## 3. Typography
 
 Source of truth: `services/frontend/src/app/layout.tsx`, `globals.css`
 
@@ -101,71 +115,125 @@ Source of truth: `services/frontend/src/app/layout.tsx`, `globals.css`
 
 | Token | Value | Usage |
 |---|---|---|
-| `--font-sans` | `"Geist Sans", system-ui, sans-serif` | Headings, layer names, body text |
-| `--font-mono` | `"Geist Mono", monospace, system-ui` | Data values, coordinates, status bar, category labels, popup cards |
+| `--font-sans` | `"Inter", system-ui, sans-serif` | Headings, panel labels, body text |
+| `--font-mono` | `monospace, system-ui` | Data values, coordinates, numeric readouts |
 
-Geist Mono is loaded via `geist/font/mono` and applied as a CSS variable class on `<html>`. The sans-serif variant is set as the body default via `font-family: var(--font-sans)`.
+Inter is the primary typeface for all UI chrome. Monospace is reserved for dense data contexts (coordinates, price values, status readouts) where alignment and fixed-width rendering aid scannability.
 
 ### Type Scale (in use)
 
 | Context | Size | Weight | Tracking | Font |
 |---|---|---|---|---|
-| Panel title ("地層") | `text-base` (16px) | `font-bold` | `0.05em` | Sans |
-| Panel subtitle ("URBAN STRATIGRAPHY") | `10px` | Normal | `0.12em` | Mono |
-| Category header (e.g., "投資価値") | `9px` | Normal | `0.15em` | Mono |
-| Layer toggle label | `text-xs` (12px) | Normal | Default | Sans |
-| Active count badge | `9px` | Normal | Default | Mono |
-| Popup card header | `10px` | Normal | `0.1em` | Mono |
-| Popup card data rows | `11px` | Normal | Default | Mono |
+| Sidebar nav item | `text-sm` (14px) | `font-medium` | Default | Sans |
+| Panel section header | `text-xs` (12px) | `font-semibold` | `0.08em` | Sans |
+| Panel body / data label | `text-sm` (14px) | Normal | Default | Sans |
+| Data value (price, score) | `text-sm` (14px) | `font-medium` | Default | Mono |
+| Table cell | `text-xs` (12px) | Normal | Default | Sans |
+| Map legend label | `10px` | Normal | Default | Sans |
 | Status bar | `10px` | Normal | Default | Mono |
-| Loading screen | `13px` | Normal | `0.1em` | Mono |
+| Coordinate readout | `11px` | Normal | Default | Mono |
 
-## Component Patterns
+## 4. Component Patterns
 
 ### shadcn/ui Components
 
 The project uses shadcn/ui (style: `new-york`) with the following components:
 
 - **Button** (`button.tsx`) -- standard variants
-- **Card** (`card.tsx`) -- `bg-card` / `text-card-foreground`, rounded-xl, shadow-sm
-- **Collapsible** (`collapsible.tsx`) -- layer category expand/collapse
-- **ScrollArea** (`scroll-area.tsx`) -- scrollable panels
-- **Separator** (`separator.tsx`) -- dividers
-- **Sheet** (`sheet.tsx`) -- mobile layer panel (slides from left)
-- **Skeleton** (`skeleton.tsx`) -- loading placeholders
-- **Toggle** (`toggle.tsx`) -- toggle buttons
+- **Card** (`card.tsx`) -- white background, 12-16px border-radius, `shadow-sm`
+- **Collapsible** (`collapsible.tsx`) -- sidebar section expand/collapse
+- **ScrollArea** (`scroll-area.tsx`) -- scrollable panels and drawers
+- **Separator** (`separator.tsx`) -- dividers within panels
+- **Sheet** (`sheet.tsx`) -- Right Drawer (slides from right)
+- **Skeleton** (`skeleton.tsx`) -- loading placeholders in panels and table
+- **Tabs** (`tabs.tsx`) -- tab navigation within Left Detail Panel and Right Drawer
+- **Toggle** (`toggle.tsx`) -- map style switcher, layer toggles
 - **Tooltip** (`tooltip.tsx`) -- wrapped at root via `TooltipProvider`
 
-### Map Layer Component Pattern
+### AppShell
 
-Each of the 24 layers follows a consistent pattern defined in `services/frontend/src/components/map/layers/`.
+The root layout component. Renders the full-screen Mapbox map as the base layer with all panels positioned as fixed overlays via CSS `position: fixed`. Manages the four layout states (see Section 5) by coordinating Zustand store flags for `leftPanelOpen`, `tableOpen`, and `rightDrawerOpen`.
 
-**API layer** (receives live data from backend):
-```
-interface Props { data: FeatureCollection; visible: boolean }
-```
-Returns `null` when `!visible`. Otherwise renders a `<Source>` with `type="geojson"` wrapping one or more `<Layer>` elements with MapLibre paint expressions.
+### Sidebar
 
-**Static layer** (loads GeoJSON from `/geojson/` at mount):
-```
-interface Props { visible: boolean }
-```
-The `<Source>` data prop points to a static file path like `"/geojson/admin-boundary-tokyo.geojson"`.
+mapleads-style collapsible navigation rail.
 
-**Layer type examples**:
-- `circle` -- point data (land prices, stations, schools, medical)
-- `fill` -- polygon areas (DID, zoning, flood history)
-- `fill-extrusion` -- 3D polygons (flood risk depth, buildings)
-- `line` -- linear features (fault lines, admin boundaries, railways)
-- `symbol` -- label layers (admin boundary names)
+- **Expanded**: 200px wide, shows icon + label for each nav item
+- **Collapsed**: 56px wide, shows icon only with tooltip
+- Collapse toggle at the bottom of the rail
+- Two sections: "探す" (search/browse -- themes) and "見る" (analysis -- Opportunities)
+- Active item background: `rgba(99,102,241,0.12)` (indigo tint)
+- Hover background: `rgba(59,130,246,0.06)` (blue tint)
+- White panel surface, soft shadow `rgba(0,0,0,0.08)`, border-radius 12px on the right edge
+- z-index: 40
 
-Some layers compose multiple sub-layers (e.g., AdminBoundaryLayer renders fill + line + symbol).
+**Nav items (探す):**
+- 地価 (Land Price)
+- ハザード (Hazard)
+- 取引事例 (Transaction Cases)
+- 乗降客数 (Station Ridership)
+- スコア分析 (Score Analysis)
 
-### Map Paint Colors (MapLibre Exception)
+**Nav items (見る):**
+- Opportunities (opens Opportunities Table)
 
-MapLibre GL paint expressions do not support CSS custom properties -- they require raw hex values. The following hardcoded hex values in map layer components are intentional deviations from the CSS variable system. If the brand palette changes, these must be updated manually.
+### Left Detail Panel
 
-**Land Price Extrusion Color Ramp** (source: `land-price-extrusion-layer.tsx`):
+Slides in from the left when a theme is active and the user clicks the map (State 1).
+
+- Width: 360px
+- Full height (minus status bar)
+- White background, 0 12px 12px 0 border-radius, soft shadow
+- Tab navigation matching the active theme (rakumachi style -- tabs are theme-linked)
+- z-index: 60
+- Animation: `transform: translateX(-100%)` → `translateX(0)` over 0.3s ease
+
+### Opportunities Table
+
+On-map overlay table. Opens when the user clicks the Opportunities nav item.
+
+- Width: ~65% of viewport width, centered horizontally
+- Positioned at the bottom of the viewport, slides up from below
+- Virtualized rows (TanStack Virtual) for performance
+- mapleads CRM-style: compact rows, sticky header, sortable columns
+- Active row background: `rgba(99,102,241,0.12)`
+- White surface, top border-radius 12px, shadow above
+- z-index: 80
+- Clicking a row opens the Right Drawer (State 3)
+
+### Right Drawer
+
+340px panel slides in from the right. Opens in two contexts:
+1. Table row click -- shows Opportunity detail
+2. Map point click while table is open (State 3) -- shows map point detail
+
+- Width: 340px
+- Full height (minus status bar)
+- White background, 12px 0 0 12px border-radius, soft shadow
+- Contains tabs: Detail / Compare (replaces old ComparePanel modal)
+- z-index: 100
+- Animation: `transform: translateX(100%)` → `translateX(0)` over 0.3s ease
+
+### Map Style Switcher
+
+Three-state toggle for base map style.
+
+- Options: Light (streets-v12), Dark (dark-v11), Satellite (satellite-streets-v12)
+- Positioned top-right of the map, above NavControl
+- Compact toggle group (shadcn/ui `Toggle`)
+- z-index: 20
+
+### StatusBar
+
+A fixed 28px bar at the bottom of the viewport. Monospaced, 10px. Displays coordinates, zoom level, and loading state. Simplified from previous version -- no DEMO badge.
+
+- z-index: 20
+
+### Map Paint Colors (Mapbox Exception)
+
+Mapbox GL paint expressions do not support CSS custom properties -- they require raw hex values. The `--layer-*` hex tokens listed in Section 2 are the canonical source. If the brand palette changes, both `globals.css` and `src/lib/palette.ts` must be updated; Mapbox paint expressions in layer components will pick up values from `palette.ts` at build time via the shared constants.
+
+**Land Price Color Ramp** (source: `land-price-layer.tsx`):
 
 | Hex | Price Range (¥/m²) | Label |
 |---|---|---|
@@ -175,162 +243,244 @@ MapLibre GL paint expressions do not support CSS custom properties -- they requi
 | `#ef4444` (red) | ~1,000,000 | Very high |
 | `#a855f7` (purple) | ~3,000,000+ | Premium |
 
-**3D Building Extrusion** (source: `map-view.tsx`):
+## 5. Layout Structure
 
-| Hex | Usage |
-|---|---|
-| `#1e1e2e` | Building fill color (dark blue-grey, recedes against `--bg-primary`) |
+### Viewport States
 
-### PopupCard Pattern
-
-A single, config-driven `PopupCard` component handles click-inspect for all layers. It reads `popupFields` from the `LayerConfig` in `layers.ts` and renders key-value rows. No per-layer popup templates exist.
-
-- Header: layer name in Japanese, cyan text, separated by a bottom border
-- Body: label (secondary color) + value (primary color) pairs, right-aligned values
-- Monospaced font throughout at 11px
-- Max width: 240px
-
-### Layer Panel Pattern
-
-The `LayerPanel` component uses a responsive strategy:
-
-- **Desktop** (>= 1280px): fixed 280px sidebar on the left, animated with Framer Motion (slide in/out)
-- **Mobile/Tablet**: shadcn/ui `Sheet` sliding from the left, triggered by a hamburger button
-
-Content is shared via `LayerPanelContent`, which renders collapsible category groups with toggle buttons per layer. Each layer row shows a colored indicator dot (using the layer's CSS color token) and the Japanese layer name.
-
-### StatusBar Pattern
-
-A fixed 28px bar at the bottom of the viewport. Monospaced, 10px. Displays coordinates, zoom level, DEMO mode indicator (warning yellow), and loading state (cyan).
-
-## Layer Categories
-
-Source of truth: `services/frontend/src/lib/layers.ts`
-
-### HOW MUCH? (投資価値) -- `value`
-
-Layers for assessing investment value and market context.
-
-| Layer ID | Name | Source | Default |
-|---|---|---|---|
-| `landprice` | Land Price (地価公示) | API | On |
-| `flood_history` | Flood History (浸水履歴) | Static | Off |
-| `did` | DID Area (人口集中地区) | Static | Off |
-| `station` | Railway Stations (鉄道駅) | Static | Off |
-
-### IS IT SAFE? (リスク評価) -- `risk`
-
-Natural disaster and hazard assessment layers.
-
-| Layer ID | Name | Source | Default |
-|---|---|---|---|
-| `flood` | Flood Risk (洪水浸水) | API | Off |
-| `steep_slope` | Steep Slope (急傾斜地) | API | Off |
-| `liquefaction` | Liquefaction Risk (液状化危険度) | Static | Off |
-| `seismic` | Seismic Hazard (地震動・震源断層) | Static | Off |
-| `fault` | Fault Lines (断層線) | Static | Off |
-| `volcano` | Volcanoes (火山) | Static | Off |
-| `landslide` | Landslide Risk (土砂災害) | Static | Off |
-| `tsunami` | Tsunami Risk (津波浸水) | Static | Off |
-
-### WHAT'S THE GROUND? (地盤) -- `ground`
-
-Subsurface and terrain composition layers.
-
-| Layer ID | Name | Source | Default |
-|---|---|---|---|
-| `landform` | Landform (地形分類) | Static | Off |
-| `geology` | Geology (表層地質) | Static | Off |
-| `soil` | Soil (土壌図) | Static | Off |
-
-### WHAT'S NEARBY? (インフラ) -- `infra`
-
-Surrounding infrastructure and amenity layers.
-
-| Layer ID | Name | Source | Default |
-|---|---|---|---|
-| `schools` | Schools (学校) | API | Off |
-| `medical` | Medical (医療機関) | API | Off |
-| `school_district` | School Districts (小学校区) | Static | Off |
-| `park` | Parks (都市公園) | Static | Off |
-| `railway` | Railway Lines (鉄道路線) | Static | Off |
-
-### WHERE AM I? (オリエンテーション) -- `orientation`
-
-Spatial context and planning framework layers.
-
-| Layer ID | Name | Source | Default |
-|---|---|---|---|
-| `admin_boundary` | Admin Boundary (市町村境界) | Static | On |
-| `zoning` | Zoning (用途地域) | API | On |
-| `population_mesh` | Population Mesh (将来人口メッシュ) | Static | Off |
-| `urban_plan` | Urban Planning Zones (立地適正化) | Static | Off |
-
-## Dark Mode / Theme
-
-The application is dark-only. The `<html>` element carries the `dark` class permanently (set in `layout.tsx`). There is no light mode toggle.
-
-All theming flows through CSS custom properties defined in `:root` in `globals.css`. The Tailwind CSS v4 `@theme inline` block maps these CSS variables to Tailwind's color utility system (e.g., `bg-background`, `text-foreground`, `bg-card`).
-
-The border-radius scale derives from a single `--radius` token (0.5rem):
-- `--radius-sm`: `calc(var(--radius) - 4px)` = ~4px
-- `--radius-md`: `calc(var(--radius) - 2px)` = ~6px
-- `--radius-lg`: `var(--radius)` = 8px
-- `--radius-xl`: `calc(var(--radius) + 4px)` = ~12px
-
-## Spacing and Layout
-
-### Viewport Structure
-
-The root layout is a full-viewport container (`h-screen w-screen overflow-hidden`) with all panels overlaid as fixed-position elements on top of the map canvas.
+The AppShell cycles through four discrete layout states:
 
 ```
-+-----+--------------------------------------------+
-|     |                                            |
-| L   |              MapGL (100% x 100%)           |
-| a   |          pitch: 45, bearing: 0             |
-| y   |         3D terrain + buildings             |
-| e   |                                            |
-| r   |      [PopupCard] (centered overlay)        |
-|     |                                            |
-| 280 |                        [ScoreCard]         |
-| px  |                        [ComparePanel]      |
-|     |                        [DashboardStats]    |
-|     |                    [NavControl bottom-right]|
-+-----+--------------------------------------------+
-| StatusBar (28px, full width, z-20)               |
-+--------------------------------------------------+
+State 0: Map only (initial)
++----+------------------------------------------+
+| SB |           Mapbox Map (full)              |
+|    |                                          |
+| 56 |                                          |
+| px |                       [Style Switcher]   |
+|    |                       [NavControl]       |
++----+------------------------------------------+
+| StatusBar (28px)                              |
++-----------------------------------------------+
+
+State 1: Nav + Left Panel + Map
++----+--------+--------------------------------+
+| SB | Left   |      Mapbox Map               |
+|    | Panel  |                               |
+|    | 360px  |                               |
+|    |        |              [Style Switcher] |
+|    |        |              [NavControl]     |
++----+--------+--------------------------------+
+| StatusBar (28px)                             |
++----------------------------------------------+
+
+State 2: Nav + Table + Map
++----+------------------------------------------+
+| SB |           Mapbox Map (full)              |
+|    |                                          |
+|    |  +------------------------------------+  |
+|    |  | Opportunities Table (~65% w)       |  |
+|    |  | [virtualized rows]                 |  |
++----+--+------------------------------------+--+
+| StatusBar (28px)                              |
++-----------------------------------------------+
+
+State 3: Nav + Table + Right Drawer + Map
++----+-----------------------------+----------+
+| SB |      Mapbox Map             |  Right   |
+|    |                             |  Drawer  |
+|    |  +--------------------+    |  340px   |
+|    |  | Opportunities Table|    |          |
+|    |  | (~65% w)           |    |          |
++----+--+--------------------+----+----------+
+| StatusBar (28px)                            |
++---------------------------------------------+
 ```
+
+SB = Sidebar (56px collapsed / 200px expanded)
 
 ### Key Dimensions
 
 | Element | Size |
 |---|---|
-| Layer panel (desktop) | 280px wide, full height minus status bar |
+| Sidebar (collapsed) | 56px wide, full height minus status bar |
+| Sidebar (expanded) | 200px wide, full height minus status bar |
+| Left Detail Panel | 360px wide, full height minus status bar |
+| Opportunities Table | ~65% viewport width, bottom-anchored |
+| Right Drawer | 340px wide, full height minus status bar |
 | Status bar | 28px tall, full width |
-| Popup card | max-width 240px |
-| Mobile menu button | 36px (w-9 h-9) |
+| Panel border-radius | 12-16px |
 | Layer indicator dot | 8px (w-2 h-2) |
-| Layer row padding | `px-2 py-1.5` |
-| Category section padding | `px-4 py-1` |
-| Panel header padding | `px-4 pt-4 pb-2` |
 
-### Map Configuration
+### z-index Stack
+
+| z-index | Element |
+|---|---|
+| 100 | Right Drawer |
+| 80 | Opportunities Table |
+| 60 | Left Detail Panel |
+| 40 | Sidebar |
+| 20 | Map controls / Legend / Style Switcher / StatusBar |
+| 1 | Mapbox Map |
+
+## 6. Map Configuration
+
+Source of truth: `services/frontend/src/features/map/components/MapView.tsx`
 
 | Property | Value |
 |---|---|
-| Base style | CARTO Dark Matter (`dark-matter-gl-style`) |
+| Library | Mapbox GL JS (via react-map-gl) |
+| Token env var | `NEXT_PUBLIC_MAPBOX_TOKEN` |
+| Default style | `mapbox://styles/mapbox/streets-v12` (light) |
+| Dark style | `mapbox://styles/mapbox/dark-v11` |
+| Satellite style | `mapbox://styles/mapbox/satellite-streets-v12` |
 | Default center | `[139.767, 35.681]` (Tokyo) |
 | Default zoom | 12 |
-| Default pitch | 45 degrees |
-| Terrain source | AWS Elevation Tiles (terrarium encoding) |
-| Terrain exaggeration | 1.5x |
-| 3D buildings | CARTO vector tiles, fill-extrusion, color `#1e1e2e`, opacity 0.7 |
+| Default pitch | 0 degrees (flat -- optimized for data readability) |
+| Default bearing | 0 |
+| 3D buildings | Optional, disabled by default |
+| Terrain | Optional, disabled by default |
 | Move debounce | 300ms |
 
-### Responsive Breakpoints
+3D buildings and terrain are available as opt-in overlays via the Map Style Switcher but are not activated by default. Flat view (pitch: 0) is the default for investment data readability.
 
-| Breakpoint | Behavior |
+## 7. Theme System (replaces Layer Toggle System)
+
+Themes replace the 24-layer toggle system. Activating a theme switches the active layer set exclusively -- the previous theme's layers are hidden before the new ones appear (0.3s fade transition).
+
+Source of truth: `services/frontend/src/lib/themes.ts` and `docs/designs/map-visualization-spec.md`
+
+### Available Themes
+
+| Theme ID | Japanese | Primary Layers Activated |
+|---|---|---|
+| `landprice` | 地価 | Land Price, Admin Boundary, Zoning |
+| `hazard` | ハザード | Flood, Liquefaction, Seismic, Landslide, Tsunami, Steep Slope |
+| `transactions` | 取引事例 | Transaction Case points, Zoning |
+| `ridership` | 乗降客数 | Station Ridership circles, Railway Lines |
+| `score` | スコア分析 | Composite score mesh, Admin Boundary |
+
+Each theme's exact layer set and paint expressions are specified in `docs/designs/map-visualization-spec.md`.
+
+### Layer ID Conventions
+
+- UI layer IDs: `underscore_case` (e.g., `land_price`, `flood_risk`)
+- WASM/FlatGeobuf layer IDs: `hyphen-case` (e.g., `land-price`, `flood-risk`)
+- Use `canonicalLayerId()` from `src/lib/layers.ts` when crossing the boundary
+
+## 8. Interaction Specification
+
+### Theme Switching
+
+- User clicks a theme item in the Sidebar
+- Active theme flag updates in Zustand store
+- Previous theme layers fade out (opacity 0, 0.3s)
+- New theme layers fade in (opacity 1, 0.3s)
+- Left Detail Panel closes if open (reset to State 0 or State 2)
+
+### Map Click in State 0 (map only)
+
+- User clicks a map feature
+- Left Detail Panel slides in (State 0 → State 1)
+- Panel shows theme-linked detail tabs for the clicked location
+
+### Map Click in State 2 (table open)
+
+- User clicks a map feature while Opportunities Table is open
+- Right Drawer slides in (State 2 → State 3)
+- Drawer shows point detail for the clicked feature
+
+### Table Row Click
+
+- User clicks a row in the Opportunities Table
+- Right Drawer slides in (State 2 → State 3)
+- Drawer shows Opportunity detail with tabs: Detail / Compare
+
+### Opportunities Nav Click
+
+- User clicks "Opportunities" in the Sidebar
+- If Left Detail Panel is open, it closes first
+- Opportunities Table slides up from bottom (State 0/1 → State 2)
+
+### Sidebar Collapse/Expand
+
+- User clicks the collapse toggle
+- Sidebar width animates between 200px and 56px (0.2s ease)
+- Map canvas does not reflow -- sidebar overlays the map
+
+### Map Style Switch
+
+- User selects Light / Dark / Satellite from Map Style Switcher
+- `map.setStyle()` is called; layer sources and paint expressions are re-applied on the `style.load` event
+
+## 9. Accessibility
+
+- All interactive overlay components are keyboard-navigable (Tab, Enter, Escape)
+- Sidebar nav items carry `aria-label` with the theme name
+- Left Detail Panel and Right Drawer are implemented as `role="complementary"` regions with `aria-label`
+- Opportunities Table uses `role="grid"` with `aria-rowcount` for virtualized rows
+- Focus is trapped within the Right Drawer when open (shadcn/ui Sheet behavior)
+- Map canvas carries `aria-label="Interactive map"` and `role="application"`
+- Color is never the sole indicator of meaning -- layer icons and text labels accompany all color-coded elements
+- WCAG AA contrast is required for all text on panel backgrounds
+- `prefers-reduced-motion`: panel slide animations are disabled; state transitions use opacity-only fade
+
+## 10. Loading and Error States
+
+### Loading
+
+- Left Detail Panel: Skeleton rows while fetching theme-linked data
+- Right Drawer: Skeleton layout matching Opportunity detail shape
+- Opportunities Table: First 20 rows shown as Skeleton while initial fetch resolves
+- Map layers: Mapbox source loading is handled natively; no additional spinner
+- StatusBar displays a loading indicator (monospace dot animation) during active fetches
+
+### Error States
+
+- Panel fetch error: inline error message with a retry button; panel stays open
+- Map source error: toast notification (shadcn/ui `Sonner`) at top-right; map remains interactive
+- Opportunities Table fetch error: empty state with retry CTA
+- All error boundaries implemented via React `error.tsx` files per the Next.js App Router convention
+
+## 11. Domain Model (Frontend)
+
+Source of truth: `services/frontend/src/features/*/types/`
+
+### Opportunity
+
+The core investable unit. An Opportunity aggregates a land parcel with zoning, hazard scores, and transaction history.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `string` | UUID |
+| `coordinates` | `[number, number]` | `[lng, lat]` (RFC 7946) |
+| `address` | `string` | Human-readable address |
+| `ward` | `string` | Tokyo 23 ward name |
+| `landPrice` | `number \| null` | ¥/m², latest available year |
+| `zoningCode` | `string` | Zoning category code |
+| `floodRiskLevel` | `number \| null` | 0-4 ordinal scale |
+| `compositeScore` | `number \| null` | 0-100 investment score |
+| `transactionCount` | `number` | Number of recorded transactions |
+| `createdAt` | `string` | ISO 8601 |
+
+### ThemeState (Zustand)
+
+| Field | Type | Notes |
+|---|---|---|
+| `activeTheme` | `ThemeId \| null` | Currently active theme |
+| `mapStyle` | `'light' \| 'dark' \| 'satellite'` | Current base map style |
+| `leftPanelOpen` | `boolean` | Left Detail Panel visibility |
+| `tableOpen` | `boolean` | Opportunities Table visibility |
+| `rightDrawerOpen` | `boolean` | Right Drawer visibility |
+| `selectedOpportunityId` | `string \| null` | Row selected in table |
+| `selectedMapFeature` | `GeoJSON.Feature \| null` | Feature clicked on map |
+
+### ViewState (react-map-gl)
+
+Managed via `useMap` hook. Debounced 300ms before use as a TanStack Query key to prevent request floods (see AGENTS.md performance rules).
+
+| Field | Type |
 |---|---|
-| < 1280px | Layer panel rendered as Sheet (slide-from-left), hamburger trigger |
-| >= 1280px | Layer panel rendered as fixed 280px sidebar with Framer Motion animation |
+| `longitude` | `number` |
+| `latitude` | `number` |
+| `zoom` | `number` |
+| `pitch` | `number` |
+| `bearing` | `number` |
