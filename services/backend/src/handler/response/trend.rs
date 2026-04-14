@@ -1,4 +1,4 @@
-//! Response DTOs for `GET /api/trend`.
+//! Response DTOs for `GET /api/v1/trend`.
 
 use serde::Serialize;
 

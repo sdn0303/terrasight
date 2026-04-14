@@ -1,4 +1,4 @@
-//! Response DTO for `GET /api/area-data`.
+//! Response DTO for `GET /api/v1/area-data`.
 //!
 //! Wraps a `HashMap<String, LayerResponseDto>` so each requested layer
 //! is serialised as a top-level JSON key whose value is a

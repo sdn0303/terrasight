@@ -1,4 +1,4 @@
-//! Integration tests for the Real Estate API.
+//! Integration tests for the Terrasight API.
 //!
 //! These tests require a running PostGIS database with seed data applied.
 //! Set `DATABASE_URL` to point to the test database.

@@ -1,4 +1,4 @@
-//! Response DTOs for `GET /api/area-stats`.
+//! Response DTOs for `GET /api/v1/area-stats`.
 //!
 //! These types were previously inlined in `handler/area_stats.rs`; they
 //! are hoisted here so the response layer owns every handler DTO and

@@ -1,4 +1,4 @@
-//! Response DTO for `GET /api/health`.
+//! Response DTO for `GET /api/v1/health`.
 
 use serde::Serialize;
 

@@ -1,4 +1,4 @@
-//! Response DTOs for `GET /api/score` (the TLS scoring endpoint).
+//! Response DTOs for `GET /api/v1/score` (the TLS scoring endpoint).
 
 use serde::Serialize;
 
