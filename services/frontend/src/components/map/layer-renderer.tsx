@@ -29,6 +29,7 @@ import {
 } from "@/components/map/layers";
 import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
 import { YearSlider } from "@/components/map/year-slider";
+import { useThemeLayers } from "@/hooks/use-theme-layers";
 import { useVisibleStaticLayers } from "@/hooks/use-visible-static-layers";
 import { canonicalLayerId } from "@/lib/layer-ids";
 import type { LayerConfig } from "@/lib/layers";
@@ -102,13 +103,19 @@ export function LayerRenderer({
   setLandPriceYear,
   landPriceFeatureCount,
 }: LayerRendererProps) {
+  const { visibleLayerIds } = useThemeLayers();
+
+  // A layer is visible if the map-store toggles it OR the active theme includes it.
+  const isVisible = (id: string) =>
+    visibleLayers.has(id) || visibleLayerIds.has(id);
+
   // Compute visible static layer IDs for batched hook
   const visibleStaticIds = useMemo(
     () =>
       staticLayers
-        .filter((l) => visibleLayers.has(l.id) && l.id !== "population_mesh")
+        .filter((l) => isVisible(l.id) && l.id !== "population_mesh")
         .map((l) => l.id),
-    [staticLayers, visibleLayers],
+    [staticLayers, visibleLayers, visibleLayerIds],
   );
 
   // Single batched query for all visible static layers
@@ -121,7 +128,7 @@ export function LayerRenderer({
 
       <LandPriceExtrusionLayer
         data={landPriceData}
-        visible={visibleLayers.has("land_price_ts")}
+        visible={isVisible("land_price_ts")}
         selectedYear={landPriceYear}
         isFetching={isLandPriceFetching}
       />
@@ -139,7 +146,7 @@ export function LayerRenderer({
           <Component
             key={layer.id}
             data={layerData ?? EMPTY_FC}
-            visible={visibleLayers.has(layer.id)}
+            visible={isVisible(layer.id)}
           />
         );
       })}
@@ -149,7 +156,7 @@ export function LayerRenderer({
           return (
             <PopulationMeshLayer
               key={layer.id}
-              visible={visibleLayers.has(layer.id)}
+              visible={isVisible(layer.id)}
               selectedYear={populationYear}
             />
           );
@@ -160,7 +167,7 @@ export function LayerRenderer({
         return (
           <Component
             key={layer.id}
-            visible={visibleLayers.has(layer.id)}
+            visible={isVisible(layer.id)}
             {...(layerData !== undefined && { data: layerData })}
           />
         );
@@ -169,13 +176,13 @@ export function LayerRenderer({
       <YearSlider
         value={populationYear}
         onChange={setPopulationYear}
-        visible={visibleLayers.has("population_mesh")}
+        visible={isVisible("population_mesh")}
       />
 
       <LandPriceYearSlider
         value={landPriceYear}
         onChange={setLandPriceYear}
-        visible={visibleLayers.has("land_price_ts")}
+        visible={isVisible("land_price_ts")}
         isFetching={isLandPriceFetching}
         isError={isLandPriceError}
         isZoomTooLow={isZoomTooLow}
