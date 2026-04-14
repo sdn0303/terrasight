@@ -10,6 +10,8 @@ export const PAGE_INSET = 20;
 export const RAIL_WIDTH = 72;
 export const GAP = 16;
 
+export const SIDEBAR_EXPANDED_W = 200;
+export const SIDEBAR_COLLAPSED_W = 56;
 export const LEFT_PANEL_WIDTH = 360;
 export const DRAWER_WIDTH = 340;
 

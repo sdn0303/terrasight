@@ -2,13 +2,12 @@
 
 import { useUIStore } from "@/stores/ui-store";
 import { useOpportunities } from "@/hooks/use-opportunities";
+import { SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
 import { OpportunitiesToolbar } from "./opportunities-toolbar";
 import { opportunityColumns } from "./opportunities-columns";
 import type { OpportunityRow } from "./opportunities-columns";
 
 const ROW_HEIGHT_PX = 48;
-const SIDEBAR_COLLAPSED_WIDTH = "56px";
-const SIDEBAR_EXPANDED_WIDTH = "200px";
 
 function TableHeader() {
   return (
@@ -105,8 +104,8 @@ export function OpportunitiesTable() {
   const total = query.data?.total ?? 0;
 
   const leftOffset = sidebarCollapsed
-    ? SIDEBAR_COLLAPSED_WIDTH
-    : SIDEBAR_EXPANDED_WIDTH;
+    ? `${SIDEBAR_COLLAPSED_W}px`
+    : `${SIDEBAR_EXPANDED_W}px`;
 
   function handleRowClick(row: OpportunityRow) {
     openOpportunityDrawer(String(row.id));
