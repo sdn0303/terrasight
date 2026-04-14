@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n";
-import { useMapStore, type WeightPreset } from "@/stores/map-store";
+import { useMapStore } from "@/stores/map-store";
+import type { WeightPreset } from "@/stores/types";
 
 const PRESETS: WeightPreset[] = [
   "balance",
