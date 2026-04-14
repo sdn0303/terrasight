@@ -16,12 +16,12 @@
 //! | [`area_stats`] | `GET /api/v1/area-stats` |
 //! | [`health`] | `GET /api/v1/health` |
 //! | [`land_price`] | `GET /api/v1/land-prices` |
-//! | [`land_price_by_year_range`] | `GET /api/v1/land-prices/by-year-range` |
+//! | [`land_price_by_year_range`] | `GET /api/v1/land-prices/all-years` |
 //! | [`municipalities`] | `GET /api/v1/municipalities` |
 //! | [`opportunities`] | `GET /api/v1/opportunities` |
 //! | [`score`] | `GET /api/v1/score` |
 //! | [`stats`] | `GET /api/v1/stats` |
-//! | [`transaction_summary`] | `GET /api/v1/transaction-summary` |
+//! | [`transaction_summary`] | `GET /api/v1/transactions/summary` |
 //! | [`transactions`] | `GET /api/v1/transactions` |
 //! | [`trend`] | `GET /api/v1/trend` |
 //!

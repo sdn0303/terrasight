@@ -58,7 +58,7 @@ pub enum DomainError {
     /// A database operation failed.
     ///
     /// Produced by infra repositories when `sqlx` returns an error. The inner
-    /// string contains the `sqlx::Error` display message. Maps to HTTP 500.
+    /// string contains the `sqlx::Error` display message. Maps to HTTP 503.
     #[error("Database error: {0}")]
     Database(String),
 
@@ -74,7 +74,7 @@ pub enum DomainError {
     ///
     /// Produced by the opportunities usecase when the end-to-end TLS
     /// enrichment exceeds `OPPORTUNITY_TIMEOUT_SECS`.
-    /// Maps to HTTP 504.
+    /// Maps to HTTP 408.
     #[error("Request timed out: {0}")]
     Timeout(String),
 

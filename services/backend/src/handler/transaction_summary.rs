@@ -1,4 +1,4 @@
-//! `GET /api/v1/transaction-summary` handler.
+//! `GET /api/v1/transactions/summary` handler.
 //!
 //! Returns pre-aggregated transaction statistics bucketed by city, year,
 //! and property type for a prefecture. Used by the frontend's trend charts

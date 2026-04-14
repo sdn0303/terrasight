@@ -181,7 +181,10 @@ pub(crate) const FAR_MAX: i32 = 2000;
 pub(crate) const DEFAULT_FROM_YEAR: i32 = 2019;
 
 /// Default `to` year for the land-price year-range endpoint.
-pub(crate) const DEFAULT_TO_YEAR: i32 = 2024;
+///
+/// Set to a forward-compatible value so new survey data is included
+/// without requiring a code change each year.
+pub(crate) const DEFAULT_TO_YEAR: i32 = 2030;
 
 /// Default map zoom level used when the client omits the parameter.
 pub(crate) const DEFAULT_ZOOM_LEVEL: u32 = 14;

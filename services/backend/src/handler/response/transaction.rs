@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use crate::domain::transaction::{TransactionDetail, TransactionSummary};
 
-/// Response item for `GET /api/v1/transaction-summary`.
+/// Response item for `GET /api/v1/transactions/summary`.
 ///
 /// Each item represents one `(city_code, transaction_year, property_type)` bucket.
 #[derive(Debug, Serialize)]
@@ -22,7 +22,8 @@ pub struct TransactionSummaryResponse {
     pub tx_count: i32,
     /// Mean total transaction price in JPY for this bucket.
     pub avg_total_price: i64,
-    /// Median total transaction price in JPY. `null` when fewer than 2 records.
+    /// Median total transaction price in JPY. Equals `avg_total_price` when
+    /// the bucket contains a single record.
     pub median_total_price: i64,
     /// Mean price per square metre in JPY. `null` when area data is unavailable.
     pub avg_price_sqm: Option<i32>,

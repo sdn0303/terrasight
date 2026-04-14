@@ -21,7 +21,8 @@ use crate::usecase::get_transactions::GetTransactionsUsecase;
 ///
 /// Required query parameter: `city_code` (5-digit municipality code, e.g.
 /// `"13101"`). Optional `year_from` (integer survey year) and `limit`
-/// (positive integer; no server-side maximum is enforced here).
+/// (positive integer, clamped to `MAX_TRANSACTION_LIMIT` = 200 by the
+/// usecase layer; defaults to `DEFAULT_TRANSACTION_LIMIT` = 50).
 ///
 /// Returns a JSON array of [`TransactionDetailResponse`] objects.
 ///

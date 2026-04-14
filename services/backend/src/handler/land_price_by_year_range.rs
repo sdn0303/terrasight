@@ -1,4 +1,4 @@
-//! `GET /api/v1/land-prices/by-year-range` handler.
+//! `GET /api/v1/land-prices/all-years` handler.
 //!
 //! Returns all land price records across a year range in a single response.
 //! Each feature carries a `properties.year` field so that MapLibre GL clients

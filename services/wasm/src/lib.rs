@@ -297,15 +297,16 @@ impl SpatialEngine {
     ) -> Result<String, WasmError> {
         let mut result: HashMap<&str, serde_json::Value> = HashMap::new();
 
-        for layer_id in layer_ids
+        for raw_id in layer_ids
             .split(',')
             .map(str::trim)
             .filter(|s| !s.is_empty())
         {
-            if let Some(index) = self.layers.get(layer_id) {
+            let canonical = constants::canonical_layer_id(raw_id);
+            if let Some(index) = self.layers.get(canonical.as_str()) {
                 let indices =
                     index.query_bbox(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-                result.insert(layer_id, index.get_features_as_value(&indices));
+                result.insert(raw_id, index.get_features_as_value(&indices));
             }
         }
 
