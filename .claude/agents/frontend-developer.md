@@ -33,6 +33,14 @@ Follow `.claude/rules/nextjs.md` and `.claude/rules/typescript.md` for conventio
 Use the `frontend-nextjs-rules` skill for detailed patterns on data fetching,
 state management, validation, and styling.
 
+## Map Skills
+
+- Use the `geospatial-dev` skill for MapLibre GL JS + PostGIS integration patterns.
+- Use the `mapbox-gl-js` skill for Mapbox GL JS v3 development — Standard Style
+  configuration, layer slots, 3D lighting, expressions, and react-map-gl/mapbox
+  integration. Reference files in `references/` provide API patterns and React
+  component examples.
+
 ## Verification
 
 ```bash
