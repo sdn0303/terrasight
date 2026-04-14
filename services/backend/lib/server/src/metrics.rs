@@ -43,7 +43,9 @@ pub enum MetricsError {
     /// The OS rejected the TCP bind for the scrape endpoint.
     #[error("Failed to bind metrics listener on {addr}: {source}")]
     Bind {
+        /// The socket address that failed to bind.
         addr: SocketAddr,
+        /// The OS-level error explaining the bind failure.
         source: std::io::Error,
     },
 }

@@ -322,9 +322,8 @@ impl SpatialEngine {
     /// Internal compute_tls implementation returning `Result<_, WasmError>`.
     pub(crate) fn compute_tls_inner(&self, bbox: &BBox, preset: &str) -> Result<String, WasmError> {
         let stats = self.compute_area_stats(bbox);
-        let weight_preset = preset
-            .parse::<tls::WeightPreset>()
-            .unwrap_or(tls::WeightPreset::Balance);
+        // FromStr for WeightPreset is infallible — unknown strings fall back to Balance.
+        let weight_preset: tls::WeightPreset = preset.parse().unwrap();
         let result = tls::compute_tls(&stats, weight_preset, &tls::NormalizationParams::TOKYO);
         Ok(serde_json::to_string(&result)?)
     }

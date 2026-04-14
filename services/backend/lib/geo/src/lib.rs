@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Pure computation utilities for geospatial math, finance, and tiling.
 //!
 //! `terrasight-geo` is a zero-dependency library that centralises the pure

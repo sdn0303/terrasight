@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! # terrasight-domain
 //!
 //! Shared domain types, scoring logic, and constants for the Terrasight platform.

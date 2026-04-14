@@ -42,22 +42,29 @@ use serde::Serialize;
 /// ```
 #[derive(Debug, Serialize)]
 pub struct FeatureCollectionDto {
+    /// The RFC 7946 type: always `"FeatureCollection"`.
     pub r#type: &'static str,
+    /// Array of Feature objects.
     pub features: Vec<FeatureDto>,
 }
 
 /// A single GeoJSON Feature.
 #[derive(Debug, Serialize)]
 pub struct FeatureDto {
+    /// The RFC 7946 type: always `"Feature"`.
     pub r#type: &'static str,
+    /// Geometry object containing the spatial shape and coordinates.
     pub geometry: GeometryDto,
+    /// Free-form properties object describing the feature.
     pub properties: serde_json::Value,
 }
 
 /// GeoJSON geometry object.
 #[derive(Debug, Serialize)]
 pub struct GeometryDto {
+    /// The geometry type: `"Point"`, `"Polygon"`, `"LineString"`, etc.
     pub r#type: String,
+    /// The coordinates in RFC 7946 order: `[longitude, latitude]` for points, nested arrays for other types.
     pub coordinates: serde_json::Value,
 }
 

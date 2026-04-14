@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! # terrasight-mlit
 //!
 //! HTTP client for Japanese government real estate and geospatial APIs.

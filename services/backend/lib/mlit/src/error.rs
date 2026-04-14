@@ -25,7 +25,12 @@ pub enum MlitError {
     /// body text, which many MLIT endpoints populate with a human-readable
     /// error description.
     #[error("API error {status}: {message}")]
-    Api { status: u16, message: String },
+    Api {
+        /// Raw HTTP status code (e.g., 401, 403, 500).
+        status: u16,
+        /// Response body text (often a human-readable error from the MLIT API).
+        message: String,
+    },
 
     /// The response body was received successfully but could not be
     /// deserialised into the expected type.
@@ -41,7 +46,10 @@ pub enum MlitError {
     /// retry attempt. Callers should wait at least this many seconds before
     /// retrying at a higher level.
     #[error("Rate limited, retry after {retry_after_secs}s")]
-    RateLimited { retry_after_secs: u64 },
+    RateLimited {
+        /// Exponential-backoff delay (seconds) used on the final retry attempt.
+        retry_after_secs: u64,
+    },
 
     /// A required configuration value (API key or application ID) was absent
     /// from [`crate::config::MlitConfig`].

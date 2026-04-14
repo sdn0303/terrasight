@@ -63,9 +63,10 @@ where
 /// //   Ok(apply_limit(rows.into_iter().map(GeoFeature::from).collect(), limit))
 /// ```
 pub(crate) fn apply_limit(mut features: Vec<GeoFeature>, limit: i64) -> LayerResult {
-    let truncated = features.len() > limit as usize;
+    let limit_usize = usize::try_from(limit).expect("INVARIANT: limit is positive");
+    let truncated = features.len() > limit_usize;
     if truncated {
-        features.truncate(limit as usize);
+        features.truncate(limit_usize);
     }
     LayerResult {
         features,

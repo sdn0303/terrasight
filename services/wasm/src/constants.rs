@@ -98,13 +98,12 @@ pub(crate) const LAT_RANGE: std::ops::RangeInclusive<f64> = LAT_MIN..=LAT_MAX;
 pub(crate) const LNG_RANGE: std::ops::RangeInclusive<f64> = LNG_MIN..=LNG_MAX;
 
 // ── Risk computation weights ──
+// Imported from the shared domain crate to avoid value drift.
 
 /// Weight applied to the flood area ratio when computing composite risk.
-///
-/// `composite_risk = RISK_WEIGHT_FLOOD * flood_ratio + RISK_WEIGHT_STEEP * steep_ratio`.
-pub(crate) const RISK_WEIGHT_FLOOD: f64 = 0.6;
+pub(crate) use terrasight_domain::constants::STATS_RISK_WEIGHT_FLOOD as RISK_WEIGHT_FLOOD;
 /// Weight applied to the steep slope area ratio when computing composite risk.
-pub(crate) const RISK_WEIGHT_STEEP: f64 = 0.4;
+pub(crate) use terrasight_domain::constants::STATS_RISK_WEIGHT_STEEP as RISK_WEIGHT_STEEP;
 
 // ── Zoning classification keywords ──
 

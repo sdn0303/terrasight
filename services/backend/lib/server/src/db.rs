@@ -28,6 +28,7 @@
 pub mod error;
 pub mod geo;
 pub mod pool;
+/// PostGIS parameter binders for geometry types and bounding boxes.
 pub mod spatial;
 
 pub use error::{DbError, map_db_err};

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! # terrasight-server
 //!
 //! Server infrastructure crate: DB pool, HTTP middleware, and telemetry.

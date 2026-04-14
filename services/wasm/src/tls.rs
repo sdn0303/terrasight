@@ -10,6 +10,12 @@
 use crate::constants;
 use crate::stats::{AreaStats, ZoningEntry};
 
+// Re-export the canonical WeightPreset from the shared domain crate.
+// The WASM TLS uses different score dimensions (price/risk/facility/zoning/transport)
+// than the backend's 5-axis system (S1-S5), so the weight *values* differ
+// while the preset *names* and FromStr parsing remain unified.
+pub(crate) use terrasight_domain::scoring::tls::WeightPreset;
+
 // ── Normalization parameters ──
 
 /// Per-prefecture normalization parameters for TLS sub-score computation.
@@ -64,49 +70,20 @@ pub(crate) struct SubScores {
     pub transport_score: f64,
 }
 
-// ── Weight presets ──
+// ── WASM-specific weight mapping ──
 
-/// Predefined weight distributions across the five TLS sub-scores.
+/// Returns the five WASM TLS weights `[price, risk, facility, zoning, transport]`
+/// for a given [`WeightPreset`].
 ///
-/// Each variant represents a different investment or living priority.
-/// The weight order is `[price, risk, facility, zoning, transport]`.
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum WeightPreset {
-    /// Equal weights across all five sub-scores (`0.20` each).
-    Balance,
-    /// Emphasises price affordability (`0.35`) and zoning (`0.25`) for yield-focused investors.
-    Investment,
-    /// Emphasises safety (`0.25`) and facility access (`0.25`) for end-user buyers.
-    Residential,
-    /// Heavily emphasises disaster risk (`0.40`) for disaster-preparedness analysis.
-    Disaster,
-}
-
-impl WeightPreset {
-    /// Returns the five weights `[price, risk, facility, zoning, transport]` for this preset.
-    ///
-    /// All weights sum to `1.0`.
-    pub fn weights(&self) -> [f64; 5] {
-        match self {
-            Self::Balance => [0.20, 0.20, 0.20, 0.20, 0.20],
-            Self::Investment => [0.35, 0.15, 0.10, 0.25, 0.15],
-            Self::Residential => [0.15, 0.25, 0.25, 0.15, 0.20],
-            Self::Disaster => [0.10, 0.40, 0.15, 0.15, 0.20],
-        }
-    }
-}
-
-impl std::str::FromStr for WeightPreset {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "balance" => Ok(Self::Balance),
-            "investment" => Ok(Self::Investment),
-            "residential" => Ok(Self::Residential),
-            "disaster" => Ok(Self::Disaster),
-            _ => Err(format!("unknown weight preset: {s}")),
-        }
+/// These weights differ from the backend's 5-axis (S1-S5) weights because the
+/// WASM spatial engine computes a simplified score from [`AreaStats`] directly,
+/// while the backend uses the full sub-score composition pipeline.
+fn wasm_weights(preset: WeightPreset) -> [f64; 5] {
+    match preset {
+        WeightPreset::Balance => [0.20, 0.20, 0.20, 0.20, 0.20],
+        WeightPreset::Investment => [0.35, 0.15, 0.10, 0.25, 0.15],
+        WeightPreset::Residential => [0.15, 0.25, 0.25, 0.15, 0.20],
+        WeightPreset::DisasterFocus => [0.10, 0.40, 0.15, 0.15, 0.20],
     }
 }
 
@@ -175,7 +152,7 @@ pub(crate) fn compute_tls(
     preset: WeightPreset,
     params: &NormalizationParams,
 ) -> TlsResult {
-    let weights = preset.weights();
+    let weights = wasm_weights(preset);
 
     let price_score = normalize_price(stats.land_price.avg_per_sqm.unwrap_or(0.0), params);
     let risk_score = 1.0 - stats.risk.composite_risk;
@@ -286,7 +263,7 @@ mod tests {
     fn disaster_preset_weights_risk_higher() {
         let stats = sample_stats();
         let balance = compute_tls(&stats, WeightPreset::Balance, &NormalizationParams::TOKYO);
-        let disaster = compute_tls(&stats, WeightPreset::Disaster, &NormalizationParams::TOKYO);
+        let disaster = compute_tls(&stats, WeightPreset::DisasterFocus, &NormalizationParams::TOKYO);
         // Disaster preset gives 0.40 weight to risk vs 0.20 for balance
         // With low risk (0.15), higher weight → more impact on total
         assert!(disaster.total_score != balance.total_score);
@@ -294,11 +271,12 @@ mod tests {
 
     #[test]
     fn weight_preset_from_str() {
-        assert!("balance".parse::<WeightPreset>().is_ok());
-        assert!("investment".parse::<WeightPreset>().is_ok());
-        assert!("residential".parse::<WeightPreset>().is_ok());
-        assert!("disaster".parse::<WeightPreset>().is_ok());
-        assert!("unknown".parse::<WeightPreset>().is_err());
+        assert_eq!("balance".parse::<WeightPreset>().unwrap(), WeightPreset::Balance);
+        assert_eq!("investment".parse::<WeightPreset>().unwrap(), WeightPreset::Investment);
+        assert_eq!("residential".parse::<WeightPreset>().unwrap(), WeightPreset::Residential);
+        assert_eq!("disaster".parse::<WeightPreset>().unwrap(), WeightPreset::DisasterFocus);
+        // Unknown strings fall back to Balance (domain crate convention).
+        assert_eq!("unknown".parse::<WeightPreset>().unwrap(), WeightPreset::Balance);
     }
 
     #[test]
@@ -308,7 +286,7 @@ mod tests {
             WeightPreset::Balance,
             WeightPreset::Investment,
             WeightPreset::Residential,
-            WeightPreset::Disaster,
+            WeightPreset::DisasterFocus,
         ] {
             let result = compute_tls(&stats, preset, &NormalizationParams::TOKYO);
             assert!(
