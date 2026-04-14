@@ -1,433 +1,357 @@
 # UIUX_SPEC.md — UI/UX 設計仕様書
 
-> Version: 2.0.0 | Updated: 2026-03-23
-> Design Language: Urban Stratigraphy — 都市の地層を可視化するダークテーマ
-> Framework: Next.js 16 + MapLibre GL JS + react-map-gl + Tailwind CSS v4 + framer-motion
+> Version: 3.0.0 | Updated: 2026-04-14
+> Design Language: Terrasight — mapleads レイアウト + rakumachi 情報設計
+> Framework: Next.js 16 + Mapbox GL JS + react-map-gl + Tailwind CSS v4 + shadcn/ui
 
 ---
 
 ## 1. デザイン原則
 
 ### 1.1 ビジュアルコンセプト
-**Urban Stratigraphy（都市地層）** — 都市を構成する見えない層（地価・リスク・地盤・インフラ・行政区画）を、地質学の地層断面のように重ねて可視化する。暗い地盤の上にデータの層が浮かび上がるダークテーマで、投資判断に必要な情報を直感的に読み取れるようにする。
+
+**mapleads レイアウト + rakumachi 情報設計** — 地図を常にフルスクリーン背景に保ちながら、白い不透明パネルをオーバーレイで重ねる mapleads スタイルのレイアウトを採用。情報設計は rakumachi のテーマ別排他レイヤーモデルに倣い、1テーマ = 1レイヤーセット + 1詳細パネル構成で投資判断に必要な情報を簡潔に提示する。
 
 ### 1.2 デザインルール
-1. **情報密度優先**: 投資判断に必要な情報を一画面に集約。スクロールを最小化
-2. **視覚的階層**: 重要度の高いデータ（スコア、価格）は大きく・明るく。補助データはmuted
-3. **アニメーションは目的的**: framer-motionはパネルのスライドイン/アウトとローディング状態のみ。装飾的アニメーション禁止
-4. **タイポグラフィの使い分け**: UIラベル・本文は`Geist Sans`。数値・座標・技術データは`Geist Mono`
-5. **レイヤーカラーシステム**: 24レイヤーそれぞれに固有のCSS変数カラーを割り当て、パネルのドット・マップ描画・凡例を統一
+
+1. **地図常時可視**: 地図は常にフルスクリーン背景。どのパネルが開いても地図は可視状態を維持する
+2. **テーマ排他切替**: 1テーマ = 1レイヤーセット + 1詳細パネル構成。複数テーマの同時表示は行わない
+3. **パネルオーバーレイ**: パネルは不透明白背景で地図の上に overlay する (split view ではない)
+4. **ビジュアルスタイル**: mapleads 踏襲 — 角丸 12-16px、ソフトシャドウ `rgba(0,0,0,0.08)`、0.3s ease トランジション
+5. **状態遷移管理**: パネル間の導線は State 0-3 の状態遷移で管理する
 
 ---
 
-## 2. デザイントークン（CSS変数）
+## 2. デザイントークン
 
-### 2.1 基盤トークン
+詳細は `docs/DESIGN.md` Section 2 参照。ソースオブトゥルース: `services/frontend/src/app/globals.css` および `src/lib/palette.ts`。
 
-```css
-:root {
-  /* ─── Urban Stratigraphy design tokens ──────── */
+### 2.1 ベーストークン概要（抜粋）
 
-  /* Backgrounds */
-  --bg-primary: #0c0c14;
-  --bg-secondary: #13131e;
-  --bg-tertiary: #1a1a28;
+| トークン | Light 値 | Dark 値 | 用途 |
+|---------|----------|---------|------|
+| `--bg-primary` | `#FFFFFF` | `#0c0c14` | パネル背景、ページ背景 |
+| `--bg-secondary` | `#F9FAFB` | `#13131e` | セカンダリサーフェス |
+| `--text-primary` | `#111827` | `#e4e4e7` | 本文テキスト、データ値 |
+| `--text-secondary` | `#6B7280` | `#a1a1aa` | ラベル、説明文 |
+| `--border-primary` | `rgba(0,0,0,0.08)` | `rgba(63,63,70,0.5)` | パネルボーダー |
+| `--shadow-panel` | `rgba(0,0,0,0.08)` | `rgba(0,0,0,0.4)` | パネルドロップシャドウ |
 
-  /* Text */
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-  --text-heading: #f4f4f5;
+### 2.2 アクセントカラー
 
-  /* Borders */
-  --border-primary: rgba(63, 63, 70, 0.5);
+| トークン | 値 | 用途 |
+|---------|-----|------|
+| `--accent-indigo` | `#6366F1` | プライマリアクセント、アクティブインジケーター、フォーカスリング |
+| `--accent-indigo-tint` | `rgba(99,102,241,0.12)` | サイドバー・テーブル行のアクティブハイライト |
+| `--hover-blue-tint` | `rgba(59,130,246,0.06)` | ホバー状態背景 |
+| `--accent-danger` | `#e04030` | 高リスク表示、破壊的アクション |
+| `--accent-warning` | `#ffd000` | 警告、中リスク表示 |
+| `--accent-success` | `#10b981` | 成功状態 |
 
-  /* Accent Colors */
-  --accent-cyan: #22d3ee;      /* Primary accent, prices, positive */
-  --accent-danger: #e04030;    /* Risk, declining, alerts */
-  --accent-warning: #ffd000;   /* Caution, demo badge */
-  --accent-success: #10b981;   /* Safe, facilities, rising */
+### 2.3 レイヤーカラートークン (`--layer-*`)
 
-  /* Interactive */
-  --hover-accent: rgba(34, 211, 238, 0.08);
-
-  /* Typography */
-  --font-mono: 'Geist Mono', monospace, system-ui;
-  --font-sans: 'Geist Sans', system-ui, sans-serif;
-}
-```
-
-### 2.2 レイヤーカラートークン
-
-24レイヤーそれぞれに固有の `--layer-*` CSS変数を定義。パネルのインジケータードット、マップの描画色、PopupCardのヘッダーに一貫して使用される。
-
-```css
-:root {
-  /* ─── Layer color tokens ─────────────────────── */
-  --layer-landprice: #fbbf24;       /* 地価公示 */
-  --layer-flood-history: #60a5fa;   /* 浸水履歴 */
-  --layer-did: #a78bfa;             /* 人口集中地区 */
-  --layer-flood: #0ea5e9;           /* 洪水浸水 */
-  --layer-steep-slope: #f97316;     /* 急傾斜地 */
-  --layer-fault: #ef4444;           /* 断層線 */
-  --layer-volcano: #f43f5e;         /* 火山 */
-  --layer-landform: #d4a574;        /* 地形分類 */
-  --layer-geology: #8b7355;         /* 表層地質 */
-  --layer-soil: #a0845c;            /* 土壌図 */
-  --layer-schools: #34d399;         /* 学校 */
-  --layer-medical: #2dd4bf;         /* 医療機関 */
-  --layer-boundary: #a1a1aa;        /* 市町村境界 */
-  --layer-zoning: #818cf8;          /* 用途地域 */
-  --layer-station: #f472b6;         /* 鉄道駅 */
-  --layer-school-dist: #4ade80;     /* 小学校区 */
-  --layer-landslide: #fb923c;       /* 土砂災害 */
-  --layer-park: #86efac;            /* 都市公園 */
-  --layer-population: #c084fc;      /* 将来人口メッシュ */
-  --layer-urban-plan: #34d399;      /* 立地適正化 */
-  --layer-tsunami: #38bdf8;         /* 津波浸水 */
-  --layer-liquefaction: #eab308;    /* 液状化危険度 */
-  --layer-seismic: #ef4444;         /* 地震動・震源断層 */
-  --layer-railway: #22d3ee;         /* 鉄道路線 */
-}
-```
-
-### 2.3 shadcn/ui テーマ統合
-
-shadcn/ui コンポーネント（Sheet, Collapsible, Skeleton 等）は `zinc dark` ベースのカスタムテーマで、Urban Stratigraphy トークンと統合:
-
-- `--primary` → `--accent-cyan` (#22d3ee)
-- `--background` → `--bg-primary` (#0c0c14)
-- `--card` → `--bg-secondary` (#13131e)
-- `--destructive` → `--accent-danger` (#e04030)
-- `--ring` → `--accent-cyan` (#22d3ee)
+Mapbox GL paint expression は CSS カスタムプロパティを参照できないため、`--layer-*` トークンは raw hex 定数として `src/lib/palette.ts` に定義し、`globals.css` と Mapbox paint expression の両方が参照する。詳細は `docs/DESIGN.md` Section 2.3 参照。
 
 ---
 
 ## 3. レイアウト構成
 
-### 3.1 全体レイアウト
+### 3.1 4 State システム
+
+AppShell は以下 4 つの離散レイアウト状態を管理する。
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  ┌──────────┐                                                  │
-│  │          │                                                  │
-│  │  Layer   │         3D Map (MapLibre GL)                     │
-│  │  Panel   │       (pitch: 45, bearing: 0)                    │
-│  │  (Left)  │       CARTO Dark Matter basemap                  │
-│  │  w:280   │       + 3D buildings + terrain DEM               │
-│  │          │                                                  │
-│  │  地層    │                              ┌───────────┐      │
-│  │  URBAN   │                              │  Score     │      │
-│  │  STRATI- │                              │  Card      │      │
-│  │  GRAPHY  │                              │  (Right)   │      │
-│  │          │                              │  w:320     │      │
-│  └──────────┘                              └───────────┘      │
-│                                                                 │
-│          [PopupCard — click-inspect overlay, z-30]              │
-│          [YearSlider — population mesh control]                 │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Dashboard Stats Bar (Bottom)  h:120                     │  │
-│  │  [AVG PRICE] [LISTINGS] [RISK] [FACILITIES]              │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Status Bar (Bottom)  h:28                               │  │
-│  │  [座標] [ズーム] [DEMO badge] [Loading indicator]        │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+State 0: Sidebar + Map (初期状態)
+┌──────┬─────────────────────────────────────┐
+│ Nav  │            Mapbox Map               │
+│56/200│     (ライト/ダーク/サテライト)        │
+│      │                        [Style Sw.]  │
+│      │                        [NavCtrl]    │
+└──────┴─────────────────────────────────────┘
+│ StatusBar (28px)                           │
+└────────────────────────────────────────────┘
+
+State 1: Sidebar + Left Panel + Map (地点詳細)
+┌──────┬────────────┬────────────────────────┐
+│ Nav  │ Left Panel │        Map             │
+│      │  360px     │                        │
+│      │            │            [Style Sw.] │
+│      │            │            [NavCtrl]   │
+└──────┴────────────┴────────────────────────┘
+│ StatusBar (28px)                           │
+└────────────────────────────────────────────┘
+
+State 2: Sidebar + Table + Map (Opportunities)
+┌──────┬──────────────────────────────────────┐
+│ Nav  │         Mapbox Map (full)            │
+│      │                                      │
+│      │  ┌──────────────────────────────┐    │
+│      │  │ Opportunities Table (~65% w) │    │
+│      │  │ [virtualized rows]           │    │
+└──────┴──┴──────────────────────────────┴────┘
+│ StatusBar (28px)                             │
+└──────────────────────────────────────────────┘
+テーブルはサイドバーと同じフルハイト、地図の上に overlay。
+
+State 3: Sidebar + Table + Right Drawer + Map
+┌──────┬───────────────────────┬──────────────┐
+│ Nav  │     Mapbox Map        │   Right      │
+│      │                       │   Drawer     │
+│      │  ┌──────────────┐     │   340px      │
+│      │  │ Table (~65%w)│     │              │
+│      │  │              │     │              │
+└──────┴──┴──────────────┴─────┴──────────────┘
+│ StatusBar (28px)                             │
+└──────────────────────────────────────────────┘
+テーブルは State 2 と同位置 (フルハイト)。Drawer は右端にフルハイトで overlay。
 ```
 
-### 3.2 z-index スタック
+### 3.2 状態遷移ルール
+
+- `leftPanel` と `tableOpen` は排他。両方同時に `true` にはならない
+- `rightDrawer` は `tableOpen === true` の時のみ有効
+- `activeTheme` 変更時は `leftPanel` を閉じる (State 1 → State 0)
+- Opportunities ナビクリック時は `leftPanel` を閉じてから `tableOpen` を開く
+
+### 3.3 主要寸法
+
+| 要素 | 寸法 |
+|-----|------|
+| Sidebar (折りたたみ) | 幅 56px、全高 minus status bar |
+| Sidebar (展開) | 幅 200px、全高 minus status bar |
+| Left Detail Panel | 幅 360px、全高 minus status bar |
+| Opportunities Table | ビューポート幅 ~65%、下部アンカー |
+| Right Drawer | 幅 340px、全高 minus status bar |
+| Status bar | 高さ 28px、全幅 |
+| パネル角丸 | 12-16px |
+
+### 3.4 z-index スタック
 
 | z-index | 要素 |
 |---------|------|
-| 100 | ComparePanel（モーダルオーバーレイ） |
-| 50 | Mobile LayerPanel trigger button |
-| 40 | LayerPanel（左パネル、デスクトップ） |
-| 30 | PopupCard / DashboardStats |
-| 20 | StatusBar |
-| 10 | MapLibre NavigationControl |
-| 1 | MapLibre Map |
+| 100 | Right Drawer |
+| 80 | Opportunities Table |
+| 60 | Left Detail Panel |
+| 40 | Sidebar |
+| 20 | Map controls / Legend / Style Switcher / StatusBar |
+| 1 | Mapbox Map |
 
 ---
 
 ## 4. コンポーネント仕様
 
-### 4.1 MapView
+### 4.1 AppShell
 
-**責務**: 3Dダークマップの描画とユーザーインタラクション管理。
+**責務**: ルートレイアウト。全パネル・マップを包含し、4状態のレイアウトを Zustand store フラグ (`leftPanelOpen`, `tableOpen`, `rightDrawerOpen`) で制御する。
+
+**Tailwind クラス**: `relative h-screen w-screen overflow-hidden`
+
+構成: Sidebar + メインエリア（Mapbox Map + オーバーレイパネル群）
+
+---
+
+### 4.2 Sidebar (mapleads 式)
+
+**責務**: テーマ選択ナビゲーション + Opportunities 起動。
+
+```
+┌──────────────────┐
+│ [Ts] ロゴ        │
+├──────────────────┤
+│ ── 探す ──       │
+│ 🔍 Opportunities │
+│ 📊 スコア分析    │
+├──────────────────┤
+│ ── 見る ──       │
+│ 💰 地価          │
+│ 🏠 取引事例      │
+│ 🌊 ハザード      │
+│ 🚉 乗降客数      │
+├──────────────────┤
+│ ── 設定 ──       │
+│ ⚙ 設定           │  ← マップスタイル切替含む
+└──────────────────┘
+幅: 展開 200px / 折りたたみ 56px
+z-index: 40
+```
+
+**スタイル:**
+- 背景: 白不透明、ソフトシャドウ `rgba(0,0,0,0.08)`、右辺に 12px 角丸
+- 展開/折りたたみ: `width` トランジション 0.3s ease
+- 展開時: アイコン + ラベル表示
+- 折りたたみ時: アイコンのみ + Tooltip
+
+**インタラクション:**
+- アクティブ項目: `rgba(99,102,241,0.12)` (indigo tint) 背景ハイライト
+- ホバー: `rgba(59,130,246,0.06)` (blue tint) 背景
+- 折りたたみトグル: レール最下部に配置
+
+---
+
+### 4.3 Left Detail Panel (rakumachi 式)
+
+**責務**: 地図クリック地点のテーマ連動詳細情報表示。
+
+```
+┌─────────────────────┐
+│ ✕ 閉じる             │
+│ 所在地テキスト        │
+├─────────────────────┤
+│ [地価][ハザード][駅]  │  ← テーマ連動タブ
+├─────────────────────┤
+│ メイン数値 + 前年比   │
+│ 詳細テーブル          │
+│ 年次推移グラフ        │
+└─────────────────────┘
+幅: 360px 固定
+位置: サイドバーの右隣、z-60
+```
+
+**スタイル:**
+- 背景: 白不透明
+- ボーダー: 右辺にソフトシャドウ `rgba(0,0,0,0.08)`
+- 角丸: `0 12px 12px 0`
+- スライドイン: `translateX(-100%)` → `translateX(0)` 0.3s ease
+
+**タブ:**
+- アクティブテーマがデフォルト選択タブ
+- データのある他テーマも表示 (shadcn/ui `Tabs`)
+
+**コンテンツ (テーマ別):**
+
+| テーマ | 表示内容 |
+|--------|---------|
+| 地価 | 価格、地積、用途地域、年次推移 |
+| ハザード | 浸水深、土砂区域、リスクレベル |
+| 取引事例 | 取引価格、面積、構造、建築年 |
+| 乗降客数 | 乗降客数、前年比、年次推移 |
+| スコア分析 | TLS スコア内訳、サブスコア |
+
+---
+
+### 4.4 Opportunities Table (mapleads CRM 式)
+
+**責務**: Opportunity 一覧の表示・絞り込み・ソート。
 
 ```
 ┌──────────────────────────────────────────────┐
-│                                              │
-│              3D Dark Map                     │
-│           (pitch: 45, bearing: 0)            │
-│           CARTO Dark Matter basemap          │
-│                                              │
-│     ▓▓▓ 3D buildings (fill-extrusion)       │
-│     ███ Terrain DEM (elevation)             │
-│                                              │
-│     + 24 data layers (toggle via panel)     │
-│                                              │
-│                               ┌──────┐      │
-│                               │ N    │      │
-│                               │ ◄ ►  │      │
-│                               │ + -  │      │
-│                               └──────┘      │
+│ 検索 | +Filter | 件数 | ページネーション | Export | ✕ │
+│ 都道府県 | 市区町村 | 金額 | Preset           │
+├──────────────────────────────────────────────┤
+│ 所在地 | TLS | 地価 | リスク | トレンド | 最寄駅 │
+│ ─────────────────────────────────────────── │
+│ (仮想化行)                                    │
 └──────────────────────────────────────────────┘
+位置: サイドバー右隣、下部から上方向にスライドイン
+幅: ビューポート幅 ~65%
+z-index: 80
 ```
 
-**Props:**
-- `children: ReactNode` — Source/Layerコンポーネント
-- `onMoveEnd: () => void` — debounced bbox更新
-- `onFeatureClick: (e: MapLayerMouseEvent) => void`
+**スタイル:**
+- 背景: 白不透明
+- 角丸: 上辺 12px (`12px 12px 0 0`)
+- 上部にソフトシャドウ
 
-**初期ビューステート:**
-- center: `[139.767, 35.681]`（東京駅）
-- zoom: `12`
-- pitch: `45`
-- bearing: `0`
-- style: CARTO Dark Matter (`dark-matter-gl-style`)
+**機能:**
+- `@tanstack/react-virtual` で仮想化
+- 行ホバー: `rgba(59,130,246,0.06)` 薄い青ハイライト
+- 行クリック → 右 Drawer に Opportunity 詳細 (State 2 → State 3)
+- アクティブ行: `rgba(99,102,241,0.12)` indigo tint
 
-**3D features:**
-- Terrain DEM: `elevation-tiles-prod/terrainrgb` (exaggeration: 1.5)
-- 3D Buildings: `fill-extrusion` from CARTO vector tiles (`#1e1e2e`, opacity 0.7)
+---
 
-**SSR対策**: `mounted` state guard — `useEffect(() => setMounted(true), [])` でクライアントサイド確認後にのみ `<MapGL>` をレンダリング。ロード中は `地層 LOADING...` を表示。
+### 4.5 Right Drawer
+
+**責務**: Opportunity 詳細またはテーブル中の地図地点詳細を表示。
+
+```
+┌─────────────────────┐
+│ ✕ 閉じる             │
+│ [Detail] [Compare]  │  ← タブ
+├─────────────────────┤
+│ コンテンツエリア      │
+│                     │
+│ (A) Opportunity 詳細 │
+│   TLS スコア         │
+│   サブスコアレーダー  │
+│   リスク             │
+│   最寄駅             │
+│                     │
+│ (B) 地図地点詳細     │
+│   テーマ連動フォーマット│
+└─────────────────────┘
+幅: 340px 固定
+位置: テーブル右隣、z-100
+```
+
+**スタイル:**
+- 背景: 白不透明
+- 角丸: `12px 0 0 12px`
+- ソフトシャドウ
+- スライドイン: `translateX(100%)` → `translateX(0)` 0.3s ease
+
+**表示条件**: `tableOpen === true` の時のみ有効
+
+**2種コンテンツ:**
+- A) テーブル行クリック: TLS スコア + サブスコアレーダーチャート + リスク + 最寄駅
+- B) テーブル中の地図クリック: テーマ連動フォーマット
+
+**実装**: shadcn/ui `Sheet` (right side)
+
+---
+
+### 4.6 Map View
+
+**責務**: Mapbox GL JS による地図描画とユーザーインタラクション管理。
+
+**マップ設定:**
+
+| プロパティ | 値 |
+|-----------|-----|
+| ライブラリ | Mapbox GL JS (react-map-gl 経由) |
+| Token 環境変数 | `NEXT_PUBLIC_MAPBOX_TOKEN` |
+| デフォルトスタイル | `mapbox://styles/mapbox/streets-v12` (Light) |
+| Dark スタイル | `mapbox://styles/mapbox/dark-v11` |
+| Satellite スタイル | `mapbox://styles/mapbox/satellite-streets-v12` |
+| デフォルト中心 | `[139.767, 35.681]`（東京駅） |
+| デフォルト zoom | `12` |
+| デフォルト pitch | `0`（フラット — データ可読性優先） |
+| デフォルト bearing | `0` |
+| 3D buildings | オプション（デフォルト OFF、opt-in） |
+| Terrain | オプション（デフォルト OFF、opt-in） |
+| Move debounce | 300ms |
+
+**SSR 対策**: `useEffect(() => setMounted(true), [])` でクライアントサイド確認後にのみ `<MapGL>` をレンダリング。
 
 **WebGL recovery**: コンテキストロスト時にオーバーレイ表示 + 自動リカバリ待機 + 手動再読み込みボタン。
 
 ---
 
-### 4.2 LayerPanel（左パネル）
+### 4.7 Map Style Switcher
 
-**責務**: 24レイヤーを5カテゴリに分類し、ON/OFF切替UIを提供。
+**責務**: Light / Dark / Satellite の 3 択ベースマップ切替。
 
-```
-┌─────────────────────────┐
-│ 地層                     │  ← プロジェクト名
-│ URBAN STRATIGRAPHY       │  ← サブタイトル（mono）
-│                          │
-│ ▸ 投資価値         [2]  │  ← カテゴリ（折りたたみ）
-│   ● 地価公示             │     + アクティブ数バッジ
-│   ○ 浸水履歴             │
-│   ○ 人口集中地区         │
-│   ○ 鉄道駅              │
-│                          │
-│ ▸ リスク評価       [0]  │
-│   ○ 洪水浸水             │
-│   ○ 急傾斜地             │
-│   ○ 液状化危険度         │
-│   ○ 地震動・震源断層     │
-│   ○ 断層線              │
-│   ○ 火山                │
-│   ○ 土砂災害            │
-│   ○ 津波浸水            │
-│                          │
-│ ▸ 地盤             [0]  │
-│   ○ 地形分類             │
-│   ○ 表層地質             │
-│   ○ 土壌図              │
-│                          │
-│ ▸ インフラ         [0]  │
-│   ○ 学校                │
-│   ○ 医療機関            │
-│   ○ 小学校区            │
-│   ○ 都市公園            │
-│   ○ 鉄道路線            │
-│                          │
-│ ▸ オリエンテーション [2] │
-│   ● 市町村境界           │
-│   ● 用途地域             │
-│   ○ 将来人口メッシュ     │
-│   ○ 立地適正化           │
-└─────────────────────────┘
-w: 280px
-bg: --bg-secondary
-border-right: --border-primary
-```
-
-**5カテゴリ:**
-
-| カテゴリID | ラベル | 説明 |
-|-----------|--------|------|
-| `value` | HOW MUCH? / 投資価値 | 地価・浸水履歴・DID・駅 |
-| `risk` | IS IT SAFE? / リスク評価 | 洪水・急傾斜・液状化・地震・断層・火山・土砂・津波 |
-| `ground` | WHAT'S THE GROUND? / 地盤 | 地形・地質・土壌 |
-| `infra` | WHAT'S NEARBY? / インフラ | 学校・医療・学区・公園・鉄道 |
-| `orientation` | WHERE AM I? / オリエンテーション | 境界・用途地域・人口メッシュ・立地適正化 |
-
-**各レイヤートグル:**
-- ON: `var(--layer-*)` カラードット + `--text-primary` テキスト + `--hover-accent` 背景
-- OFF: `--text-muted` ドット + muted テキスト + transparent 背景
-- カテゴリヘッダーに折りたたみ（Collapsible）+ アクティブレイヤー数バッジ
-
-**初期状態:**
-- `landprice`: ON
-- `admin_boundary`: ON
-- `zoning`: ON
-- 他: OFF
-- カテゴリ `value` と `risk` はデフォルト展開
-
-**レスポンシブ:**
-- Desktop (>=1280px): 固定 280px 左パネル（AnimatePresence でスライドイン/アウト）
-- Mobile/Tablet (<1280px): shadcn/ui Sheet (左サイド) + MenuIcon トリガーボタン
+- shadcn/ui `Toggle` コンポーネント使用
+- 設定セクション内に配置（Sidebar 設定メニュー）
+- マップスタイル切替時: `map.setStyle()` → `style.load` イベント後にレイヤーソースと paint expression を再適用
 
 ---
 
-### 4.3 PopupCard（クリック検査ポップアップ）
+### 4.8 Legend Panel (ハザードテーマ時)
 
-**責務**: マップ上のフィーチャーをクリックした時に、レイヤー設定に基づくフィールド情報を表示。
+**責務**: ハザードテーマ有効時に地図右下へ凡例を表示。
 
-```
-┌────────────────────────┐
-│  地価公示               │  ← layerNameJa（cyan）
-├────────────────────────┤
-│  所在地     千代田区... │
-│  価格       1,200,000  │  ← suffix: 円/㎡
-│  変動率     +3.2       │  ← suffix: %
-└────────────────────────┘
-max-w: 240px
-bg: --bg-secondary
-border: --border-primary
-font: --font-mono, 11px
-```
-
-**データ駆動設計**: `layers.ts` の `popupFields` 配列に基づき動的にレンダリング。レイヤーごとの個別テンプレートは不要。各フィールドは `{ key, label, suffix? }` で定義。
+- 位置: 地図右下、z-20
+- 折りたたみ可 (shadcn/ui `Collapsible`)
+- ハザードテーマ以外では非表示
 
 ---
 
-### 4.4 ScoreCard（右パネル）
-
-**責務**: クリックしたフィーチャーの詳細情報 + 投資スコア表示。
-
-```
-┌──────────────────────────────┐
-│  PROPERTY INTEL              │  ← header
-├──────────────────────────────┤
-│                              │
-│  LOCATION                    │
-│  千代田区丸の内1             │
-│                              │
-│  ┌────────────────────────┐  │
-│  │  INVESTMENT SCORE       │  │
-│  │       ╭─────╮          │  │
-│  │      ╱   72  ╲         │  │  ← ScoreGauge（半円SVG arc）
-│  │     ╱─────────╲        │  │
-│  │    0    50    100       │  │
-│  │                         │  │
-│  │  trend: 18/25           │  │  ← ComponentBar
-│  │  risk:  22/25           │  │
-│  │  access:15/25           │  │
-│  │  yield: 17/25           │  │
-│  └────────────────────────┘  │
-│                              │
-│  ┌────────────────────────┐  │
-│  │  PRICE TREND            │  │
-│  │  ╱‾‾‾╲   ╱‾‾‾‾‾       │  │  ← Sparkline（5年間推移）
-│  │ ╱      ╲╱              │  │
-│  │ 2020        2024       │  │
-│  │        CAGR: +3.2%     │  │
-│  └────────────────────────┘  │
-│                              │
-│  ...                        │
-└──────────────────────────────┘
-w: 320px
-position: fixed right-4 top-24
-bg: rgba(--bg-primary, 0.9) + backdrop-blur-md
-animation: slide-in from right (framer-motion x:320→0)
-```
-
-**投資スコアゲージ (ScoreGauge):**
-- 0-33: `--accent-danger`（赤）
-- 34-66: `--accent-warning`（黄）
-- 67-100: `--accent-success`（緑）
-- 半円メーター（SVG arc）、中央に数値
-
-**ComponentBar**: 各スコア要素（trend, risk, access, yield）のバー表示
-
-**Sparkline**: 価格推移の折れ線グラフ（上昇: `--accent-success` / 下降: `--accent-danger`）
-
----
-
-### 4.5 DashboardStats（下部バー）
-
-**責務**: ビューポート連動のリアルタイムエリア統計。TanStack Query で bbox 変更時に `/api/stats` を呼び出し。
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐│
-│  │ AVG PRICE│  │ LISTINGS │  │ RISK     │  │ FACILITIES   ││
-│  │ ¥850,000 │  │   45     │  │  18%     │  │  13          ││
-│  │ med:720k │  │          │  │          │  │ 3 sch, 10 med││
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘│
-└──────────────────────────────────────────────────────────────┘
-```
-
-**各カード (StatCard):**
-- bg: `--bg-tertiary`
-- ラベル: `--text-muted`, 9px, tracking-[0.15em]
-- 値: `--accent-cyan`, text-lg, font-bold
-- 副値: `--text-secondary`, 10px
-- RISK値: 30%超で `--accent-danger`、以下で `--accent-success`
-
-**レスポンシブ:**
-- Desktop (>=1280px): h:120px, flex row, 固定下部
-- Tablet (768-1279px): h:80px, 2x2 grid
-- Mobile (<768px): デフォルト非表示。フローティングボタンでトグル表示
-
-**ローディング**: shadcn/ui Skeleton パルスアニメーション
-
----
-
-### 4.6 ComparePanel（比較パネル）
-
-**責務**: 2地点のサイドバイサイド比較。recharts RadarChart で可視化。
-
-```
-┌────────────────────────────────────────────────────────┐
-│  COMPARE ANALYSIS                              [×]    │
-├────────────────────────────────────────────────────────┤
-│                                                        │
-│  ┌──────────────┐          ┌──────────────┐           │
-│  │ POINT A      │          │ POINT B      │           │
-│  │ 千代田区     │          │ 新宿区       │           │
-│  │ Score: 72    │          │ Score: 65    │           │
-│  └──────────────┘          └──────────────┘           │
-│                                                        │
-│           ┌──────────────────────┐                    │
-│           │   Radar Chart        │                    │
-│           │      地価            │                    │
-│           │     ╱    ╲           │                    │
-│           │  利回   安全性       │                    │
-│           │     ╲    ╱           │                    │
-│           │    医療  教育        │                    │
-│           │                      │                    │
-│           │  ── A (cyan)         │                    │
-│           │  ── B (warning)      │                    │
-│           └──────────────────────┘                    │
-└────────────────────────────────────────────────────────┘
-z-index: 100 (modal overlay)
-bg: --bg-secondary + backdrop-blur(12px)
-backdrop: rgba(0,0,0,0.6)
-animation: scale-in (framer-motion scale:0.9→1)
-```
-
-**レーダーチャート軸:** 地価 / 安全性 / 教育 / 医療 / 利回り
-
-**カラー:**
-- Point A: `--accent-cyan`
-- Point B: `--accent-warning`
-
----
-
-### 4.7 StatusBar（下部ステータスバー）
+### 4.9 StatusBar（下部ステータスバー）
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  35.6812°N 139.7671°E  │  Z:12.0  │  ● DEMO  │  ◌ LOADING... │
+│  35.6812°N 139.7671°E  │  Z:12.0  │  ◌ LOADING...       │
 └──────────────────────────────────────────────────────────┘
 h: 28px, font-size: 10px, --font-mono
 bg: --bg-primary
@@ -437,164 +361,154 @@ z-index: 20
 
 - 座標: 現在のビューステート lat/lng
 - ズームレベル: 現在のズーム値
-- DEMOバッジ: `--accent-warning` で表示（APIキー未設定時）
-- Loadingインジケーター: `--accent-cyan` で表示（データ取得中）
+- Loading インジケーター: データ取得中に表示（モノスペースドットアニメーション）
 
 ---
 
-### 4.8 YearSlider（人口メッシュ年度スライダー）
+## 5. テーマシステム
 
-**責務**: 将来人口メッシュレイヤーの表示年度を選択。`population_mesh` レイヤーがアクティブな時のみ表示。
+### 5.1 概要
 
----
+24 レイヤーの個別トグルシステムを廃止し、テーマベースの排他切替システムに置換。テーマを切り替えると前テーマのレイヤーが非表示になり（opacity 0、0.3s fade）、新テーマのレイヤーが表示される（opacity 1、0.3s fade）。
 
-## 5. レイヤーシステム（24レイヤー）
+ソースオブトゥルース: `services/frontend/src/lib/themes.ts` および `docs/designs/map-visualization-spec.md`
 
-### 5.1 レイヤー構成
+### 5.2 利用可能テーマ
 
-全24レイヤーは `layers.ts` で一元管理。各レイヤーは `LayerConfig` 型で定義:
+| テーマ ID | 表示名 | 地図表示形式 | 詳細パネル内容 |
+|----------|--------|------------|--------------|
+| `landprice` | 地価 | エリアポリゴン choropleth + 金額ラベル | 価格、地積、用途地域、年次推移 |
+| `hazard` | ハザード | カラーポリゴン + 凡例 | 浸水深、土砂区域、リスクレベル |
+| `transactions` | 取引事例 | クラスタ / ポイント | 取引価格、面積、構造、建築年 |
+| `ridership` | 乗降客数 | 駅バブル + 人数ラベル | 乗降客数、前年比、年次推移 |
+| `score` | スコア分析 | ヒートマップ / グラデーション | TLS スコア内訳、サブスコア |
 
-```typescript
-interface LayerConfig {
-  id: string;
-  name: string;           // English name
-  nameJa: string;         // Japanese display name
-  category: "value" | "risk" | "ground" | "infra" | "orientation";
-  defaultEnabled: boolean;
-  color: string;          // CSS variable reference (e.g., "var(--layer-landprice)")
-  source: "api" | "static";
-  popupFields?: PopupField[];
-  interactiveLayerIds?: string[];
-  minZoom?: number;
-}
-```
+各テーマの正確なレイヤーセットと paint expression の詳細は `docs/designs/map-visualization-spec.md` を参照。
 
-### 5.2 データソース分類
+### 5.3 レイヤー ID 規則
 
-**API layers** (6): `useAreaData` hook で bbox に基づきバックエンドからフェッチ。
-
-| ID | nameJa | カテゴリ | カラー |
-|----|--------|---------|--------|
-| `landprice` | 地価公示 | value | `--layer-landprice` (#fbbf24) |
-| `flood` | 洪水浸水 | risk | `--layer-flood` (#0ea5e9) |
-| `steep_slope` | 急傾斜地 | risk | `--layer-steep-slope` (#f97316) |
-| `schools` | 学校 | infra | `--layer-schools` (#34d399) |
-| `medical` | 医療機関 | infra | `--layer-medical` (#2dd4bf) |
-| `zoning` | 用途地域 | orientation | `--layer-zoning` (#818cf8) |
-
-**Static layers** (18): `/geojson/` からマウント時にロード。
-
-| ID | nameJa | カテゴリ | カラー |
-|----|--------|---------|--------|
-| `flood_history` | 浸水履歴 | value | `--layer-flood-history` (#60a5fa) |
-| `did` | 人口集中地区 | value | `--layer-did` (#a78bfa) |
-| `station` | 鉄道駅 | value | `--layer-station` (#f472b6) |
-| `liquefaction` | 液状化危険度 | risk | `--layer-liquefaction` (#eab308) |
-| `seismic` | 地震動・震源断層 | risk | `--layer-seismic` (#ef4444) |
-| `fault` | 断層線 | risk | `--layer-fault` (#ef4444) |
-| `volcano` | 火山 | risk | `--layer-volcano` (#f43f5e) |
-| `landslide` | 土砂災害 | risk | `--layer-landslide` (#fb923c) |
-| `tsunami` | 津波浸水 | risk | `--layer-tsunami` (#38bdf8) |
-| `landform` | 地形分類 | ground | `--layer-landform` (#d4a574) |
-| `geology` | 表層地質 | ground | `--layer-geology` (#8b7355) |
-| `soil` | 土壌図 | ground | `--layer-soil` (#a0845c) |
-| `school_district` | 小学校区 | infra | `--layer-school-dist` (#4ade80) |
-| `park` | 都市公園 | infra | `--layer-park` (#86efac) |
-| `railway` | 鉄道路線 | infra | `--layer-railway` (#22d3ee) |
-| `admin_boundary` | 市町村境界 | orientation | `--layer-boundary` (#a1a1aa) |
-| `population_mesh` | 将来人口メッシュ | orientation | `--layer-population` (#c084fc) |
-| `urban_plan` | 立地適正化 | orientation | `--layer-urban-plan` (#34d399) |
-
-### 5.3 レイヤーコンポーネントアーキテクチャ
-
-`page.tsx` のレジストリパターンで、レイヤーIDからReactコンポーネントへのマッピングを一元管理:
-
-- `STATIC_LAYER_COMPONENTS`: `{ visible: boolean }` を受け取る
-- `API_LAYER_COMPONENTS`: `{ data: FeatureCollection, visible: boolean }` を受け取る
-- `PopulationMeshLayer`: 追加で `{ selectedYear: number }` を受け取る
-
-各レイヤーコンポーネントは個別の MapLibre paint expression を持ち、`components/map/layers/` に配置。
+- UI レイヤー ID: `underscore_case` (例: `land_price`, `flood_risk`)
+- WASM / FlatGeobuf レイヤー ID: `hyphen-case` (例: `land-price`, `flood-risk`)
+- 境界を越える際は `canonicalLayerId()` (`src/lib/layers.ts`) を使用
 
 ---
 
 ## 6. インタラクション仕様
 
-### 6.1 マップパン/ズーム
-- moveEnd debounce: 300ms (`DEBOUNCE_MS`)
-- debounce後に `useAreaData` の bbox を更新 → API層レイヤーのデータ再取得
-- bbox最大幅制限: 0.5度 (`BBOX_MAX_DEGREES`)
+### 6.1 テーマ切替
 
-### 6.2 フィーチャークリック（click-inspect）
-1. `interactiveLayerIds`（全24レイヤーから収集）に該当するフィーチャーをクリック
-2. `selectedFeature` を Zustand store に保存（layerId, properties, coordinates）
-3. layerId プレフィックスから `layers.ts` の `popupFields` を逆引き
-4. PopupCard を画面中央に表示（config-driven、レイヤーごとのテンプレート不要）
-5. マップの空白部分をクリック → `selectFeature(null)` でPopupCard閉じる
+1. ユーザーが Sidebar のテーマ項目をクリック
+2. `activeTheme` が Zustand store で更新される
+3. 前テーマのレイヤーが fade out (opacity 0、0.3s)
+4. 新テーマのレイヤーが fade in (opacity 1、0.3s)
+5. Left Detail Panel が開いていれば閉じる (State 1 → State 0)
 
-### 6.3 比較モード
-1. 比較モード有効化 → クリック動作が切り替わる
-2. 1つ目の地点をクリック → Point A として記録（address or lat/lng）
-3. 2つ目の地点をクリック → Point B として記録 → ComparePanel 表示
-4. 各 Point に対して `/api/score` を呼び出し → RadarChart 描画
-5. ComparePanel の「×」またはバックドロップクリック → 比較モード終了
+### 6.2 地図クリック (State 0)
 
-### 6.4 URL状態同期
-- `useMapUrlState` hook で URL ↔ 地図状態を双方向同期（nuqs ベース）
-- パラメータ: `lat`, `lng`, `z`, `pitch`, `bearing`, `layers` (カンマ区切り)
-- 例: `?lat=35.681&lng=139.767&z=12&pitch=45&layers=landprice,zoning`
+1. ユーザーが地図フィーチャーをクリック
+2. Left Detail Panel がスライドイン (State 0 → State 1)
+3. パネルにテーマ連動の地点詳細タブを表示
+
+### 6.3 地図クリック (State 2 — テーブル表示中)
+
+1. ユーザーが Opportunities Table 表示中に地図フィーチャーをクリック
+2. Right Drawer がスライドイン (State 2 → State 3)
+3. Drawer にクリック地点の詳細を表示 (テーマ連動フォーマット)
+
+### 6.4 テーブル行クリック
+
+1. ユーザーが Opportunities Table の行をクリック
+2. Right Drawer がスライドイン (State 2 → State 3)
+3. Drawer に Opportunity 詳細 (TLS スコア + レーダー + リスク + 最寄駅) を表示
+4. タブ: Detail / Compare
+
+### 6.5 Opportunities ナビクリック
+
+1. ユーザーが Sidebar の Opportunities をクリック
+2. Left Detail Panel が開いていれば先に閉じる
+3. Opportunities Table が下から上にスライドイン (State 0/1 → State 2)
+
+### 6.6 Sidebar 折りたたみ/展開
+
+- 折りたたみトグルをクリック
+- Sidebar 幅が 200px ↔ 56px でアニメーション (0.2s ease)
+- 地図キャンバスはリフローしない (サイドバーは地図の上に overlay)
+
+### 6.7 マップパン/ズーム
+
+- moveEnd debounce: 300ms
+- debounce 後に `useAreaData` の bbox を更新 → API レイヤーのデータ再取得
+- bbox 最大幅制限: 0.5度 (`BBOX_MAX_DEGREES`)
+- ViewState は debounce 後にのみ TanStack Query の queryKey に使用 (リクエストフラッド防止)
+
+### 6.8 URL 状態同期
+
+- `useMapUrlState` hook で URL ↔ 地図状態を双方向同期 (nuqs ベース)
+- パラメータ: `lat`, `lng`, `z`, `pitch`, `bearing`, `theme`
+- 例: `?lat=35.681&lng=139.767&z=12&theme=landprice`
 
 ---
 
 ## 7. レスポンシブ対応
 
+デスクトップ優先設計。モバイル対応は本計画のスコープ外。
+
 ### 7.1 ブレークポイント
 
-| 画面幅 | LayerPanel | ScoreCard | DashboardStats |
-|--------|-----------|-----------|---------------|
-| >= 1280px (desktop) | 左固定 280px (AnimatePresence) | 右固定 320px | 下部固定 h:120px, flex row |
-| 768-1279px (tablet) | Sheet（左サイド、MenuIcon trigger） | 右固定 280px | 下部固定 h:80px, 2x2 grid |
-| < 768px (mobile) | Sheet（左サイド、MenuIcon trigger） | ボトムシート | 非表示（フローティングボタンでトグル） |
+| 画面幅 | Sidebar | Left Panel | Table | Right Drawer |
+|--------|---------|------------|-------|--------------|
+| >= 1280px (desktop) | 展開/折りたたみ切替可 | 固定 360px | ~65% 幅 | 固定 340px |
+| 768-1279px (tablet) | アイコンのみ (56px) | 固定 360px | ~80% 幅 | 固定 300px |
+| < 768px (mobile) | アイコンのみ (56px) | 全幅スライドイン | 全幅スライドイン | TBD |
 
-### 7.2 モバイル対応方針
-- デスクトップ優先
-- モバイルは「見れる」レベル（フル機能は不要）
-- タッチ操作: ピンチズーム、2本指回転対応（MapLibreデフォルト）
-- モバイル LayerPanel: shadcn/ui Sheet でスライドイン
+### 7.2 タッチ操作
+
+- ピンチズーム、2本指回転対応 (Mapbox GL デフォルト)
+- パネルスワイプ閉じ: 左 Panel は左スワイプ、Right Drawer は右スワイプで閉じる (TBD)
 
 ---
 
 ## 8. アクセシビリティ
 
-- カラーコントラスト: WCAG AA（ダークテーマのため text-primary on bg-primary で4.5:1以上）
-- キーボードナビゲーション: Tab でパネル間移動、Escape でパネル閉じる
-- スクリーンリーダー: `aria-label` をレイヤートグル・ステータスバー・スコア値に付与
-- `aria-pressed` でレイヤートグル状態を公開
-- `aria-expanded` でカテゴリ折りたたみ状態を公開
-- `role="status"` + `aria-live="polite"` で StatusBar 更新を通知
-- 色だけに依存しない: リスクレベルはテキスト（LOW/MEDIUM/HIGH）でも表示
+- **コントラスト**: WCAG AA — 全テキストはパネル背景上で 4.5:1 以上
+- **キーボードナビゲーション**: Tab でパネル間移動、Escape でパネル閉じる、Enter でアクション実行
+- **ARIA ランドマーク**: Left Detail Panel と Right Drawer は `role="complementary"` + `aria-label`
+- **テーブル**: `role="grid"` + `aria-rowcount` (仮想化行対応)
+- **Sidebar ナビ**: 各項目に `aria-label` (テーマ名)、アクティブ状態に `aria-current="page"`
+- **フォーカストラップ**: Right Drawer 展開時 (shadcn/ui Sheet の挙動)
+- **Map canvas**: `aria-label="Interactive map"` + `role="application"`
+- **色のみ依存禁止**: リスクレベルはアイコン + テキスト (LOW/MEDIUM/HIGH) でも表示
+- **reduced-motion**: `prefers-reduced-motion` 時はスライドアニメーション無効化、opacity フェードのみ
 
 ---
 
-## 9. ローディング/エラー/空状態
+## 9. ローディング / エラー / 空状態
 
 ### 9.1 ローディング
-- StatusBar: `◌ LOADING...` テキスト（`--accent-cyan`）
-- DashboardStats: shadcn/ui Skeleton パルスアニメーション
-- MapView初期化: `地層 LOADING...` テキスト
+
+- Left Detail Panel: テーマ連動データ取得中は shadcn/ui `Skeleton` 行
+- Right Drawer: Opportunity 詳細形状に合わせた `Skeleton` レイアウト
+- Opportunities Table: 初回フェッチ解決まで先頭 20 行を `Skeleton` 表示
+- Map layers: Mapbox ソースローディングはネイティブ処理; 追加スピナー不要
+- StatusBar: アクティブフェッチ中にローディングインジケーター表示
 
 ### 9.2 エラー
-- WebGL context lost: モーダルオーバーレイ + `⚠ 地図を再読み込み中...` + 手動再読み込みボタン
-- 部分的なデータ取得失敗: 失敗したレイヤーの data は空 FeatureCollection にフォールバック
+
+- パネルフェッチエラー: インラインエラーメッセージ + リトライボタン (パネルは開いたまま)
+- Map ソースエラー: shadcn/ui `Sonner` トースト通知 (右上); 地図はインタラクティブのまま
+- Opportunities Table フェッチエラー: 空状態 + リトライ CTA
+- エラーバウンダリ: Next.js App Router の `error.tsx` で実装
 
 ### 9.3 空状態
-- ビューポート内にデータなし: 空の FeatureCollection（マップ上に何も描画されない）
-- レイヤー全OFF: パネルで有効化を促す
+
+- ビューポート内にデータなし: 空の FeatureCollection (地図上に何も描画されない)
+- テーマ未選択: Sidebar でテーマを選択するよう促すメッセージ
 
 ---
 
 ## 10. ドメインモデルとインタラクション (ward 対応含む)
 
-> このセクションは旧 `TERRASIGHT_SPEC_V1.md` から統合された次フェーズ実装の target state。
+> このセクションは次フェーズ実装の target state。
 > 現状実装は `prefecture | municipality` のみで、`ward` 対応は未了。
 
 ### 10.1 行政階層
@@ -609,8 +523,6 @@ type AreaLevel = "prefecture" | "municipality" | "ward";
 
 ### 10.2 選択状態モデル (target shape)
 
-現状の `SelectedArea` を拡張する target shape:
-
 ```ts
 type SelectedArea = {
   code: string;
@@ -623,8 +535,8 @@ type SelectedArea = {
 };
 ```
 
-- **`name` フィールドは canonical には含めない**。表示名は UI で `wardName ?? cityName ?? prefName` の優先順で派生する。
-- 理由: `name` は level ごとに意味が変わり、breadcrumb / popup / API 間で解釈が分裂する。
+- `name` フィールドは canonical には含めない。表示名は UI で `wardName ?? cityName ?? prefName` の優先順で派生する
+- 理由: `name` は level ごとに意味が変わり、breadcrumb / popup / API 間で解釈が分裂する
 
 ### 10.3 行政界クリック動作 (全 level 共通)
 
@@ -634,10 +546,9 @@ type SelectedArea = {
 2. 対応境界をハイライト
 3. パンくずを更新
 4. `selectedArea.code` で area stats を再取得
-5. 既存 popup を閉じる
+5. 既存 Left Detail Panel を閉じる
 
-> **行政界クリックは click-inspect popup より優先する**。popup を残すと選択スコープと
-> inspect 対象が不整合になりやすい。
+> 行政界クリックは地図フィーチャークリックより優先する。パネルを残すと選択スコープとインスペクト対象が不整合になりやすい。
 
 #### 状態遷移例
 
@@ -648,18 +559,57 @@ type SelectedArea = {
 ### 10.4 パンくず表示ルール
 
 | level | 表示 |
-|---|---|
+|-------|------|
 | `prefecture` | `東京都` |
 | `municipality` | `東京都 / 新宿区` |
 | `ward` | `神奈川県 / 横浜市 / 中区` |
 
 - 上位要素クリックで親階層へ戻る
-- 戻る操作でも popup は閉じた状態を維持
+- 戻る操作でも Left Detail Panel は閉じた状態を維持
 - breadcrumb 更新は `selectedArea` のみから決定できる (他 state に依存しない)
 
 ### 10.5 `admin_boundary` の責務分離
 
-`admin_boundary` は単一概念ではなく 2 つの責務に分離する:
+`admin_boundary` は 2 つの責務に分離する:
 
-1. **Base orientation boundary** — 常時表示の基盤レイヤー。位置関係把握のためユーザーの layer toggle には強く依存しない。表示が途切れて「どことどこに跨っているか分からない」状態を作らない
-2. **Interactive boundary settings** — 強調表示 ON/OFF、ラベル濃度、click-interaction の有効化などの設定層。Base orientation を消すためのものではない
+1. **Base orientation boundary** — 常時表示の基盤レイヤー。位置関係把握のためユーザーのテーマ切替には依存しない
+2. **Interactive boundary settings** — 強調表示 ON/OFF、ラベル濃度、click-interaction の有効化などの設定層
+
+### 10.6 UIState (Zustand)
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `activeTheme` | `ThemeId \| null` | 現在アクティブなテーマ |
+| `mapStyle` | `'light' \| 'dark' \| 'satellite'` | 現在のベースマップスタイル |
+| `leftPanelOpen` | `boolean` | Left Detail Panel の表示状態 |
+| `tableOpen` | `boolean` | Opportunities Table の表示状態 |
+| `rightDrawerOpen` | `boolean` | Right Drawer の表示状態 |
+| `selectedOpportunityId` | `string \| null` | テーブルで選択された行 |
+| `selectedMapFeature` | `GeoJSON.Feature \| null` | 地図上でクリックされたフィーチャー |
+
+### 10.7 ViewState (react-map-gl)
+
+`useMap` hook で管理。Zustand `viewState` → TanStack Query `queryKey` は必ず debounce (300ms) を通す。
+
+| フィールド | 型 |
+|-----------|-----|
+| `longitude` | `number` |
+| `latitude` | `number` |
+| `zoom` | `number` |
+| `pitch` | `number` |
+| `bearing` | `number` |
+
+### 10.8 Opportunity (コアデータ型)
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `id` | `string` | UUID |
+| `coordinates` | `[number, number]` | `[lng, lat]` (RFC 7946) |
+| `address` | `string` | 人間可読アドレス |
+| `ward` | `string` | 東京 23 区名 |
+| `landPrice` | `number \| null` | ¥/m²、最新年度 |
+| `zoningCode` | `string` | 用途地域区分コード |
+| `floodRiskLevel` | `number \| null` | 0-4 順序スケール |
+| `compositeScore` | `number \| null` | 0-100 投資スコア (TLS) |
+| `transactionCount` | `number` | 記録された取引件数 |
+| `createdAt` | `string` | ISO 8601 |
