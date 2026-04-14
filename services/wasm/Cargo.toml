@@ -3,6 +3,12 @@ name = "terrasight-wasm"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
+authors = ["sdn03"]
+description = "WebAssembly spatial engine for Terrasight — R-tree indexing, stats, and TLS scoring"
+repository = "https://github.com/sdn0303/terrasight"
+license = "MIT"
+keywords = ["wasm", "geospatial", "spatial-index", "rtree"]
+categories = ["wasm", "science::geo"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -3,7 +3,12 @@ name = "terrasight-geo"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
+authors = ["sdn03"]
 description = "Pure computation utilities: finance (CAGR), rounding, spatial calculations"
+repository = "https://github.com/sdn0303/terrasight"
+license = "MIT"
+keywords = ["geospatial", "finance", "spatial"]
+categories = ["mathematics", "science::geo"]
 
 [dependencies]
 # None — pure functions only
