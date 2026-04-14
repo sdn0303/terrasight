@@ -22,71 +22,105 @@ use crate::domain::constants::{BCR_MAX, BCR_MIN, FAR_MAX, FAR_MIN};
 use crate::domain::error::DomainError;
 use crate::domain::value_object::{AreaCode, Coord, OpportunitySignal, RiskLevel, TlsScore, Year};
 
-/// Generate a validated non-empty string newtype.
+/// Human-readable area name (e.g. "新宿区", "Shinjuku").
 ///
-/// # Generated API
-///
-/// The macro expands to a `pub struct $Name(String)` with:
-/// - `parse(s: &str) -> Result<Self, DomainError>` — trims whitespace and
-///   rejects empty-after-trim inputs with [`DomainError::Validation`].
-/// - `as_str(&self) -> &str` — borrows the inner string.
-/// - `Display` — delegates to the inner `String`.
-/// - `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash`.
-///
-/// The generated type trims whitespace on construction and rejects strings that
-/// are empty after trimming.  It also derives `Debug`, `Clone`, `PartialEq`,
-/// `Eq`, `Hash`, and `Display`.
-macro_rules! nonempty_string_type {
-    ($Name:ident, $doc:expr, $err_msg:literal) => {
-        #[doc = $doc]
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-        pub struct $Name(String);
+/// Whitespace-trimmed and non-empty by construction.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AreaName(String);
 
-        impl $Name {
-            /// Parse a string into a validated, whitespace-trimmed value.
-            ///
-            /// # Errors
-            ///
-            /// Returns [`DomainError::Validation`] if the input is empty after trimming.
-            pub fn parse(s: &str) -> Result<Self, DomainError> {
-                let trimmed = s.trim();
-                if trimmed.is_empty() {
-                    return Err(DomainError::Validation($err_msg.into()));
-                }
-                Ok(Self(trimmed.to_owned()))
-            }
-
-            /// Borrows the inner string slice.
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
+impl AreaName {
+    /// Parse a string into a validated, whitespace-trimmed area name.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Validation`] if the input is empty after trimming.
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(DomainError::Validation(
+                "area name must be non-empty".into(),
+            ));
         }
+        Ok(Self(trimmed.to_owned()))
+    }
 
-        impl std::fmt::Display for $Name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.0.fmt(f)
-            }
-        }
-    };
+    /// Borrows the inner string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
-nonempty_string_type!(
-    AreaName,
-    "Human-readable area name (e.g. \"新宿区\", \"Shinjuku\"). Whitespace-trimmed and non-empty by construction.",
-    "area name must be non-empty"
-);
+impl std::fmt::Display for AreaName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
-nonempty_string_type!(
-    Address,
-    "Postal or street address, trimmed and non-empty by construction. Used as the human-readable label for land price observation points.",
-    "address must be non-empty"
-);
+/// Postal or street address, trimmed and non-empty by construction.
+///
+/// Used as the human-readable label for land price observation points.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Address(String);
 
-nonempty_string_type!(
-    ZoneCode,
-    "Urban-planning zone code (用途地域コード), e.g. \"商業地域\". Trimmed and non-empty by construction. Code set defined by MLIT.",
-    "zone code must be non-empty"
-);
+impl Address {
+    /// Parse a string into a validated, whitespace-trimmed address.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Validation`] if the input is empty after trimming.
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(DomainError::Validation("address must be non-empty".into()));
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+
+    /// Borrows the inner string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+/// Urban-planning zone code (用途地域コード), e.g. `"商業地域"`.
+///
+/// Trimmed and non-empty by construction. Code set defined by MLIT.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ZoneCode(String);
+
+impl ZoneCode {
+    /// Parse a string into a validated, whitespace-trimmed zone code.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DomainError::Validation`] if the input is empty after trimming.
+    pub fn parse(s: &str) -> Result<Self, DomainError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(DomainError::Validation(
+                "zone code must be non-empty".into(),
+            ));
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+
+    /// Borrows the inner string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for ZoneCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 /// Land price per square meter, stored in JPY (integer yen).
 ///
