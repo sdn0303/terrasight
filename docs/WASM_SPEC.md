@@ -1,7 +1,7 @@
 # WASM_SPEC.md — Terrasight WASM Spatial Engine 仕様書
 
-> Version: 1.0.0 | Updated: 2026-04-12
-> Crate: `realestate-wasm` (`services/wasm/`)
+> Version: 2.0.0 | Updated: 2026-04-13
+> Crate: `terrasight-wasm` (`services/wasm/`)
 > Runtime: Web Worker + wasm-bindgen
 > Consumer: `services/frontend/src/lib/wasm/spatial-engine.ts`
 
@@ -21,7 +21,7 @@ Frontend (React)
                  └─ TLS scoring (pure Rust)
 ```
 
-- WASM バイナリは `/wasm/realestate_wasm.js` + `.wasm` で配信
+- WASM バイナリは `/wasm/terrasight_wasm.js` + `.wasm` で配信
 - Web Worker 内で初期化、メインスレッドとは postMessage 通信
 - レイヤーデータは manifest.json 駆動で prefecture-scoped にロード
 
@@ -118,14 +118,17 @@ JS 側には `JsValue::from_str(&e.to_string())` で文字列として伝播。
 
 ### 3.5 WeightPreset
 
+`WeightPreset` は `terrasight-domain::scoring::tls::WeightPreset` からインポートされ、バックエンドと共有。
+
 | Preset | Price | Risk | Facility | Zoning | Transport |
 | --- | --- | --- | --- | --- | --- |
 | `balance` | 0.20 | 0.20 | 0.20 | 0.20 | 0.20 |
 | `investment` | 0.35 | 0.15 | 0.10 | 0.25 | 0.15 |
 | `residential` | 0.15 | 0.25 | 0.25 | 0.15 | 0.20 |
-| `disaster` | 0.10 | 0.40 | 0.15 | 0.15 | 0.20 |
+| `disaster` / `disaster_focus` | 0.10 | 0.40 | 0.15 | 0.15 | 0.20 |
 
-不明な preset は `balance` にフォールバック。
+不明な preset 文字列は `balance` にフォールバック（エラーにならない）。
+共有 enum の variant 名は `DisasterFocus`。`FromStr` 実装は `"disaster"` と `"disaster_focus"` の両方を受け付ける。
 
 ### 3.6 NormalizationParams
 
@@ -193,7 +196,7 @@ API データを `loadGeoJsonLayer(layerId, geojson)` で R-tree に投入し、
 - **JSON keys**: `PROP_PRICE_PER_SQM`, `PROP_ZONE_TYPE`
 - **GeoJSON**: `GEOJSON_KEY_TYPE`, `GEOJSON_KEY_GEOMETRY`, `GEOJSON_KEY_PROPERTIES`, `GEOJSON_KEY_COORDINATES`, `GEOJSON_KEY_GEOMETRIES`, `GEOJSON_TYPE_POINT`, `GEOJSON_TYPE_LINE_STRING`, `GEOJSON_TYPE_POLYGON`, `GEOJSON_TYPE_MULTI_POLYGON`, `FC_HEADER`, `FC_FOOTER`
 - **WGS84**: `LAT_MIN`, `LAT_MAX`, `LNG_MIN`, `LNG_MAX`, `LAT_RANGE`, `LNG_RANGE`
-- **Risk**: `RISK_WEIGHT_FLOOD`, `RISK_WEIGHT_STEEP`
+- **Risk**: `RISK_WEIGHT_FLOOD`, `RISK_WEIGHT_STEEP`（`terrasight_domain::constants` から re-export）
 - **Zoning**: `COMMERCIAL_ZONE_KEYWORD`
 - **Coordinate**: `MIN_COORD_PAIR_LEN`
 

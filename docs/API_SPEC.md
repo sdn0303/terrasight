@@ -1,6 +1,6 @@
 # API_SPEC.md — Terrasight REST API 仕様書
 
-> Version: 3.0.0 | Updated: 2026-04-12
+> Version: 4.0.0 | Updated: 2026-04-13
 > Runtime: Rust Axum + Tokio + SQLx + PostGIS
 > Base URL: `http://localhost:8000`
 >
@@ -59,7 +59,7 @@ Content-Encoding: gzip
 
 - Router: `services/backend/src/lib.rs`
 - Handler: `services/backend/src/handler/`
-- Value Objects: `services/backend/src/domain/value_object.rs`
+- Domain Model: `services/backend/src/domain/model/`
 
 ---
 
@@ -67,12 +67,12 @@ Content-Encoding: gzip
 
 | Method | Path | 概要 |
 | --- | --- | --- |
-| GET | `/api/health` | ヘルスチェック |
-| GET | `/api/area-data` | 複数レイヤー GeoJSON 取得 |
-| GET | `/api/area-stats` | 行政区コード別の集計統計 |
-| GET | `/api/stats` | bbox 内統計集約 |
-| GET | `/api/score` | 投資スコア算出（TLS） |
-| GET | `/api/trend` | 地価推移データ |
+| GET | `/api/v1/health` | ヘルスチェック |
+| GET | `/api/v1/area-data` | 複数レイヤー GeoJSON 取得 |
+| GET | `/api/v1/area-stats` | 行政区コード別の集計統計 |
+| GET | `/api/v1/stats` | bbox 内統計集約 |
+| GET | `/api/v1/score` | 投資スコア算出（TLS） |
+| GET | `/api/v1/trend` | 地価推移データ |
 | GET | `/api/v1/land-prices` | 地価公示（単年 + bbox） |
 | GET | `/api/v1/land-prices/all-years` | 地価公示時系列 |
 | GET | `/api/v1/opportunities` | 投資機会一覧 |
@@ -85,7 +85,7 @@ Content-Encoding: gzip
 
 ## 3. エンドポイント詳細
 
-### 3.1 GET /api/health
+### 3.1 GET /api/v1/health
 
 ヘルスチェック。DB 接続状態を返す。
 
@@ -103,7 +103,7 @@ Content-Encoding: gzip
 
 ---
 
-### 3.2 GET /api/area-data
+### 3.2 GET /api/v1/area-data
 
 ビューポート（bbox）内の地理空間レイヤーデータを GeoJSON で取得。
 
@@ -116,7 +116,7 @@ Content-Encoding: gzip
 | north | f64 | Yes | bbox 北端緯度 |
 | east | f64 | Yes | bbox 東端経度 |
 | layers | string | Yes | カンマ区切りレイヤーID |
-| zoom | u32 | Yes | ズームレベル（feature limit 制御） |
+| zoom | u8 | Yes | ズームレベル（feature limit 制御） |
 | pref_code | string | No | 都道府県フィルタ |
 
 **有効レイヤーID:** `landprice`, `zoning`, `flood`, `steep_slope`, `schools`, `medical`
@@ -132,7 +132,7 @@ Content-Encoding: gzip
 
 ---
 
-### 3.3 GET /api/area-stats
+### 3.3 GET /api/v1/area-stats
 
 行政区コード別の集計統計。
 
@@ -144,7 +144,7 @@ Content-Encoding: gzip
 
 ---
 
-### 3.4 GET /api/stats
+### 3.4 GET /api/v1/stats
 
 bbox 内の統計集約（土地価格、リスク、施設、用途地域分布）。
 
@@ -173,7 +173,7 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
 
 ---
 
-### 3.5 GET /api/score
+### 3.5 GET /api/v1/score
 
 投資スコア算出（TLS: Total Location Score, 5 軸 + 4 プリセット）。
 
@@ -183,11 +183,11 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
 | --- | --- | --- | --- |
 | lat | f64 | Yes | 緯度 |
 | lng | f64 | Yes | 経度 |
-| preset | string | No | `balance` / `investment` / `residential` / `disaster` |
+| preset | string | No | `balance` / `investment` / `residential` / `disaster` (or `disaster_focus`) |
 
 ---
 
-### 3.6 GET /api/trend
+### 3.6 GET /api/v1/trend
 
 指定座標周辺の地価推移データ。
 
@@ -198,6 +198,8 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
 | lat | f64 | Yes | 緯度 |
 | lng | f64 | Yes | 経度 |
 | years | i32 | No | 遡り年数（default: 10, max: 20） |
+
+`direction` field values: `"up"` or `"down"`.
 
 ---
 
@@ -252,7 +254,7 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
 | --- | --- | --- | --- |
 | pref_code | string | Yes | 都道府県コード（2桁） |
 | year_from | i32 | No | 開始年（2000–2100） |
-| property_type | string | No | `condo` / `land_building` / `land` / `forest` / `agriculture` |
+| property_type | string | No | MLIT 生文字列（例: `"宅地(土地)"`, `"中古マンション等"`） |
 
 **Response 200:**
 
@@ -261,7 +263,7 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
   {
     "city_code": "13101",
     "transaction_year": 2024,
-    "property_type": "condo",
+    "property_type": "中古マンション等",
     "tx_count": 156,
     "avg_total_price": 58000000,
     "median_total_price": 52000000,
@@ -286,7 +288,7 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
 | --- | --- | --- | --- |
 | city_code | string | Yes | JIS 市区町村コード（5桁） |
 | year_from | i32 | No | 開始年 |
-| limit | u32 | No | 件数（default: 50, max: 200） |
+| limit | u32 | No | 件数（default: 50, max: 200; 200 超過時はサーバー側で 200 にクランプ） |
 
 **Response 200:**
 
@@ -296,7 +298,7 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
     "city_code": "13101",
     "city_name": "千代田区",
     "district_name": "丸の内",
-    "property_type": "land_building",
+    "property_type": "宅地(土地と建物)",
     "total_price": 120000000,
     "price_per_sqm": 1500000,
     "area_sqm": 80,
