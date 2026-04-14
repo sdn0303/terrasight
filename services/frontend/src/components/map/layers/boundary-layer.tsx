@@ -1,6 +1,6 @@
 "use client";
 
-import { Layer, Source } from "react-map-gl/maplibre";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 export function BoundaryLayer() {

@@ -1,10 +1,10 @@
 import type {
   DataDrivenPropertyValueSpecification,
   FilterSpecification,
-} from "maplibre-gl";
+} from "mapbox-gl";
 import { useCallback, useMemo } from "react";
-import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { Layer, Source } from "react-map-gl/maplibre";
+import type { MapMouseEvent } from "react-map-gl/mapbox";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 import {
   CHOROPLETH_FILL_OPACITY,
@@ -75,12 +75,12 @@ interface PrefectureMapLayerProps {
  *   const handlePrefClick = usePrefectureLayerClick();
  *   <Map interactiveLayerIds={["prefecture-fill"]} onClick={handlePrefClick} />
  */
-export function usePrefectureLayerClick(): (e: MapLayerMouseEvent) => void {
+export function usePrefectureLayerClick(): (e: MapMouseEvent) => void {
   const selectPrefecture = usePrefectureStore((s) => s.selectPrefecture);
   const flyToPrefecture = useMapStore((s) => s.flyToPrefecture);
 
   return useCallback(
-    (e: MapLayerMouseEvent) => {
+    (e: MapMouseEvent) => {
       const feature = e.features?.[0];
       if (!feature?.properties) return;
       // TODO: Verify pref_code and prefName field names against real data.

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
-import { AreaDataResponse } from "@/lib/schemas";
+import { AreaDataResponse } from "@/lib/api/schemas/area-data";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useAreaData(bbox: BBox | null, layers: string[], zoom: number) {

@@ -1,10 +1,6 @@
 "use client";
 
-// TODO: replace with lib/i18n.ts (Task 1.6)
-function useTranslations(_ns?: string) {
-  return (key: string) => key;
-}
-
+import { useTranslation } from "@/lib/i18n";
 import { useMapStore, type WeightPreset } from "@/stores/map-store";
 
 const PRESETS: WeightPreset[] = [
@@ -15,7 +11,7 @@ const PRESETS: WeightPreset[] = [
 ];
 
 export function WeightPresetSelector() {
-  const t = useTranslations("analyze.weightPreset");
+  const { t } = useTranslation();
   const weightPreset = useMapStore((s) => s.weightPreset);
   const setWeightPreset = useMapStore((s) => s.setWeightPreset);
 
@@ -37,7 +33,7 @@ export function WeightPresetSelector() {
             }`}
             aria-pressed={weightPreset === preset}
           >
-            {t(preset)}
+            {t(`analyze.weightPreset.${preset}`)}
           </button>
         ))}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 import {
   type ReactNode,
@@ -11,22 +11,31 @@ import {
 } from "react";
 import type {
   MapEvent,
-  MapLayerMouseEvent,
+  MapMouseEvent,
   ViewStateChangeEvent,
-} from "react-map-gl/maplibre";
-import { Map as MapGL, NavigationControl } from "react-map-gl/maplibre";
+} from "react-map-gl/mapbox";
+import { Map as MapGL, NavigationControl } from "react-map-gl/mapbox";
+import type { Map as MapboxMap } from "mapbox-gl";
 import type { BBox } from "@/lib/api";
-import { DEBOUNCE_MS, MAP_CONFIG } from "@/lib/constants";
+import { DEBOUNCE_MS } from "@/lib/constants";
 import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
 import { logger } from "@/lib/logger";
 import { useMapStore } from "@/stores/map-store";
+import type { BaseMap } from "@/stores/ui-store";
+import { useUIStore } from "@/stores/ui-store";
+
+const MAPBOX_STYLES = {
+  light: "mapbox://styles/mapbox/streets-v12",
+  dark: "mapbox://styles/mapbox/dark-v11",
+  satellite: "mapbox://styles/mapbox/satellite-streets-v12",
+} as const satisfies Record<BaseMap, string>;
 
 const log = logger.child({ module: "map-view" });
 
 interface MapViewProps {
   children?: ReactNode;
   onMoveEnd?: (bbox: BBox) => void;
-  onFeatureClick?: (e: MapLayerMouseEvent) => void;
+  onFeatureClick?: (e: MapMouseEvent) => void;
 }
 
 const WEBGL_RECOVERY_TIMEOUT_MS = 5000;
@@ -35,10 +44,11 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
   const [mounted, setMounted] = useState(false);
   const [webglLost, setWebglLost] = useState(false);
   const { viewState, setViewState } = useMapStore();
+  const baseMap = useUIStore((s) => s.baseMap);
   const moveEndTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const mapRef = useRef<maplibregl.Map | null>(null);
+  const mapRef = useRef<MapboxMap | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -64,6 +74,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         const map = mapRef.current;
         if (!map || !onMoveEnd) return;
         const bounds = map.getBounds();
+        if (!bounds) return;
         onMoveEnd({
           south: bounds.getSouth(),
           west: bounds.getWest(),
@@ -76,7 +87,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
   );
 
   const handleClick = useCallback(
-    (e: MapLayerMouseEvent) => {
+    (e: MapMouseEvent) => {
       onFeatureClick?.(e);
     },
     [onFeatureClick],
@@ -88,12 +99,14 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
 
     // Emit initial real bbox so queries don't rely on the center+zoom approximation
     const bounds = map.getBounds();
-    onMoveEnd?.({
-      south: bounds.getSouth(),
-      west: bounds.getWest(),
-      north: bounds.getNorth(),
-      east: bounds.getEast(),
-    });
+    if (bounds) {
+      onMoveEnd?.({
+        south: bounds.getSouth(),
+        west: bounds.getWest(),
+        north: bounds.getNorth(),
+        east: bounds.getEast(),
+      });
+    }
 
     // ─── CRITICAL GAP FIX: try/catch wrapper for addSource ───
     // Protects against malformed data or duplicate source IDs
@@ -259,7 +272,8 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         onMoveEnd={handleMoveEnd}
         onClick={handleClick}
         onLoad={handleLoad}
-        mapStyle={MAP_CONFIG.style}
+        mapStyle={MAPBOX_STYLES[baseMap]}
+        mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         style={{ width: "100%", height: "100%" }}
         attributionControl={false}
         interactiveLayerIds={ALL_INTERACTIVE_LAYER_IDS}

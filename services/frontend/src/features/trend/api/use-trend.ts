@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { typedGet } from "@/lib/api";
-import { TrendResponse } from "@/lib/schemas";
+import { TrendResponse } from "@/lib/api/schemas/trend";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useTrend(

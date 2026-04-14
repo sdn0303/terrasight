@@ -2,11 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
-import { OpportunitiesResponse } from "@/lib/schemas";
+import { OpportunitiesResponse } from "@/lib/api/schemas/opportunities";
 import { queryKeys } from "@/lib/query-keys";
 import { useFilterStore } from "@/stores/filter-store";
 import { useMapStore } from "@/stores/map-store";
-import type { OpportunityRiskLevel } from "@/lib/schemas";
+import type { OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
 
 export interface FetchOpportunitiesParams {
   bbox: BBox;

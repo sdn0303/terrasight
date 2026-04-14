@@ -1,10 +1,10 @@
 import type {
   DataDrivenPropertyValueSpecification,
   FilterSpecification,
-} from "maplibre-gl";
+} from "mapbox-gl";
 import { useCallback, useMemo } from "react";
-import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { Layer, Source } from "react-map-gl/maplibre";
+import type { MapMouseEvent } from "react-map-gl/mapbox";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 import {
   CHOROPLETH_FILL_OPACITY,
@@ -66,11 +66,11 @@ interface MunicipalityMapLayerProps {
  *   const handleMunicipalityClick = useMunicipalityLayerClick();
  *   <Map interactiveLayerIds={["municipality-fill"]} onClick={handleMunicipalityClick} />
  */
-export function useMunicipalityLayerClick(): (e: MapLayerMouseEvent) => void {
+export function useMunicipalityLayerClick(): (e: MapMouseEvent) => void {
   const selectArea = useMapStore((s) => s.selectArea);
 
   return useCallback(
-    (e: MapLayerMouseEvent) => {
+    (e: MapMouseEvent) => {
       const feature = e.features?.[0];
       if (!feature?.properties) return;
       // TODO: Verify city_code/cityCode and cityName field names against real data.

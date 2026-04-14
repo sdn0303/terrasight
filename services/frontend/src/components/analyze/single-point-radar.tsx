@@ -7,7 +7,7 @@ import {
   RadarChart,
   ResponsiveContainer,
 } from "recharts";
-import type { TlsResponse } from "@/lib/schemas";
+import type { TlsResponse } from "@/lib/api/schemas/score";
 
 const AXIS_KEYS = [
   "disaster",

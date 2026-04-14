@@ -2,7 +2,7 @@ import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queryKeys } from "@/lib/query-keys";
-import { LandPriceTimeSeriesResponse } from "@/lib/schemas";
+import { LandPriceTimeSeriesResponse } from "@/lib/api/schemas/land-prices";
 import { createQueryWrapper } from "./test-utils";
 
 // ─── Mocks ───────────────────────────────────────────
@@ -18,7 +18,7 @@ vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: (...args: unknown[]) => mockUseMediaQuery(...args),
 }));
 
-vi.mock("react-map-gl/maplibre", () => ({
+vi.mock("react-map-gl", () => ({
   Source: ({
     children,
     ...props

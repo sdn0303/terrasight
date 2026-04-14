@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { LAYERS } from "@/lib/layers";
+import { LandPriceProperties } from "@/lib/api/schemas/land-prices";
 import {
   FloodProperties,
-  LandPriceProperties,
   MedicalProperties,
   SchoolProperties,
   SteepSlopeProperties,
   ZoningProperties,
-} from "@/lib/schemas";
+} from "@/lib/api/schemas/area-data";
 
 const SCHEMA_MAP: Record<string, Record<string, unknown>> = {
   land_price_ts: LandPriceProperties.shape,

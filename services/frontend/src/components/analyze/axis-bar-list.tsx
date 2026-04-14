@@ -1,12 +1,8 @@
 "use client";
 
-// TODO: replace with lib/i18n.ts (Task 1.6)
-function useTranslations(_ns?: string) {
-  return (key: string) => key;
-}
-
 import { useState } from "react";
-import type { TlsResponse } from "@/lib/schemas";
+import { useTranslation } from "@/lib/i18n";
+import type { TlsResponse } from "@/lib/api/schemas/score";
 import { AxisDetail } from "./axis-detail";
 
 const AXIS_KEYS = [
@@ -31,7 +27,7 @@ interface AxisBarListProps {
 }
 
 export function AxisBarList({ axes }: AxisBarListProps) {
-  const t = useTranslations("axis");
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<AxisKey | null>(null);
 
   return (
@@ -48,7 +44,7 @@ export function AxisBarList({ axes }: AxisBarListProps) {
               className="flex items-center gap-2 w-full py-1.5 text-left"
             >
               <span className="w-14 text-[10px] truncate" style={{ color }}>
-                {t(key)}
+                {t(`axis.${key}`)}
               </span>
               <div className="flex-1 h-2 rounded-full overflow-hidden bg-ds-bg-tertiary">
                 <div

@@ -5,7 +5,7 @@ import type { ChangeEvent, MouseEvent } from "react";
 import { RiskPill } from "@/components/ui/risk-pill";
 import { ScoreChip } from "@/components/ui/score-chip";
 import { StatusPill } from "@/components/ui/status-pill";
-import type { Opportunity, OpportunityRiskLevel, Signal } from "@/lib/schemas";
+import type { Opportunity, OpportunityRiskLevel, Signal } from "@/lib/api/schemas/opportunities";
 import { useUIStore } from "@/stores/ui-store";
 
 /**

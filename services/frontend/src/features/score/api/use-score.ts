@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { typedGet } from "@/lib/api";
-import { TlsResponse } from "@/lib/schemas";
+import { TlsResponse } from "@/lib/api/schemas/score";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useScore(

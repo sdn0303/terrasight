@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
-import { StatsResponse } from "@/lib/schemas";
+import { StatsResponse } from "@/lib/api/schemas/stats";
 import { queryKeys } from "@/lib/query-keys";
 
 // X-02 fix: WASM stats path disabled — partial layer load produces silent

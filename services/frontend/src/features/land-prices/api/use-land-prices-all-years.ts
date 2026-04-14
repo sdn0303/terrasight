@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
-import { LandPriceTimeSeriesResponse } from "@/lib/schemas";
+import { LandPriceTimeSeriesResponse } from "@/lib/api/schemas/land-prices";
 import { queryKeys } from "@/lib/query-keys";
 
 /**

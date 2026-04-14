@@ -1,11 +1,7 @@
 "use client";
 
-// TODO: replace with lib/i18n.ts (Task 1.6)
-function useTranslations(_ns?: string) {
-  return (key: string) => key;
-}
-
-import type { TlsResponse } from "@/lib/schemas";
+import { useTranslation } from "@/lib/i18n";
+import type { TlsResponse } from "@/lib/api/schemas/score";
 
 const AXIS_KEYS = [
   "disaster",
@@ -22,12 +18,12 @@ interface DiffTableProps {
 }
 
 export function DiffTable({ axesList, tlsScores }: DiffTableProps) {
-  const t = useTranslations("axis");
+  const { t } = useTranslation();
   const pointCount = axesList.length;
 
   const rows = AXIS_KEYS.map((key) => ({
     key,
-    label: t(key),
+    label: t(`axis.${key}`),
     scores: axesList.map((axes) => Math.round(axes?.[key]?.score ?? 0)),
   }));
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { typedGet } from "@/lib/api";
-import { HealthResponse } from "@/lib/schemas";
+import { HealthResponse } from "@/lib/api/schemas/health";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useHealth() {

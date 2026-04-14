@@ -1,6 +1,6 @@
 "use client";
 
-import type { TlsResponse } from "@/lib/schemas";
+import type { TlsResponse } from "@/lib/api/schemas/score";
 
 type AxisKey = keyof TlsResponse["axes"];
 

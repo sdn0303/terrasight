@@ -8,12 +8,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-// TODO: replace with lib/i18n.ts (Task 1.6)
-function useTranslations(_ns?: string) {
-  return (key: string) => key;
-}
-
 import { useEffect } from "react";
+import { useTranslation } from "@/lib/i18n";
 import { LeftPanel } from "@/components/layout/left-panel";
 import {
   getLayerIdsByTheme,
@@ -38,7 +34,7 @@ interface ThemesPanelProps {
 }
 
 export function ThemesPanel({ open, onClose }: ThemesPanelProps) {
-  const t = useTranslations();
+  const { t } = useTranslation();
   const activeThemes = useUIStore((s) => s.activeThemes);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
   const applyThemeLayers = useMapStore((s) => s.applyThemeLayers);

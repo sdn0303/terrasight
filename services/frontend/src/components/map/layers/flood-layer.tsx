@@ -1,7 +1,7 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import { Layer, Source } from "react-map-gl/maplibre";
+import { Layer, Source } from "react-map-gl/mapbox";
 
 interface Props {
   data: FeatureCollection;
@@ -22,7 +22,7 @@ interface Props {
 const DEPTH_RANK_EXPR = [
   "get",
   "depth_rank",
-] as unknown as maplibregl.ExpressionSpecification;
+] as unknown as ["get", string];
 
 export function FloodLayer({ data, visible }: Props) {
   if (!visible) return null;

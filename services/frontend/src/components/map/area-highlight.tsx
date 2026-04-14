@@ -1,6 +1,6 @@
 "use client";
 
-import { Layer } from "react-map-gl/maplibre";
+import { Layer } from "react-map-gl/mapbox";
 import { useMapStore } from "@/stores/map-store";
 
 export function AreaHighlight() {

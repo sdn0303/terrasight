@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { typedGet } from "@/lib/api";
-import { AreaStatsResponse } from "@/lib/schemas";
+import { AreaStatsResponse } from "@/lib/api/schemas/area-stats";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useAreaStats(code: string | null) {

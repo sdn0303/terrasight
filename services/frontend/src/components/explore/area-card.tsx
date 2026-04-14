@@ -1,15 +1,11 @@
 "use client";
 
-// TODO: replace with lib/i18n.ts (Task 1.6)
-function useTranslations(_ns?: string) {
-  return (key: string) => key;
-}
-
+import { useTranslation } from "@/lib/i18n";
 import { useAreaStats } from "@/features/area-stats/api/use-area-stats";
 import { useMapStore } from "@/stores/map-store";
 
 export function AreaCard() {
-  const t = useTranslations("explore.areaCard");
+  const { t } = useTranslation();
   const selectedArea = useMapStore((s) => s.selectedArea);
   const { data, isPending } = useAreaStats(selectedArea?.code ?? null);
 
@@ -37,11 +33,11 @@ export function AreaCard() {
 
   const stats = [
     {
-      label: t("population"),
+      label: t("explore.areaCard.population"),
       value: isPending ? <span className={skeletonCls} /> : "\u2014",
     },
     {
-      label: t("avgPrice"),
+      label: t("explore.areaCard.avgPrice"),
       value: isPending ? (
         <span className={skeletonCls} />
       ) : (
@@ -49,7 +45,7 @@ export function AreaCard() {
       ),
     },
     {
-      label: t("risk"),
+      label: t("explore.areaCard.risk"),
       value: isPending ? (
         <span className={skeletonCls} />
       ) : (
@@ -57,7 +53,7 @@ export function AreaCard() {
       ),
     },
     {
-      label: t("avgTls"),
+      label: t("explore.areaCard.avgTls"),
       value: isPending ? (
         <span className={skeletonCls} />
       ) : (

@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { TrendResponse } from "@/lib/schemas";
+import type { TrendResponse } from "@/lib/api/schemas/trend";
 
 interface SparklineProps {
   trend: TrendResponse;

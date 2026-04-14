@@ -1,8 +1,8 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import type { FilterSpecification } from "maplibre-gl";
-import { Layer, Source } from "react-map-gl/maplibre";
+import type { FilterSpecification } from "mapbox-gl";
+import { Layer, Source } from "react-map-gl/mapbox";
 import {
   PRICE_COLOR_STOPS,
   PRICE_HEIGHT_STOPS,

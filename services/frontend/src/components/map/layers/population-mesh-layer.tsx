@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Layer, Source } from "react-map-gl/maplibre";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {

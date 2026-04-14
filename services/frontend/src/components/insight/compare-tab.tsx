@@ -4,7 +4,7 @@ import { useQueries } from "@tanstack/react-query";
 import { DiffTable } from "@/components/compare/diff-table";
 import { RadarComparison } from "@/components/compare/radar-chart";
 import { typedGet } from "@/lib/api";
-import { TlsResponse } from "@/lib/schemas";
+import { TlsResponse } from "@/lib/api/schemas/score";
 import { useUIStore } from "@/stores/ui-store";
 
 /**
