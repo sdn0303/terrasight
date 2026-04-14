@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::domain::appraisal::AppraisalDetail;
+use crate::domain::model::AppraisalDetail;
 
 /// Single government appraisal (公示地価) record returned in the response array.
 #[derive(Debug, Serialize)]

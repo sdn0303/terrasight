@@ -7,9 +7,8 @@
 use std::sync::Arc;
 
 use crate::domain::error::DomainError;
-use crate::domain::municipality::Municipality;
+use crate::domain::model::{Municipality, PrefCode};
 use crate::domain::repository::MunicipalityRepository;
-use crate::domain::value_object::PrefCode;
 
 /// Usecase for `GET /api/v1/municipalities`.
 pub struct GetMunicipalitiesUsecase {
@@ -53,8 +52,7 @@ mod tests {
     use crate::domain::error::DomainError;
 
     fn sample_municipality() -> Municipality {
-        use crate::domain::entity::AreaName;
-        use crate::domain::value_object::{CityCode, PrefCode};
+        use crate::domain::model::{AreaName, CityCode, PrefCode};
         Municipality {
             city_code: CityCode::new("13101").unwrap(),
             city_name: AreaName::parse("千代田区").unwrap(),

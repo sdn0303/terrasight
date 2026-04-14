@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::domain::entity::HealthStatus;
+use crate::domain::model::HealthStatus;
 
 /// Response for `GET /api/v1/health`.
 ///

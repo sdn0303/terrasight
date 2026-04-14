@@ -11,11 +11,10 @@
 use serde::Deserialize;
 
 use crate::domain::constants::DEFAULT_OPPORTUNITY_LIMIT;
-use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{
-    BBox, CityCode, OpportunitiesFilters, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel,
-    TlsScore,
+use crate::domain::model::{
+    BBox, CityCode, Meters, OpportunitiesFilters, OpportunityLimit, OpportunityOffset, PrefCode,
+    PricePerSqm, RiskLevel, TlsScore, ZoneCode,
 };
 use terrasight_domain::scoring::tls::WeightPreset;
 

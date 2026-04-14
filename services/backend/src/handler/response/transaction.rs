@@ -5,7 +5,7 @@
 
 use serde::Serialize;
 
-use crate::domain::transaction::{TransactionDetail, TransactionSummary};
+use crate::domain::model::{TransactionDetail, TransactionSummary};
 
 /// Response item for `GET /api/v1/transactions/summary`.
 ///

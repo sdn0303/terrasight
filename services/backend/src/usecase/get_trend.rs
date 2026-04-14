@@ -11,8 +11,8 @@ use terrasight_geo::{finance::compute_cagr, rounding::round_dp};
 
 use crate::domain::constants::PRECISION_RATIO;
 use crate::domain::error::DomainError;
+use crate::domain::model::{Coord, TrendAnalysis, TrendDirection, YearsLookback};
 use crate::domain::repository::TrendRepository;
-use crate::domain::value_object::{Coord, TrendAnalysis, TrendDirection, YearsLookback};
 
 /// Usecase for `GET /api/v1/trend`.
 pub(crate) struct GetTrendUsecase {
@@ -60,8 +60,8 @@ impl GetTrendUsecase {
 
 /// Compute CAGR, round, and pick direction to assemble the final analysis.
 fn build_trend_analysis(
-    location: crate::domain::entity::TrendLocation,
-    data: Vec<crate::domain::entity::TrendPoint>,
+    location: crate::domain::model::TrendLocation,
+    data: Vec<crate::domain::model::TrendPoint>,
 ) -> Result<TrendAnalysis, DomainError> {
     if data.is_empty() {
         tracing::debug!("no trend data found");
@@ -91,10 +91,10 @@ fn build_trend_analysis(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::{Address, PricePerSqm, TrendLocation, TrendPoint};
+    use crate::domain::model::{
+        Address, PricePerSqm, TrendDirection, TrendLocation, TrendPoint, Year,
+    };
     use crate::domain::repository::mock::MockTrendRepository;
-    use crate::domain::value_object::TrendDirection;
-    use crate::domain::value_object::Year;
 
     fn sample_coord() -> Coord {
         Coord::new(35.68, 139.76).unwrap()

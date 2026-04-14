@@ -27,7 +27,7 @@ use crate::usecase::get_municipalities::GetMunicipalitiesUsecase;
 /// # Errors
 ///
 /// - [`AppError`] with `400 Bad Request` when `pref_code` fails
-///   [`PrefCode`](crate::domain::value_object::PrefCode) validation.
+///   [`PrefCode`](crate::domain::model::PrefCode) validation.
 /// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "municipalities"))]
 pub async fn get_municipalities(

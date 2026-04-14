@@ -5,10 +5,9 @@
 
 use std::sync::Arc;
 
-use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, LayerResult, PrefCode, Year, ZoomLevel};
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
 
 /// Usecase for `GET /api/v1/land-prices`.
 pub(crate) struct GetLandPricesUsecase {

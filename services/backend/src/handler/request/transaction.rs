@@ -6,7 +6,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{PrefCode, Year};
+use crate::domain::model::{PrefCode, Year};
 
 /// Query parameters for `GET /api/v1/transactions/summary`.
 #[derive(Debug, Deserialize)]

@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::domain::value_object::TrendAnalysis;
+use crate::domain::model::TrendAnalysis;
 
 /// Top-level response for `GET /api/v1/trend`.
 #[derive(Debug, Serialize)]

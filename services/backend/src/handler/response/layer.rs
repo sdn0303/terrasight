@@ -5,8 +5,7 @@ use serde::Serialize;
 use terrasight_geo::coord::GeoCoord;
 use terrasight_geo::spatial::point_to_polygon;
 
-use crate::domain::entity::LayerResult;
-use crate::domain::value_object::LayerType;
+use crate::domain::model::{LayerResult, LayerType};
 
 pub use terrasight_server::http::response::FeatureDto;
 
@@ -106,8 +105,8 @@ pub fn point_feature_to_polygon_owned(mut feature: FeatureDto) -> FeatureDto {
 ///
 /// Bridges the domain entity to the lib's domain-independent DTO.
 ///
-/// [`GeoFeature`]: crate::domain::entity::GeoFeature
-pub fn geo_feature_to_dto(f: crate::domain::entity::GeoFeature) -> FeatureDto {
+/// [`GeoFeature`]: crate::domain::model::GeoFeature
+pub fn geo_feature_to_dto(f: crate::domain::model::GeoFeature) -> FeatureDto {
     FeatureDto::new(
         f.geometry.r#type.as_str().to_string(),
         f.geometry.coordinates,

@@ -12,9 +12,8 @@
 //! set hits the same cache slot.
 //!
 //! Data types [`CachedOpportunitiesResponse`] and [`OpportunitiesCacheKey`]
-//! live in the domain layer (`domain::entity` and `domain::value_object`
-//! respectively). This module contains only the [`OpportunitiesCache`]
-//! wrapper, which is an infra concern.
+//! live in the domain layer (`domain::model`). This module contains only
+//! the [`OpportunitiesCache`] wrapper, which is an infra concern.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,8 +21,7 @@ use std::time::Duration;
 use moka::future::Cache;
 
 use crate::domain::constants::{OPPORTUNITY_CACHE_MAX_ENTRIES, OPPORTUNITY_CACHE_TTL_SECS};
-use crate::domain::entity::CachedOpportunitiesResponse;
-use crate::domain::value_object::OpportunitiesCacheKey;
+use crate::domain::model::{CachedOpportunitiesResponse, OpportunitiesCacheKey};
 
 /// 60-second in-memory cache for opportunities responses.
 #[derive(Clone)]

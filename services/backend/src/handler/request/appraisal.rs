@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{CityCode, PrefCode};
+use crate::domain::model::{CityCode, PrefCode};
 
 /// Query parameters for `GET /api/v1/appraisals`.
 ///

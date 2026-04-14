@@ -26,10 +26,9 @@ use serde_json::json;
 use terrasight_geo::finance::compute_cagr;
 use terrasight_mlit::jshis::JshisClient;
 
-use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
+use crate::domain::model::{Coord, MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::repository::TlsRepository;
-use crate::domain::value_object::Coord;
 use terrasight_domain::scoring::axis::{
     SubAvailability, compute_s1, compute_s2, compute_s3, compute_s4, compute_s5,
 };
@@ -618,7 +617,7 @@ fn compute_price_cagr(prices: &[PriceRecord]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::ZScoreResult;
+    use crate::domain::model::ZScoreResult;
     use crate::domain::repository::mock::MockTlsRepository;
 
     fn sample_coord() -> Coord {

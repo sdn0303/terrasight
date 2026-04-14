@@ -14,11 +14,9 @@ use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
-use crate::domain::appraisal::AppraisalDetail;
-use crate::domain::entity::{Address, AreaName, ZoneCode};
 use crate::domain::error::DomainError;
+use crate::domain::model::{Address, AppraisalDetail, AreaName, CityCode, PrefCode, ZoneCode};
 use crate::domain::repository::AppraisalRepository;
-use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Raw row returned by the `land_appraisals` table.
 #[derive(Debug, FromRow)]

@@ -8,8 +8,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::domain::entity::LayerResult;
-use crate::domain::value_object::LayerType;
+use crate::domain::model::{LayerResult, LayerType};
 use crate::handler::response::LayerResponseDto;
 
 /// Flat object keyed by layer name, one `LayerResponseDto` per layer.

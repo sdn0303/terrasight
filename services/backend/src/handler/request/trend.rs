@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::domain::constants::TREND_DEFAULT_YEARS;
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{Coord, YearsLookback};
+use crate::domain::model::{Coord, YearsLookback};
 
 /// Query parameters for `GET /api/v1/trend`.
 #[derive(Debug, Deserialize)]

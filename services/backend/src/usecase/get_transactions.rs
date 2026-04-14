@@ -7,9 +7,8 @@ use std::sync::Arc;
 
 use crate::domain::constants::{DEFAULT_TRANSACTION_LIMIT, MAX_TRANSACTION_LIMIT};
 use crate::domain::error::DomainError;
+use crate::domain::model::{CityCode, TransactionDetail, Year};
 use crate::domain::repository::TransactionRepository;
-use crate::domain::transaction::TransactionDetail;
-use crate::domain::value_object::{CityCode, Year};
 
 /// Usecase for `GET /api/v1/transactions`.
 pub struct GetTransactionsUsecase {
@@ -54,8 +53,7 @@ mod tests {
     use crate::domain::repository::mock::MockTransactionRepository;
 
     fn sample_detail() -> TransactionDetail {
-        use crate::domain::entity::AreaName;
-        use crate::domain::value_object::CityCode;
+        use crate::domain::model::{AreaName, CityCode};
         TransactionDetail {
             city_code: CityCode::new("13101").unwrap(),
             city_name: AreaName::parse("千代田区").unwrap(),
@@ -75,7 +73,7 @@ mod tests {
 
     #[tokio::test]
     async fn execute_returns_details() {
-        use crate::domain::value_object::CityCode;
+        use crate::domain::model::CityCode;
         let repo =
             Arc::new(MockTransactionRepository::new().with_transactions(Ok(vec![sample_detail()])));
         let usecase = GetTransactionsUsecase::new(repo);
@@ -87,7 +85,7 @@ mod tests {
 
     #[tokio::test]
     async fn execute_propagates_db_error() {
-        use crate::domain::value_object::CityCode;
+        use crate::domain::model::CityCode;
         let repo = Arc::new(
             MockTransactionRepository::new()
                 .with_transactions(Err(DomainError::Database("boom".into()))),

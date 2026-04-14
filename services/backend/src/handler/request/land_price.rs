@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::domain::constants::{DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR};
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, PrefCode, Year, ZoomLevel};
+use crate::domain::model::{BBox, PrefCode, Year, ZoomLevel};
 use crate::handler::request::area_data::default_zoom;
 
 /// Land price query parameters for `GET /api/v1/land-prices`.

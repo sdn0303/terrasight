@@ -32,10 +32,9 @@ use crate::domain::constants::{
     TLS_PRICE_SEARCH_RADIUS_M, TLS_RISK_SEARCH_RADIUS_M, TLS_SCHOOL_SEARCH_RADIUS_M,
     TLS_TRANSACTION_SEARCH_RADIUS_M,
 };
-use crate::domain::entity::{MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::error::DomainError;
+use crate::domain::model::{Coord, MedicalStats, PriceRecord, SchoolStats, ZScoreResult};
 use crate::domain::repository::TlsRepository;
-use crate::domain::value_object::Coord;
 use crate::infra::query_helpers::run_query;
 use crate::infra::row_types::CountRow;
 

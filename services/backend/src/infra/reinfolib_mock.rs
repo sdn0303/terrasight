@@ -26,11 +26,10 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 
 use crate::config::Config;
-use crate::domain::entity::GeoFeature;
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, GeoFeature, LayerType, ZoomLevel};
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType, ZoomLevel};
 
 /// Default zoom level used when `PostgisFallback` delegates to `LayerRepository`.
 ///
@@ -250,11 +249,13 @@ mod tests {
     use async_trait::async_trait;
 
     use super::PostgisFallback;
-    use crate::domain::entity::{GeoFeature, GeoJsonGeometry, GeoJsonType, LayerResult};
     use crate::domain::error::DomainError;
+    use crate::domain::model::{
+        BBox, Coord, GeoFeature, GeoJsonGeometry, GeoJsonType, LayerResult, LayerType, PrefCode,
+        ZoomLevel,
+    };
     use crate::domain::reinfolib::ReinfolibDataSource;
     use crate::domain::repository::LayerRepository;
-    use crate::domain::value_object::{BBox, Coord, LayerType, PrefCode, ZoomLevel};
 
     // ── Stub LayerRepository ─────────────────────────────────────────────────
 

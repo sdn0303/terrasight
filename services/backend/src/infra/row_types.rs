@@ -6,7 +6,7 @@
 
 use serde_json::json;
 
-use crate::domain::entity::{GeoFeature, LandPriceStats};
+use crate::domain::model::{GeoFeature, LandPriceStats};
 use crate::infra::geo_convert::to_geo_feature;
 
 /// A single-column row produced by `SELECT COUNT(*) AS count …` queries.

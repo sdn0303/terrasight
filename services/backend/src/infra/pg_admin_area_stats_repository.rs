@@ -23,10 +23,11 @@ use std::time::Duration;
 use async_trait::async_trait;
 use sqlx::PgPool;
 
-use crate::domain::entity::{AdminAreaStats, AreaName, FacilityStats, RiskStats};
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    AdminAreaStats, AreaCode, AreaCodeLevel, AreaName, FacilityStats, RiskStats,
+};
 use crate::domain::repository::AdminAreaStatsRepository;
-use crate::domain::value_object::{AreaCode, AreaCodeLevel};
 use crate::infra::query_helpers::run_query;
 use crate::infra::row_types::{CountRow, LandPriceStatsRow};
 

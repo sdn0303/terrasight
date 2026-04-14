@@ -6,7 +6,7 @@
 //! to `terrasight_server::db::geo::to_raw_geo_feature` so that low-level
 //! JSON field extraction lives in one place.
 
-use crate::domain::entity::{GeoFeature, GeoJsonGeometry, GeoJsonType};
+use crate::domain::model::{GeoFeature, GeoJsonGeometry, GeoJsonType};
 
 /// Convert PostGIS `ST_AsGeoJSON(geom)::jsonb` output and a properties object
 /// into a domain [`GeoFeature`].

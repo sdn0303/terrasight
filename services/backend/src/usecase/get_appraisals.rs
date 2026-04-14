@@ -6,10 +6,9 @@
 
 use std::sync::Arc;
 
-use crate::domain::appraisal::AppraisalDetail;
 use crate::domain::error::DomainError;
+use crate::domain::model::{AppraisalDetail, CityCode, PrefCode};
 use crate::domain::repository::AppraisalRepository;
-use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Usecase for `GET /api/v1/appraisals`.
 pub struct GetAppraisalsUsecase {
@@ -57,8 +56,7 @@ mod tests {
     use crate::domain::error::DomainError;
 
     fn sample_detail() -> AppraisalDetail {
-        use crate::domain::entity::{Address, AreaName};
-        use crate::domain::value_object::CityCode;
+        use crate::domain::model::{Address, AreaName, CityCode};
         AppraisalDetail {
             city_code: CityCode::new("13101").unwrap(),
             city_name: AreaName::parse("千代田区").unwrap(),

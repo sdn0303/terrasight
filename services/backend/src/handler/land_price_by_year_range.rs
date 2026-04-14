@@ -15,7 +15,7 @@ use axum::{
     extract::{Query, State},
 };
 
-use crate::domain::value_object::LayerType;
+use crate::domain::model::LayerType;
 use crate::handler::error::AppError;
 use crate::handler::request::LandPriceByYearRangeQuery;
 use crate::handler::response::LayerResponseDto;

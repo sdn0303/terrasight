@@ -6,10 +6,9 @@
 
 use std::sync::Arc;
 
-use crate::domain::entity::AreaStats;
 use crate::domain::error::DomainError;
+use crate::domain::model::{AreaStats, BBox, PrefCode};
 use crate::domain::repository::StatsRepository;
-use crate::domain::value_object::{BBox, PrefCode};
 
 /// Usecase for `GET /api/v1/stats`.
 pub(crate) struct GetStatsUsecase {
@@ -67,7 +66,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
+    use crate::domain::model::{FacilityStats, LandPriceStats, RiskStats};
     use crate::domain::repository::mock::MockStatsRepository;
 
     fn sample_bbox() -> BBox {

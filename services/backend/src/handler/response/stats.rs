@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::domain::entity::AreaStats;
+use crate::domain::model::AreaStats;
 
 /// Top-level response for `GET /api/v1/stats`.
 ///

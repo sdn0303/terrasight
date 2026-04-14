@@ -10,8 +10,8 @@
 use std::future::Future;
 use std::time::Duration;
 
-use crate::domain::entity::{GeoFeature, LayerResult};
 use crate::domain::error::DomainError;
+use crate::domain::model::{GeoFeature, LayerResult};
 use crate::infra::map_db_err::map_db_err;
 
 /// Execute a sqlx query future with a deadline, mapping errors to [`DomainError`].

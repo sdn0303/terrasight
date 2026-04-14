@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::PrefCode;
+use crate::domain::model::PrefCode;
 
 /// Query parameters for `GET /api/v1/municipalities`.
 #[derive(Debug, Deserialize)]

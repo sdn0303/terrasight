@@ -11,7 +11,7 @@ use axum::{
     extract::{Query, State},
 };
 
-use crate::domain::value_object::{CityCode, Year};
+use crate::domain::model::{CityCode, Year};
 use crate::handler::error::AppError;
 use crate::handler::request::transaction::TransactionsQuery;
 use crate::handler::response::transaction::TransactionDetailResponse;

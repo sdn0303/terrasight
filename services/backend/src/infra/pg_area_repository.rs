@@ -24,10 +24,9 @@ use terrasight_geo::coord::GeoBBox;
 use terrasight_geo::spatial::{LayerKind, bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
 
-use crate::domain::entity::{GeoFeature, LayerResult};
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, GeoFeature, LayerResult, LayerType, PrefCode, ZoomLevel};
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 use crate::infra::geo_convert::to_geo_feature;
 use crate::infra::query_helpers::{apply_limit, run_query};
 use crate::infra::row_types::LandPriceFeatureRow;

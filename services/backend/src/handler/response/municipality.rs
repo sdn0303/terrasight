@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::domain::municipality::Municipality;
+use crate::domain::model::Municipality;
 
 /// Single municipality record returned in the `GET /api/v1/municipalities` response array.
 #[derive(Debug, Serialize)]

@@ -26,10 +26,9 @@ use terrasight_geo::GeoBBox;
 use terrasight_server::db::spatial::bind_bbox;
 
 use crate::domain::constants::{STATS_RISK_WEIGHT_FLOOD, STATS_RISK_WEIGHT_STEEP};
-use crate::domain::entity::{FacilityStats, LandPriceStats, RiskStats};
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, FacilityStats, LandPriceStats, PrefCode, RiskStats};
 use crate::domain::repository::StatsRepository;
-use crate::domain::value_object::{BBox, PrefCode};
 use crate::infra::query_helpers::run_query;
 use crate::infra::row_types::{AreaRow, CountRow, LandPriceStatsRow};
 

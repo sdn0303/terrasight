@@ -5,10 +5,9 @@
 
 use std::sync::Arc;
 
-use crate::domain::entity::AdminAreaStats;
 use crate::domain::error::DomainError;
+use crate::domain::model::{AdminAreaStats, AreaCode};
 use crate::domain::repository::AdminAreaStatsRepository;
-use crate::domain::value_object::AreaCode;
 
 /// Usecase for `GET /api/v1/area-stats`.
 pub(crate) struct GetAreaStatsUsecase {
@@ -41,7 +40,7 @@ impl GetAreaStatsUsecase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::{AreaName, FacilityStats, LandPriceStats, RiskStats};
+    use crate::domain::model::{AreaName, FacilityStats, LandPriceStats, RiskStats};
     use crate::domain::repository::mock::MockAdminAreaStatsRepository;
 
     fn sample_stats() -> AdminAreaStats {

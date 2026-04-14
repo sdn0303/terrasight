@@ -1,13 +1,13 @@
 //! Request DTO for `GET /api/v1/area-stats`.
 //!
 //! [`AreaStatsQuery`] carries a single `code` field that is validated and
-//! parsed into an [`AreaCode`](crate::domain::value_object::AreaCode) domain
+//! parsed into an [`AreaCode`](crate::domain::model::AreaCode) domain
 //! value object by [`AreaStatsQuery::into_domain`].
 
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::AreaCode;
+use crate::domain::model::AreaCode;
 
 /// Query parameters for `GET /api/v1/area-stats`.
 #[derive(Debug, Deserialize)]

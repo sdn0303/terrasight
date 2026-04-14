@@ -16,11 +16,9 @@ use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
-use crate::domain::entity::AreaName;
 use crate::domain::error::DomainError;
-use crate::domain::municipality::Municipality;
+use crate::domain::model::{AreaName, CityCode, Municipality, PrefCode};
 use crate::domain::repository::MunicipalityRepository;
-use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Raw row returned by the `admin_boundaries` table.
 ///

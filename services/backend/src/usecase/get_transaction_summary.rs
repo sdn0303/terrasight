@@ -7,9 +7,8 @@
 use std::sync::Arc;
 
 use crate::domain::error::DomainError;
+use crate::domain::model::{PrefCode, TransactionSummary, Year};
 use crate::domain::repository::TransactionRepository;
-use crate::domain::transaction::TransactionSummary;
-use crate::domain::value_object::{PrefCode, Year};
 
 /// Usecase for `GET /api/v1/transactions/summary`.
 pub struct GetTransactionSummaryUsecase {
@@ -48,7 +47,7 @@ mod tests {
     use crate::domain::repository::mock::MockTransactionRepository;
 
     fn sample_summary() -> TransactionSummary {
-        use crate::domain::value_object::CityCode;
+        use crate::domain::model::CityCode;
         TransactionSummary {
             city_code: CityCode::new("13101").unwrap(),
             transaction_year: 2023,

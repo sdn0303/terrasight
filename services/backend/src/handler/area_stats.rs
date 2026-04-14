@@ -26,7 +26,7 @@ use crate::usecase::get_area_stats::GetAreaStatsUsecase;
 /// # Errors
 ///
 /// - [`AppError`] with `400 Bad Request` when `code` cannot be parsed as a
-///   valid [`AreaCode`](crate::domain::value_object::AreaCode).
+///   valid [`AreaCode`](crate::domain::model::AreaCode).
 /// - [`AppError`] with `404 Not Found` when the area has no data.
 /// - [`AppError`] with `503 Service Unavailable` on a database error.
 #[tracing::instrument(skip(usecase), fields(endpoint = "area-stats"))]

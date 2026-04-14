@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use crate::domain::constants::{HEALTH_STATUS_DEGRADED, HEALTH_STATUS_OK};
-use crate::domain::entity::HealthStatus;
+use crate::domain::model::HealthStatus;
 use crate::domain::repository::HealthRepository;
 
 /// Usecase for `GET /api/v1/health`.

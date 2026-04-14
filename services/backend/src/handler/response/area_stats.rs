@@ -6,7 +6,7 @@
 
 use serde::Serialize;
 
-use crate::domain::entity::AdminAreaStats;
+use crate::domain::model::AdminAreaStats;
 
 /// Top-level response for `GET /api/v1/area-stats`.
 #[derive(Debug, Serialize)]

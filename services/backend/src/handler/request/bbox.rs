@@ -10,7 +10,7 @@
 use serde::Deserialize;
 
 use crate::domain::error::DomainError;
-use crate::domain::value_object::{BBox, Coord, PrefCode};
+use crate::domain::model::{BBox, Coord, PrefCode};
 use terrasight_domain::scoring::tls::WeightPreset;
 
 /// Bounding box query parameters for `GET /api/v1/stats`.

@@ -24,10 +24,11 @@ use terrasight_geo::GeoCoord;
 use terrasight_server::db::spatial::bind_coord;
 
 use crate::domain::constants::RADIUS_TREND_SEARCH_M;
-use crate::domain::entity::{Address, PricePerSqm, TrendLocation, TrendPoint};
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    Address, Coord, PricePerSqm, TrendLocation, TrendPoint, Year, YearsLookback,
+};
 use crate::domain::repository::TrendRepository;
-use crate::domain::value_object::{Coord, Year, YearsLookback};
 use crate::infra::query_helpers::run_query;
 
 /// Maximum time to wait for a single trend query.

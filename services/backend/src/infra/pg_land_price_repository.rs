@@ -25,13 +25,12 @@ use terrasight_geo::spatial::{LayerKind, bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
 
 use crate::domain::constants::OPPORTUNITY_QUERY_TIMEOUT_SECS;
-use crate::domain::entity::{
-    Address, BuildingCoverageRatio, FloorAreaRatio, GeoFeature, LayerResult, OpportunityRecord,
-    PricePerSqm, ZoneCode,
-};
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    Address, BBox, BuildingCoverageRatio, Coord, FloorAreaRatio, GeoFeature, LayerResult,
+    OpportunityRecord, PrefCode, PricePerSqm, Year, ZoneCode, ZoomLevel,
+};
 use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{BBox, Coord, PrefCode, Year, ZoomLevel};
 use crate::infra::query_helpers::{apply_limit, run_query};
 use crate::infra::row_types::LandPriceFeatureRow;
 

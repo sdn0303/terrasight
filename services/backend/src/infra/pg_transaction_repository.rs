@@ -21,11 +21,11 @@ use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
-use crate::domain::entity::AreaName;
 use crate::domain::error::DomainError;
+use crate::domain::model::{
+    AreaName, CityCode, PrefCode, TransactionDetail, TransactionSummary, Year,
+};
 use crate::domain::repository::TransactionRepository;
-use crate::domain::transaction::{TransactionDetail, TransactionSummary};
-use crate::domain::value_object::{CityCode, PrefCode, Year};
 
 /// Raw row returned by the `mv_transaction_summary` materialized view.
 #[derive(Debug, FromRow)]

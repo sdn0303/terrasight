@@ -41,12 +41,12 @@ use tokio::time::timeout;
 use crate::domain::constants::{
     OPPORTUNITY_FETCH_POOL_SIZE, OPPORTUNITY_TIMEOUT_SECS, OPPORTUNITY_TLS_CONCURRENCY,
 };
-use crate::domain::entity::{CachedOpportunitiesResponse, Opportunity, OpportunityRecord, Percent};
 use crate::domain::error::DomainError;
-use crate::domain::repository::LandPriceRepository;
-use crate::domain::value_object::{
-    OpportunitiesCacheKey, OpportunitiesFilters, OpportunitySignal, RiskLevel, TlsScore,
+use crate::domain::model::{
+    CachedOpportunitiesResponse, OpportunitiesCacheKey, OpportunitiesFilters, Opportunity,
+    OpportunityRecord, OpportunitySignal, Percent, RiskLevel, TlsScore,
 };
+use crate::domain::repository::LandPriceRepository;
 use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
 
@@ -203,9 +203,8 @@ impl GetOpportunitiesUsecase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::ZoneCode;
+    use crate::domain::model::{BBox, OpportunityLimit, OpportunityOffset, ZoneCode};
     use crate::domain::repository::mock::{MockLandPriceRepository, MockTlsRepository};
-    use crate::domain::value_object::{BBox, OpportunityLimit, OpportunityOffset};
     use terrasight_domain::scoring::tls::WeightPreset;
 
     fn sample_filters() -> OpportunitiesFilters {

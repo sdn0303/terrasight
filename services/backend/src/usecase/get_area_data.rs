@@ -8,10 +8,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::domain::entity::LayerResult;
 use crate::domain::error::DomainError;
+use crate::domain::model::{BBox, LayerResult, LayerType, PrefCode, ZoomLevel};
 use crate::domain::repository::LayerRepository;
-use crate::domain::value_object::{BBox, LayerType, PrefCode, ZoomLevel};
 
 /// Usecase for `GET /api/v1/area-data`.
 pub(crate) struct GetAreaDataUsecase {
