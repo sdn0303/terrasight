@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, Search, Settings } from "lucide-react";
+import { useState } from "react";
 import { useUIStore } from "@/stores/ui-store";
 import { THEMES, type ThemeId } from "@/lib/theme-definitions";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import { SidebarItem } from "./sidebar-item";
 
 const SIDEBAR_EXPANDED_W = 200;
@@ -14,6 +16,8 @@ export function Sidebar() {
   const tableOpen = useUIStore((s) => s.tableOpen);
   const openTable = useUIStore((s) => s.openTable);
   const closeTable = useUIStore((s) => s.closeTable);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const width = collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W;
   const explore = THEMES.filter((t) => t.category === "explore");
@@ -138,13 +142,17 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className="flex flex-col gap-0.5 px-2 pb-4">
+      <div className="relative flex flex-col gap-0.5 px-2 pb-4">
         <SidebarItem
           icon={Settings}
           label="設定"
-          active={false}
+          active={settingsOpen}
           collapsed={collapsed}
-          onClick={() => {}}
+          onClick={() => setSettingsOpen((prev) => !prev)}
+        />
+        <SettingsPanel
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
         />
       </div>
     </nav>
