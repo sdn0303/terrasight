@@ -1,4 +1,4 @@
-"use client";
+
 
 import { PageChip } from "@/components/layout/page-chip";
 

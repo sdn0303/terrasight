@@ -1,4 +1,4 @@
-"use client";
+
 
 import { usePrefectureStore } from "@/stores/prefecture-store";
 import { useMapStore } from "@/stores/map-store";
@@ -8,6 +8,7 @@ import { useTransactionSummary } from "@/features/transactions/api/use-transacti
 
 export function MunicipalityList() {
   const prefCode = usePrefectureStore((s) => s.selectedPrefCode);
+  const dataMode = useDataModeStore((s) => s.mode);
   const { data: municipalities, isLoading, isError } = useMunicipalities(prefCode);
   const { data: transactionSummary } = useTransactionSummary(
     dataMode === "transactions" ? prefCode : null,
@@ -15,7 +16,6 @@ export function MunicipalityList() {
   const selectArea = useMapStore((s) => s.selectArea);
   const setViewState = useMapStore((s) => s.setViewState);
   const viewState = useMapStore((s) => s.viewState);
-  const dataMode = useDataModeStore((s) => s.mode);
 
   if (isLoading) {
     return (

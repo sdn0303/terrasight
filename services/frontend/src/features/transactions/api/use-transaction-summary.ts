@@ -1,11 +1,11 @@
-"use client";
+
 
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { TransactionSummarySchema } from "@/lib/api/schemas/transaction";
 import { queryKeys } from "@/lib/query-keys";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function fetchTransactionSummary(
   prefCode: string,

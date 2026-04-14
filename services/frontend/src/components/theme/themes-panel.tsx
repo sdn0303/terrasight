@@ -7,7 +7,8 @@ import {
   Shield,
   TrendingUp,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+// TODO: replace with lib/i18n.ts (Task 1.6)
+function useTranslations(_ns?: string) { return (key: string) => key; }
 import { useEffect } from "react";
 import { LeftPanel } from "@/components/layout/left-panel";
 import {

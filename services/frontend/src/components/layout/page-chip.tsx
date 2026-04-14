@@ -1,4 +1,4 @@
-"use client";
+
 
 import type { CSSProperties, ReactNode } from "react";
 import { CARD_RADIUS, PAGE_INSET } from "@/lib/layout";

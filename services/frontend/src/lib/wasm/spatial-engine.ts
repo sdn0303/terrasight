@@ -9,7 +9,7 @@ const log = logger.child({ module: "spatial-engine" });
 // Manifest-driven layer loading
 // ---------------------------------------------------------------------------
 
-const DATA_BASE = process.env.NEXT_PUBLIC_DATA_URL ?? "/data/fgb";
+const DATA_BASE = import.meta.env.VITE_DATA_URL ?? "/data/fgb";
 
 async function loadLayerManifest(
   prefCode: string,

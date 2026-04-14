@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+// TODO: replace with lib/i18n.ts (Task 1.6)
+function useTranslations(_ns?: string) { return (key: string) => key; }
 import { useAreaStats } from "@/features/area-stats/api/use-area-stats";
 import { useMapStore } from "@/stores/map-store";
 

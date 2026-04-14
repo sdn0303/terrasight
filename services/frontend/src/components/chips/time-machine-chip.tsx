@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";

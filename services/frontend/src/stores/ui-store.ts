@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Locale } from "@/i18n/config";
+type Locale = "ja" | "en";
 import type { ThemeId } from "@/lib/themes";
 
 /** Overlay state types (Phase 1+). */

@@ -30,7 +30,7 @@ const VALID_LEVELS = [
 type LogLevel = (typeof VALID_LEVELS)[number];
 
 function resolveLevel(): LogLevel {
-  const raw = process.env.NEXT_PUBLIC_LOG_LEVEL;
+  const raw = import.meta.env.VITE_LOG_LEVEL;
   if (raw !== undefined && (VALID_LEVELS as readonly string[]).includes(raw)) {
     return raw as LogLevel;
   }
@@ -41,30 +41,14 @@ function resolveLevel(): LogLevel {
 // Version
 // ---------------------------------------------------------------------------
 
-// Prefer an explicit env var; fall back to the injected build-time constant.
-// We do NOT import package.json directly to avoid bundling it into the browser.
-const SERVICE_VERSION =
-  process.env.NEXT_PUBLIC_APP_VERSION ??
-  process.env.npm_package_version ??
-  "unknown";
+const SERVICE_VERSION = import.meta.env.VITE_APP_VERSION ?? "unknown";
 
 // ---------------------------------------------------------------------------
 // Transport (Node.js only — pino-pretty for development)
 // ---------------------------------------------------------------------------
 
 function buildTransport(): pino.TransportSingleOptions | undefined {
-  // `typeof window === "undefined"` guards against browser execution where
-  // pino-pretty is not available (the browser shim ignores `transport`).
-  if (typeof window === "undefined" && process.env.NODE_ENV !== "production") {
-    return {
-      target: "pino-pretty",
-      options: {
-        colorize: true,
-        translateTime: "SYS:standard",
-        ignore: "pid,hostname",
-      },
-    };
-  }
+  // Vite SPA is browser-only; pino-pretty is not needed.
   return undefined;
 }
 

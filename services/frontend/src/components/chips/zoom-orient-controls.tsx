@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Compass, Minus, Plus } from "lucide-react";
 

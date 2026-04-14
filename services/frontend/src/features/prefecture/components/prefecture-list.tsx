@@ -1,4 +1,4 @@
-"use client";
+
 
 import { usePrefectureStore } from "@/stores/prefecture-store";
 import { useMapStore } from "@/stores/map-store";

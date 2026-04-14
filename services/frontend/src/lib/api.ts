@@ -33,7 +33,7 @@ function safeUrl(request: Request): string {
 }
 
 const api = ky.create({
-  prefixUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
+  prefixUrl: import.meta.env.VITE_API_URL ?? "http://localhost:8000",
   timeout: 10_000,
   retry: { limit: 1, statusCodes: [408, 429, 500, 502, 503, 504] },
   hooks: {

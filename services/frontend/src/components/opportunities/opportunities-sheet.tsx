@@ -1,4 +1,4 @@
-"use client";
+
 
 import { BottomSheet } from "@/components/layout/bottom-sheet";
 import { DenseTable } from "@/components/table/dense-table";
