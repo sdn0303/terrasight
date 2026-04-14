@@ -2,6 +2,7 @@
 //! land-price endpoints.
 
 use serde::Serialize;
+use terrasight_geo::coord::GeoCoord;
 use terrasight_geo::spatial::point_to_polygon;
 
 use crate::domain::entity::LayerResult;
@@ -89,7 +90,7 @@ pub fn point_feature_to_polygon_owned(mut feature: FeatureDto) -> FeatureDto {
         return feature;
     };
 
-    let ring = point_to_polygon(lng, lat);
+    let ring = point_to_polygon(&GeoCoord { lng, lat });
     // GeoJSON Polygon coordinates: array of rings, each ring is array of [lng, lat] positions.
     let ring_json: Vec<serde_json::Value> = ring
         .iter()

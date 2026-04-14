@@ -20,6 +20,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
+use terrasight_geo::coord::GeoBBox;
 use terrasight_geo::spatial::{LayerKind, bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
 
@@ -99,8 +100,14 @@ impl LandPriceRepository for PgLandPriceRepository {
         zoom: ZoomLevel,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
-        let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
+        // ZoomLevel::get() returns u32; Web Mercator zoom is always 0–22, so as u8 is safe.
+        let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get() as u8);
 
         let rows = run_query(
             LAND_PRICE_QUERY_TIMEOUT,
@@ -157,9 +164,15 @@ impl LandPriceRepository for PgLandPriceRepository {
         zoom: ZoomLevel,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let year_count = i64::from((to_year.value() - from_year.value() + 1).max(1));
-        let base_limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get());
+        // ZoomLevel::get() returns u32; Web Mercator zoom is always 0–22, so as u8 is safe.
+        let base_limit = compute_feature_limit(LayerKind::LandPrice, area, zoom.get() as u8);
         let limit = base_limit.saturating_mul(year_count);
 
         let rows = run_query(

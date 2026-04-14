@@ -20,6 +20,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde_json::json;
 use sqlx::{FromRow, PgPool};
+use terrasight_geo::coord::GeoBBox;
 use terrasight_geo::spatial::{LayerKind, bbox_area_deg2, compute_feature_limit};
 use terrasight_server::db::spatial::bind_bbox;
 
@@ -165,7 +166,8 @@ impl LayerRepository for PgAreaRepository {
         zoom: ZoomLevel,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let z = zoom.get();
+        // ZoomLevel::get() returns u32; Web Mercator zoom is always 0–22, so as u8 is safe.
+        let z = zoom.get() as u8;
         match layer {
             LayerType::LandPrice => self.query_land_prices(bbox, z, pref_code).await,
             LayerType::Zoning => self.query_zoning(bbox, z, pref_code).await,
@@ -181,10 +183,15 @@ impl PgAreaRepository {
     async fn query_land_prices(
         &self,
         bbox: &BBox,
-        zoom: u32,
+        zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let limit = compute_feature_limit(LayerKind::LandPrice, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -221,10 +228,15 @@ impl PgAreaRepository {
     async fn query_zoning(
         &self,
         bbox: &BBox,
-        zoom: u32,
+        zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let limit = compute_feature_limit(LayerKind::Zoning, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -261,10 +273,15 @@ impl PgAreaRepository {
     async fn query_flood_risk(
         &self,
         bbox: &BBox,
-        zoom: u32,
+        zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let limit = compute_feature_limit(LayerKind::Flood, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -301,10 +318,15 @@ impl PgAreaRepository {
     async fn query_steep_slope(
         &self,
         bbox: &BBox,
-        zoom: u32,
+        zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let limit = compute_feature_limit(LayerKind::SteepSlope, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -341,10 +363,15 @@ impl PgAreaRepository {
     async fn query_schools(
         &self,
         bbox: &BBox,
-        zoom: u32,
+        zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let limit = compute_feature_limit(LayerKind::Schools, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,
@@ -381,10 +408,15 @@ impl PgAreaRepository {
     async fn query_medical(
         &self,
         bbox: &BBox,
-        zoom: u32,
+        zoom: u8,
         pref_code: Option<&PrefCode>,
     ) -> Result<LayerResult, DomainError> {
-        let area = bbox_area_deg2(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&GeoBBox::new(
+            bbox.south(),
+            bbox.west(),
+            bbox.north(),
+            bbox.east(),
+        ));
         let limit = compute_feature_limit(LayerKind::Medical, area, zoom);
         let rows = run_query(
             LAYER_QUERY_TIMEOUT,

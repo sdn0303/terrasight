@@ -11,12 +11,16 @@
 //!
 //! | Module | Responsibility |
 //! |--------|---------------|
+//! | [`coord`] | Lightweight geographic coordinate types ([`GeoBBox`], [`GeoCoord`]) |
 //! | [`spatial`] | Bounding-box area, feature-count limits, point-to-polygon |
 //! | [`tile`] | Web Mercator XYZ tile coordinate conversion |
 //! | [`finance`] | Compound Annual Growth Rate (CAGR) |
 //! | [`rounding`] | Decimal-place rounding for display values |
 
+pub mod coord;
 pub mod finance;
 pub mod rounding;
 pub mod spatial;
 pub mod tile;
+
+pub use coord::{GeoBBox, GeoCoord};

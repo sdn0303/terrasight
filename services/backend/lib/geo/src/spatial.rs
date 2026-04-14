@@ -10,6 +10,9 @@
 //!    caps the row count per layer type and zoom level, preventing runaway
 //!    queries over dense datasets such as [`LayerKind::Flood`].
 
+use crate::coord::GeoBBox;
+use crate::coord::GeoCoord;
+
 /// Calculate bounding box area in square degrees (approximate).
 ///
 /// Used for metrics tracking (`spatial.bbox.area_deg2`).
@@ -17,24 +20,27 @@
 /// # Examples
 ///
 /// ```
+/// use terrasight_geo::coord::GeoBBox;
 /// use terrasight_geo::spatial::bbox_area_deg2;
 ///
-/// let area = bbox_area_deg2(35.65, 139.70, 35.70, 139.80);
+/// let bbox = GeoBBox { south: 35.65, west: 139.70, north: 35.70, east: 139.80 };
+/// let area = bbox_area_deg2(&bbox);
 /// assert!((area - 0.005).abs() < 1e-9);
 ///
-/// assert_eq!(bbox_area_deg2(0.0, 0.0, 1.0, 1.0), 1.0);
+/// let unit = GeoBBox { south: 0.0, west: 0.0, north: 1.0, east: 1.0 };
+/// assert_eq!(bbox_area_deg2(&unit), 1.0);
 /// ```
-pub fn bbox_area_deg2(south: f64, west: f64, north: f64, east: f64) -> f64 {
-    (north - south).abs() * (east - west).abs()
+pub fn bbox_area_deg2(bbox: &GeoBBox) -> f64 {
+    ((bbox.north - bbox.south) * (bbox.east - bbox.west)).abs()
 }
 
-/// Buffer size in degrees (~15m at Tokyo latitude 35.68°).
-pub const BUFFER_DEG: f64 = 0.00015;
+/// Buffer size in degrees used by [`point_to_polygon`] (~15 m at Tokyo latitude 35.68°).
+pub const POINT_TO_POLYGON_BUFFER_DEG: f64 = 0.00015;
 
 // Hard cap on the number of features returned by any single query.
 const MAX_FEATURES: i64 = 10_000;
 // Zoom levels below this threshold are coarser; the feature limit is reduced.
-const LOW_ZOOM_THRESHOLD: u32 = 10;
+const LOW_ZOOM_THRESHOLD: u8 = 10;
 // Divisor applied to the feature limit when zoom < LOW_ZOOM_THRESHOLD.
 const LOW_ZOOM_DIVISOR: i64 = 4;
 
@@ -114,6 +120,9 @@ impl LayerKind {
 /// Formula: `min(ceil(bbox_area × density), 10_000)`. If zoom < 10, the result
 /// is divided by 4. The minimum returned value is 1.
 ///
+/// The `zoom` parameter is typed as `u8` because Web Mercator zoom levels are
+/// defined in the range 0–22 and never exceed 255.
+///
 /// # Examples
 ///
 /// ```
@@ -122,7 +131,7 @@ impl LayerKind {
 /// assert_eq!(compute_feature_limit(LayerKind::Flood, 0.02, 12), 3_000);
 /// assert_eq!(compute_feature_limit(LayerKind::Flood, 1.0, 12), 10_000);
 /// ```
-pub fn compute_feature_limit(layer: LayerKind, bbox_area_deg2: f64, zoom: u32) -> i64 {
+pub fn compute_feature_limit(layer: LayerKind, bbox_area_deg2: f64, zoom: u8) -> i64 {
     let raw = (bbox_area_deg2 * layer.density()).ceil() as i64;
     let capped = raw.min(MAX_FEATURES);
     let adjusted = if zoom < LOW_ZOOM_THRESHOLD {
@@ -142,17 +151,19 @@ pub fn compute_feature_limit(layer: LayerKind, bbox_area_deg2: f64, zoom: u32) -
 /// # Examples
 ///
 /// ```
-/// use terrasight_geo::spatial::{point_to_polygon, BUFFER_DEG};
+/// use terrasight_geo::coord::GeoCoord;
+/// use terrasight_geo::spatial::{point_to_polygon, POINT_TO_POLYGON_BUFFER_DEG};
 ///
-/// let ring = point_to_polygon(139.7, 35.68);
+/// let coord = GeoCoord { lng: 139.7, lat: 35.68 };
+/// let ring = point_to_polygon(&coord);
 /// assert_eq!(ring[0], ring[4]);
 /// ```
-pub fn point_to_polygon(lng: f64, lat: f64) -> [[f64; 2]; 5] {
-    let diameter = 2.0 * BUFFER_DEG;
-    let w = lng - BUFFER_DEG;
-    let e = w + diameter; // ensures e - w == 2.0 * BUFFER_DEG exactly
-    let s = lat - BUFFER_DEG;
-    let n = s + diameter; // ensures n - s == 2.0 * BUFFER_DEG exactly
+pub fn point_to_polygon(coord: &GeoCoord) -> [[f64; 2]; 5] {
+    let diameter = 2.0 * POINT_TO_POLYGON_BUFFER_DEG;
+    let w = coord.lng - POINT_TO_POLYGON_BUFFER_DEG;
+    let e = w + diameter; // ensures e - w == 2.0 * POINT_TO_POLYGON_BUFFER_DEG exactly
+    let s = coord.lat - POINT_TO_POLYGON_BUFFER_DEG;
+    let n = s + diameter; // ensures n - s == 2.0 * POINT_TO_POLYGON_BUFFER_DEG exactly
 
     [
         [w, s], // SW
@@ -169,26 +180,54 @@ mod tests {
 
     #[test]
     fn bbox_tokyo_area() {
-        let area = bbox_area_deg2(35.65, 139.70, 35.70, 139.80);
+        let bbox = GeoBBox {
+            south: 35.65,
+            west: 139.70,
+            north: 35.70,
+            east: 139.80,
+        };
+        let area = bbox_area_deg2(&bbox);
         assert!((area - 0.005).abs() < 1e-9, "expected ~0.005, got {area}");
     }
 
     #[test]
     fn bbox_unit_square() {
-        assert_eq!(bbox_area_deg2(0.0, 0.0, 1.0, 1.0), 1.0);
+        let bbox = GeoBBox {
+            south: 0.0,
+            west: 0.0,
+            north: 1.0,
+            east: 1.0,
+        };
+        assert_eq!(bbox_area_deg2(&bbox), 1.0);
     }
 
     #[test]
     fn bbox_inverted_coordinates_still_positive() {
         // south/north and west/east swapped — abs() ensures positive area
-        let normal = bbox_area_deg2(35.65, 139.70, 35.70, 139.80);
-        let inverted = bbox_area_deg2(35.70, 139.80, 35.65, 139.70);
+        let normal = bbox_area_deg2(&GeoBBox {
+            south: 35.65,
+            west: 139.70,
+            north: 35.70,
+            east: 139.80,
+        });
+        let inverted = bbox_area_deg2(&GeoBBox {
+            south: 35.70,
+            west: 139.80,
+            north: 35.65,
+            east: 139.70,
+        });
         assert!((normal - inverted).abs() < f64::EPSILON);
     }
 
     #[test]
     fn bbox_zero_area_point() {
-        assert_eq!(bbox_area_deg2(35.0, 139.0, 35.0, 139.0), 0.0);
+        let bbox = GeoBBox {
+            south: 35.0,
+            west: 139.0,
+            north: 35.0,
+            east: 139.0,
+        };
+        assert_eq!(bbox_area_deg2(&bbox), 0.0);
     }
 
     // --- compute_feature_limit tests ---
@@ -220,22 +259,30 @@ mod tests {
 
     #[test]
     fn point_to_polygon_creates_closed_ring() {
-        let ring = point_to_polygon(139.7, 35.68);
+        let coord = GeoCoord {
+            lng: 139.7,
+            lat: 35.68,
+        };
+        let ring = point_to_polygon(&coord);
         assert_eq!(ring.len(), 5);
         assert_eq!(ring[0], ring[4]);
     }
 
     #[test]
     fn point_to_polygon_buffer_size() {
-        let ring = point_to_polygon(139.7, 35.68);
+        let coord = GeoCoord {
+            lng: 139.7,
+            lat: 35.68,
+        };
+        let ring = point_to_polygon(&coord);
         let width = ring[1][0] - ring[0][0];
         // f64 subtraction of two values ~139.7 introduces rounding error on the
         // order of 1 ULP(139.7) ≈ 2.8e-14. Using 1e-10 as absolute tolerance
-        // is sufficient to confirm the width equals 2 × BUFFER_DEG.
+        // is sufficient to confirm the width equals 2 × POINT_TO_POLYGON_BUFFER_DEG.
         assert!(
-            (width - 2.0 * BUFFER_DEG).abs() < 1e-10,
+            (width - 2.0 * POINT_TO_POLYGON_BUFFER_DEG).abs() < 1e-10,
             "expected width {}, got {width}",
-            2.0 * BUFFER_DEG
+            2.0 * POINT_TO_POLYGON_BUFFER_DEG
         );
     }
 }

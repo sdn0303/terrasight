@@ -85,7 +85,9 @@ pub fn bbox_to_tiles(west: f64, south: f64, east: f64, north: f64, z: u8) -> Vec
     let y_min = lat_to_tile_y(north, z); // north has smaller y
     let y_max = lat_to_tile_y(south, z);
 
-    let mut tiles = Vec::new();
+    let cols = (x_max.saturating_sub(x_min) + 1) as usize;
+    let rows = (y_max.saturating_sub(y_min) + 1) as usize;
+    let mut tiles = Vec::with_capacity(cols * rows);
     for x in x_min..=x_max {
         for y in y_min..=y_max {
             tiles.push(TileCoord { z, x, y });
