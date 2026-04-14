@@ -3,7 +3,8 @@
 import { useQueries } from "@tanstack/react-query";
 import { DiffTable } from "@/components/compare/diff-table";
 import { RadarComparison } from "@/components/compare/radar-chart";
-import { fetchScore } from "@/lib/api";
+import { typedGet } from "@/lib/api";
+import { TlsResponse } from "@/lib/schemas";
 import { useUIStore } from "@/stores/ui-store";
 
 /**
@@ -21,7 +22,12 @@ export function CompareTab() {
   const results = useQueries({
     queries: comparePoints.map((pt) => ({
       queryKey: ["score", pt.lat, pt.lng, "balance"] as const,
-      queryFn: () => fetchScore(pt.lat, pt.lng, "balance"),
+      queryFn: () =>
+        typedGet(TlsResponse, "api/v1/score", {
+          lat: String(pt.lat),
+          lng: String(pt.lng),
+          preset: "balance",
+        }),
       staleTime: 60_000,
     })),
   });
