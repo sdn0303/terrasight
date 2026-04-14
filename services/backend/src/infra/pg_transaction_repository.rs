@@ -21,10 +21,11 @@ use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
+use crate::domain::entity::AreaName;
 use crate::domain::error::DomainError;
 use crate::domain::repository::TransactionRepository;
 use crate::domain::transaction::{TransactionDetail, TransactionSummary};
-use crate::domain::value_object::{PrefCode, Year};
+use crate::domain::value_object::{CityCode, PrefCode, Year};
 
 /// Raw row returned by the `mv_transaction_summary` materialized view.
 #[derive(Debug, FromRow)]
@@ -43,7 +44,8 @@ struct TransactionSummaryRow {
 impl From<TransactionSummaryRow> for TransactionSummary {
     fn from(row: TransactionSummaryRow) -> Self {
         TransactionSummary {
-            city_code: row.city_code,
+            city_code: CityCode::new(&row.city_code)
+                .expect("INVARIANT: DB stores valid city codes"),
             transaction_year: row.transaction_year,
             property_type: row.property_type,
             tx_count: row.tx_count,
@@ -77,8 +79,10 @@ struct TransactionDetailRow {
 impl From<TransactionDetailRow> for TransactionDetail {
     fn from(row: TransactionDetailRow) -> Self {
         TransactionDetail {
-            city_code: row.city_code,
-            city_name: row.city_name,
+            city_code: CityCode::new(&row.city_code)
+                .expect("INVARIANT: DB stores valid city codes"),
+            city_name: AreaName::parse(&row.city_name)
+                .expect("INVARIANT: DB stores non-empty names"),
             district_name: row.district_name,
             property_type: row.property_type,
             total_price: row.total_price,
@@ -172,7 +176,7 @@ impl TransactionRepository for PgTransactionRepository {
     #[tracing::instrument(skip(self))]
     async fn find_transactions(
         &self,
-        city_code: &str,
+        city_code: &CityCode,
         year_from: Option<&Year>,
         limit: u32,
     ) -> Result<Vec<TransactionDetail>, DomainError> {
@@ -199,14 +203,19 @@ impl TransactionRepository for PgTransactionRepository {
             LIMIT $3
             "#,
         )
-        .bind(city_code)
+        .bind(city_code.as_str())
         .bind(year_from.map(|y| y.value() as i16))
         .bind(i64::from(limit))
         .fetch_all(&self.pool)
         .await
         .map_err(map_db_err)
         .inspect(|rows| {
-            tracing::debug!(count = rows.len(), city_code, limit, "transactions fetched")
+            tracing::debug!(
+                count = rows.len(),
+                city_code = city_code.as_str(),
+                limit,
+                "transactions fetched"
+            )
         })?;
 
         Ok(rows.into_iter().map(TransactionDetail::from).collect())

@@ -38,7 +38,7 @@ pub async fn get_appraisals(
     let (pref_code, city_code) = params.into_domain()?;
 
     usecase
-        .execute(&pref_code, city_code.as_deref())
+        .execute(&pref_code, city_code.as_ref())
         .await
         .inspect(|items| tracing::info!(count = items.len(), "appraisals response ready"))
         .inspect_err(|e| tracing::warn!(error = %e, "appraisals lookup failed"))

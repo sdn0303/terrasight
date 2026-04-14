@@ -14,7 +14,8 @@ use crate::domain::constants::DEFAULT_OPPORTUNITY_LIMIT;
 use crate::domain::entity::{Meters, PricePerSqm, ZoneCode};
 use crate::domain::error::DomainError;
 use crate::domain::value_object::{
-    BBox, OpportunitiesFilters, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel, TlsScore,
+    BBox, CityCode, OpportunitiesFilters, OpportunityLimit, OpportunityOffset, PrefCode, RiskLevel,
+    TlsScore,
 };
 use terrasight_domain::scoring::tls::WeightPreset;
 
@@ -88,13 +89,12 @@ impl OpportunitiesQuery {
         let cities = self
             .cities
             .as_deref()
-            .map(|csv| {
-                csv.split(',')
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .map(String::from)
-                    .collect::<Vec<_>>()
+            .map(|s| {
+                s.split(',')
+                    .map(|c| CityCode::new(c.trim()))
+                    .collect::<Result<Vec<_>, _>>()
             })
+            .transpose()?
             .unwrap_or_default();
 
         self.warn_unsupported();
@@ -423,12 +423,23 @@ mod tests {
     }
 
     #[test]
-    fn into_filters_cities_warns_but_succeeds() {
+    fn into_filters_cities_valid_codes() {
         let query = OpportunitiesQuery {
             cities: Some("13101,13102".to_string()),
             ..valid_query()
         };
-        // Should succeed (cities is just logged)
-        assert!(query.into_filters().is_ok());
+        let filters = query.into_filters().unwrap();
+        assert_eq!(filters.cities.len(), 2);
+        assert_eq!(filters.cities[0].as_str(), "13101");
+        assert_eq!(filters.cities[1].as_str(), "13102");
+    }
+
+    #[test]
+    fn into_filters_cities_invalid_code_returns_err() {
+        let query = OpportunitiesQuery {
+            cities: Some("13101,bad".to_string()),
+            ..valid_query()
+        };
+        assert!(query.into_filters().is_err());
     }
 }

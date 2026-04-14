@@ -39,7 +39,7 @@ pub async fn get_transactions(
     let city = CityCode::new(&params.city_code)?;
     let year = params.year_from.map(Year::new).transpose()?;
     usecase
-        .execute(city.as_str(), year.as_ref(), params.limit)
+        .execute(&city, year.as_ref(), params.limit)
         .await
         .map(|v| v.into_iter().map(TransactionDetailResponse::from).collect())
         .map(Json)

@@ -36,7 +36,7 @@ pub struct TransactionSummaryResponse {
 impl From<TransactionSummary> for TransactionSummaryResponse {
     fn from(s: TransactionSummary) -> Self {
         Self {
-            city_code: s.city_code,
+            city_code: s.city_code.as_str().to_string(),
             transaction_year: s.transaction_year,
             property_type: s.property_type,
             tx_count: s.tx_count,
@@ -86,8 +86,8 @@ pub struct TransactionDetailResponse {
 impl From<TransactionDetail> for TransactionDetailResponse {
     fn from(d: TransactionDetail) -> Self {
         Self {
-            city_code: d.city_code,
-            city_name: d.city_name,
+            city_code: d.city_code.as_str().to_string(),
+            city_name: d.city_name.as_str().to_string(),
             district_name: d.district_name,
             property_type: d.property_type,
             total_price: d.total_price,

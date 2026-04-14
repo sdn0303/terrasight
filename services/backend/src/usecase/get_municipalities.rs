@@ -53,10 +53,12 @@ mod tests {
     use crate::domain::error::DomainError;
 
     fn sample_municipality() -> Municipality {
+        use crate::domain::entity::AreaName;
+        use crate::domain::value_object::{CityCode, PrefCode};
         Municipality {
-            city_code: "13101".into(),
-            city_name: "千代田区".into(),
-            pref_code: "13".into(),
+            city_code: CityCode::new("13101").unwrap(),
+            city_name: AreaName::parse("千代田区").unwrap(),
+            pref_code: PrefCode::new("13").unwrap(),
         }
     }
 
@@ -97,7 +99,7 @@ mod tests {
         let usecase = GetMunicipalitiesUsecase::new(Arc::new(OkRepo));
         let result = usecase.execute(&pref()).await.unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].city_code, "13101");
+        assert_eq!(result[0].city_code.as_str(), "13101");
     }
 
     #[tokio::test]

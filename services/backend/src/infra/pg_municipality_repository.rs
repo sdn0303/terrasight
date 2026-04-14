@@ -16,10 +16,11 @@ use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
+use crate::domain::entity::AreaName;
 use crate::domain::error::DomainError;
 use crate::domain::municipality::Municipality;
 use crate::domain::repository::MunicipalityRepository;
-use crate::domain::value_object::PrefCode;
+use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Raw row returned by the `admin_boundaries` table.
 ///
@@ -90,12 +91,15 @@ impl MunicipalityRepository for PgMunicipalityRepository {
         let municipalities = rows
             .into_iter()
             .filter_map(|row| {
-                let city_code = row.city_code?;
-                let city_name = row.city_name?;
+                let city_code_str = row.city_code?;
+                let city_name_str = row.city_name?;
                 Some(Municipality {
-                    city_code,
-                    city_name,
-                    pref_code: row.pref_code,
+                    city_code: CityCode::new(&city_code_str)
+                        .expect("INVARIANT: DB stores valid city codes"),
+                    city_name: AreaName::parse(&city_name_str)
+                        .expect("INVARIANT: DB stores non-empty names"),
+                    pref_code: PrefCode::new(&row.pref_code)
+                        .expect("INVARIANT: DB stores valid pref codes"),
                 })
             })
             .collect();

@@ -15,9 +15,10 @@ use sqlx::{FromRow, PgPool};
 
 use super::map_db_err;
 use crate::domain::appraisal::AppraisalDetail;
+use crate::domain::entity::{Address, AreaName, ZoneCode};
 use crate::domain::error::DomainError;
 use crate::domain::repository::AppraisalRepository;
-use crate::domain::value_object::PrefCode;
+use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Raw row returned by the `land_appraisals` table.
 #[derive(Debug, FromRow)]
@@ -41,14 +42,20 @@ struct AppraisalDetailRow {
 impl From<AppraisalDetailRow> for AppraisalDetail {
     fn from(row: AppraisalDetailRow) -> Self {
         AppraisalDetail {
-            city_code: row.city_code,
-            city_name: row.city_name,
-            address: row.address,
+            city_code: CityCode::new(&row.city_code)
+                .expect("INVARIANT: DB stores valid city codes"),
+            city_name: AreaName::parse(&row.city_name)
+                .expect("INVARIANT: DB stores non-empty names"),
+            address: Address::parse(&row.address)
+                .expect("INVARIANT: DB stores non-empty addresses"),
             land_use_code: row.land_use_code,
             price_per_sqm: row.price_per_sqm,
             appraisal_price: row.appraisal_price,
             lot_area_sqm: row.lot_area_sqm,
-            zone_code: row.zone_code,
+            zone_code: row
+                .zone_code
+                .as_deref()
+                .map(|z| ZoneCode::parse(z).expect("INVARIANT: DB stores valid zone codes")),
             building_coverage: row.building_coverage,
             floor_area_ratio: row.floor_area_ratio,
             comparable_price: row.comparable_price,
@@ -86,7 +93,7 @@ impl AppraisalRepository for PgAppraisalRepository {
     async fn find_appraisals(
         &self,
         pref_code: &PrefCode,
-        city_code: Option<&str>,
+        city_code: Option<&CityCode>,
     ) -> Result<Vec<AppraisalDetail>, DomainError> {
         let rows = sqlx::query_as::<_, AppraisalDetailRow>(
             r#"
@@ -112,7 +119,7 @@ impl AppraisalRepository for PgAppraisalRepository {
             "#,
         )
         .bind(pref_code.as_str())
-        .bind(city_code)
+        .bind(city_code.map(CityCode::as_str))
         .fetch_all(&self.pool)
         .await
         .map_err(map_db_err)

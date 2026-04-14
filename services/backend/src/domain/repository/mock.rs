@@ -31,7 +31,7 @@ use crate::domain::repository::{
 };
 use crate::domain::transaction::{TransactionDetail, TransactionSummary};
 use crate::domain::value_object::{
-    AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
+    AreaCode, BBox, CityCode, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
 
 /// Pop the next queued response or panic if the queue is empty.
@@ -404,7 +404,7 @@ impl TransactionRepository for MockTransactionRepository {
 
     async fn find_transactions(
         &self,
-        _city_code: &str,
+        _city_code: &CityCode,
         _year_from: Option<&Year>,
         _limit: u32,
     ) -> Result<Vec<TransactionDetail>, DomainError> {

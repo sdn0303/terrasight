@@ -28,7 +28,7 @@ use crate::domain::error::DomainError;
 use crate::domain::municipality::Municipality;
 use crate::domain::transaction::{TransactionDetail, TransactionSummary};
 use crate::domain::value_object::{
-    AreaCode, BBox, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
+    AreaCode, BBox, CityCode, Coord, LayerType, PrefCode, Year, YearsLookback, ZoomLevel,
 };
 
 /// Repository for map layer GeoJSON features.
@@ -270,12 +270,9 @@ pub trait TransactionRepository: Send + Sync {
     ) -> Result<Vec<TransactionSummary>, DomainError>;
 
     /// Fetch individual transaction records for a given city code.
-    ///
-    /// `city_code` is a raw 5-digit JIS X 0402 string. CityCode は導入済みだが、
-    /// handler 層でバリデーション済みのため trait は &str を維持。
     async fn find_transactions(
         &self,
-        city_code: &str,
+        city_code: &CityCode,
         year_from: Option<&Year>,
         limit: u32,
     ) -> Result<Vec<TransactionDetail>, DomainError>;
@@ -289,13 +286,10 @@ pub trait TransactionRepository: Send + Sync {
 #[async_trait]
 pub trait AppraisalRepository: Send + Sync {
     /// Fetch appraisal records for a prefecture, optionally filtered by city code.
-    ///
-    /// `city_code` is a raw 5-digit JIS X 0402 string. CityCode は導入済みだが、
-    /// handler 層でバリデーション済みのため trait は &str を維持。
     async fn find_appraisals(
         &self,
         pref_code: &PrefCode,
-        city_code: Option<&str>,
+        city_code: Option<&CityCode>,
     ) -> Result<Vec<AppraisalDetail>, DomainError>;
 }
 

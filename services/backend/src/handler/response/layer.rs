@@ -108,5 +108,9 @@ pub fn point_feature_to_polygon_owned(mut feature: FeatureDto) -> FeatureDto {
 ///
 /// [`GeoFeature`]: crate::domain::entity::GeoFeature
 pub fn geo_feature_to_dto(f: crate::domain::entity::GeoFeature) -> FeatureDto {
-    FeatureDto::new(f.geometry.r#type, f.geometry.coordinates, f.properties)
+    FeatureDto::new(
+        f.geometry.r#type.as_str().to_string(),
+        f.geometry.coordinates,
+        f.properties,
+    )
 }

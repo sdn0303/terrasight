@@ -7,6 +7,9 @@
 //! - [`TransactionSummary`] — city-level aggregate from a materialised view.
 //! - [`TransactionDetail`] — individual transaction records.
 
+use crate::domain::entity::AreaName;
+use crate::domain::value_object::CityCode;
+
 /// Aggregated real-estate transaction statistics per city, year, and property type.
 ///
 /// Sourced from the `transaction_summaries` materialised view, which is
@@ -15,7 +18,7 @@
 #[derive(Debug, Clone)]
 pub struct TransactionSummary {
     /// JIS X 0402 5-digit city code for this aggregate group.
-    pub city_code: String,
+    pub city_code: CityCode,
     /// Calendar year of the transactions in this group.
     pub transaction_year: i16,
     /// MLIT property type string (e.g. `"宅地(土地)"`, `"中古マンション等"`).
@@ -41,9 +44,9 @@ pub struct TransactionSummary {
 #[derive(Debug, Clone)]
 pub struct TransactionDetail {
     /// JIS X 0402 5-digit city code for the property's municipality.
-    pub city_code: String,
+    pub city_code: CityCode,
     /// Human-readable city name.
-    pub city_name: String,
+    pub city_name: AreaName,
     /// District or neighbourhood name within the city, if recorded.
     pub district_name: Option<String>,
     /// MLIT property type string.

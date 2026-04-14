@@ -40,14 +40,14 @@ pub struct AppraisalDetailResponse {
 impl From<AppraisalDetail> for AppraisalDetailResponse {
     fn from(d: AppraisalDetail) -> Self {
         Self {
-            city_code: d.city_code,
-            city_name: d.city_name,
-            address: d.address,
+            city_code: d.city_code.as_str().to_string(),
+            city_name: d.city_name.as_str().to_string(),
+            address: d.address.as_str().to_string(),
             land_use_code: d.land_use_code,
             price_per_sqm: d.price_per_sqm,
             appraisal_price: d.appraisal_price,
             lot_area_sqm: d.lot_area_sqm,
-            zone_code: d.zone_code,
+            zone_code: d.zone_code.as_ref().map(|z| z.as_str().to_string()),
             building_coverage: d.building_coverage,
             floor_area_ratio: d.floor_area_ratio,
             comparable_price: d.comparable_price,

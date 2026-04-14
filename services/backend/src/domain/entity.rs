@@ -257,6 +257,50 @@ pub struct GeoFeature {
     pub properties: serde_json::Value,
 }
 
+/// GeoJSON geometry type identifier (RFC 7946 §3.1).
+///
+/// Encodes the set of valid GeoJSON geometry types as an enum so that
+/// `GeoJsonGeometry` cannot carry an arbitrary or misspelled type string.
+/// The `as_str` method returns the canonical RFC 7946 name; `from_db_str`
+/// maps the PostGIS `ST_GeometryType` output to the corresponding variant.
+#[derive(Debug, Clone, serde::Serialize)]
+pub enum GeoJsonType {
+    /// Coordinate pair geometry (RFC 7946 §3.1.2).
+    Point,
+    /// Closed-ring polygon geometry (RFC 7946 §3.1.6).
+    Polygon,
+    /// Collection of polygon geometries (RFC 7946 §3.1.7).
+    MultiPolygon,
+    /// Sequence of positions (RFC 7946 §3.1.4).
+    LineString,
+}
+
+impl GeoJsonType {
+    /// Return the RFC 7946 canonical type string.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Point => "Point",
+            Self::Polygon => "Polygon",
+            Self::MultiPolygon => "MultiPolygon",
+            Self::LineString => "LineString",
+        }
+    }
+
+    /// Map a PostGIS geometry type string to the corresponding variant.
+    ///
+    /// Unknown strings default to [`GeoJsonType::Point`] as a defensive
+    /// fallback; callers that require an exact match should validate
+    /// `as_str()` after construction.
+    pub fn from_db_str(s: &str) -> Self {
+        match s {
+            "Polygon" => Self::Polygon,
+            "MultiPolygon" => Self::MultiPolygon,
+            "LineString" => Self::LineString,
+            _ => Self::Point,
+        }
+    }
+}
+
 /// GeoJSON geometry (flexible via `serde_json::Value` for coordinates).
 ///
 /// Using `serde_json::Value` for `coordinates` avoids a family of geometry
@@ -264,8 +308,8 @@ pub struct GeoFeature {
 /// correctness — MapLibre GL accepts the raw JSON unchanged.
 #[derive(Debug, Clone)]
 pub struct GeoJsonGeometry {
-    /// GeoJSON type string, e.g. `"Point"`, `"Polygon"`.
-    pub r#type: String,
+    /// GeoJSON geometry type; encodes the RFC 7946 §3.1 type discriminator.
+    pub r#type: GeoJsonType,
     /// Raw coordinate array; shape depends on `type`.
     pub coordinates: serde_json::Value,
 }

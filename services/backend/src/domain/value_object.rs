@@ -699,7 +699,7 @@ pub struct OpportunitiesFilters {
     /// Optional prefecture filter for multi-prefecture deployments.
     pub pref_code: Option<PrefCode>,
     /// Allow-list of 5-digit city codes. Empty means all cities are accepted.
-    pub cities: Vec<String>,
+    pub cities: Vec<CityCode>,
 }
 
 /// Cache key fingerprint for opportunities requests.

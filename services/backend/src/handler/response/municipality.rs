@@ -18,9 +18,9 @@ pub struct MunicipalityResponse {
 impl From<Municipality> for MunicipalityResponse {
     fn from(m: Municipality) -> Self {
         Self {
-            city_code: m.city_code,
-            city_name: m.city_name,
-            pref_code: m.pref_code,
+            city_code: m.city_code.as_str().to_string(),
+            city_name: m.city_name.as_str().to_string(),
+            pref_code: m.pref_code.as_str().to_string(),
         }
     }
 }

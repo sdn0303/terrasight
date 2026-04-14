@@ -48,8 +48,9 @@ mod tests {
     use crate::domain::repository::mock::MockTransactionRepository;
 
     fn sample_summary() -> TransactionSummary {
+        use crate::domain::value_object::CityCode;
         TransactionSummary {
-            city_code: "13101".into(),
+            city_code: CityCode::new("13101").unwrap(),
             transaction_year: 2023,
             property_type: "宅地(土地)".into(),
             tx_count: 42,
@@ -69,7 +70,7 @@ mod tests {
         let usecase = GetTransactionSummaryUsecase::new(repo);
         let result = usecase.execute(&pref, None, None).await.unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].city_code, "13101");
+        assert_eq!(result[0].city_code.as_str(), "13101");
     }
 
     #[tokio::test]

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::domain::appraisal::AppraisalDetail;
 use crate::domain::error::DomainError;
 use crate::domain::repository::AppraisalRepository;
-use crate::domain::value_object::PrefCode;
+use crate::domain::value_object::{CityCode, PrefCode};
 
 /// Usecase for `GET /api/v1/appraisals`.
 pub struct GetAppraisalsUsecase {
@@ -31,7 +31,7 @@ impl GetAppraisalsUsecase {
     pub async fn execute(
         &self,
         pref_code: &PrefCode,
-        city_code: Option<&str>,
+        city_code: Option<&CityCode>,
     ) -> Result<Vec<AppraisalDetail>, DomainError> {
         self.appraisal_repo
             .find_appraisals(pref_code, city_code)
@@ -57,10 +57,12 @@ mod tests {
     use crate::domain::error::DomainError;
 
     fn sample_detail() -> AppraisalDetail {
+        use crate::domain::entity::{Address, AreaName};
+        use crate::domain::value_object::CityCode;
         AppraisalDetail {
-            city_code: "13101".into(),
-            city_name: "千代田区".into(),
-            address: "千代田1-1".into(),
+            city_code: CityCode::new("13101").unwrap(),
+            city_name: AreaName::parse("千代田区").unwrap(),
+            address: Address::parse("千代田1-1").unwrap(),
             land_use_code: "01".into(),
             price_per_sqm: 1_000_000,
             appraisal_price: 50_000_000,
@@ -88,7 +90,7 @@ mod tests {
         async fn find_appraisals(
             &self,
             _pref_code: &PrefCode,
-            _city_code: Option<&str>,
+            _city_code: Option<&CityCode>,
         ) -> Result<Vec<AppraisalDetail>, DomainError> {
             Ok(vec![sample_detail()])
         }
@@ -103,7 +105,7 @@ mod tests {
         async fn find_appraisals(
             &self,
             _pref_code: &PrefCode,
-            _city_code: Option<&str>,
+            _city_code: Option<&CityCode>,
         ) -> Result<Vec<AppraisalDetail>, DomainError> {
             Err(DomainError::Database("boom".into()))
         }
@@ -114,7 +116,7 @@ mod tests {
         let usecase = GetAppraisalsUsecase::new(Arc::new(OkRepo));
         let result = usecase.execute(&pref(), None).await.unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].city_code, "13101");
+        assert_eq!(result[0].city_code.as_str(), "13101");
     }
 
     #[tokio::test]

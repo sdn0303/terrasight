@@ -250,7 +250,7 @@ mod tests {
     use async_trait::async_trait;
 
     use super::PostgisFallback;
-    use crate::domain::entity::{GeoFeature, GeoJsonGeometry, LayerResult};
+    use crate::domain::entity::{GeoFeature, GeoJsonGeometry, GeoJsonType, LayerResult};
     use crate::domain::error::DomainError;
     use crate::domain::reinfolib::ReinfolibDataSource;
     use crate::domain::repository::LayerRepository;
@@ -296,7 +296,7 @@ mod tests {
     fn stub_feature(geo_type: &str) -> GeoFeature {
         GeoFeature {
             geometry: GeoJsonGeometry {
-                r#type: geo_type.to_owned(),
+                r#type: GeoJsonType::from_db_str(geo_type),
                 coordinates: serde_json::json!([139.76, 35.68]),
             },
             properties: serde_json::json!({}),
