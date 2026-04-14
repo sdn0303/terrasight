@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
+import { isBBoxValid } from "@/lib/api/bbox-guard";
 import { LandPriceTimeSeriesResponse } from "@/lib/api/schemas/land-prices";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -26,7 +27,7 @@ export function useLandPrices(bbox: BBox | null, year: number, zoom: number) {
         signal,
       );
     },
-    enabled: bbox !== null && zoom >= 10,
+    enabled: !!bbox && isBBoxValid(bbox) && zoom >= 10,
     staleTime: 60_000,
     retry: 1,
   });

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
+import { isBBoxValid } from "@/lib/api/bbox-guard";
 import { AreaDataResponse } from "@/lib/api/schemas/area-data";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -26,7 +27,7 @@ export function useAreaData(bbox: BBox | null, layers: string[], zoom: number) {
         signal,
       );
     },
-    enabled: bbox !== null && layers.length > 0 && zoom >= 10,
+    enabled: !!bbox && isBBoxValid(bbox) && layers.length > 0 && zoom >= 10,
     staleTime: 60_000,
   });
 }

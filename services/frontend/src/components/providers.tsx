@@ -11,7 +11,11 @@ export function Providers({ children }: { children: ReactNode }) {
           queries: {
             staleTime: 60_000,
             gcTime: 300_000,
-            retry: 1,
+            retry: (failureCount, error) => {
+              if (error instanceof Error && error.message.includes("400"))
+                return false;
+              return failureCount < 1;
+            },
             refetchOnWindowFocus: false,
           },
         },
