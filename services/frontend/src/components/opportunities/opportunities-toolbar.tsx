@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 import { useUIStore } from "@/stores/ui-store";
 
 interface OpportunitiesToolbarProps {
@@ -9,6 +10,8 @@ interface OpportunitiesToolbarProps {
 
 export function OpportunitiesToolbar({ total }: OpportunitiesToolbarProps) {
   const closeTable = useUIStore((s) => s.closeTable);
+  const locale = useUIStore((s) => s.locale);
+  const { t } = useTranslation();
 
   return (
     <div
@@ -30,8 +33,8 @@ export function OpportunitiesToolbar({ total }: OpportunitiesToolbarProps) {
         />
         <input
           type="search"
-          placeholder="検索..."
-          aria-label="物件を検索"
+          placeholder={t("opportunities.search")}
+          aria-label={t("opportunities.searchLabel")}
           className="flex-1 bg-transparent py-1 pl-2 text-[12px] outline-none"
           style={{ color: "var(--panel-text-primary)" }}
         />
@@ -40,7 +43,7 @@ export function OpportunitiesToolbar({ total }: OpportunitiesToolbarProps) {
       {/* Filter button (placeholder) */}
       <button
         type="button"
-        aria-label="フィルターを開く"
+        aria-label={t("opportunities.openFilter")}
         className="flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium"
         style={{
           borderColor: "var(--panel-border)",
@@ -49,7 +52,7 @@ export function OpportunitiesToolbar({ total }: OpportunitiesToolbarProps) {
         }}
       >
         <SlidersHorizontal size={12} aria-hidden="true" />
-        フィルター
+        {t("opportunities.filter")}
       </button>
 
       {/* Count badge */}
@@ -61,16 +64,17 @@ export function OpportunitiesToolbar({ total }: OpportunitiesToolbarProps) {
           color: "var(--panel-text-secondary)",
         }}
         aria-live="polite"
-        aria-label={`${total}件の物件`}
+        aria-label={`${total} ${t("opportunities.countLabel")}`}
       >
-        {total.toLocaleString("ja-JP")}件
+        {total.toLocaleString(locale)}
+        {t("opportunities.countUnit")}
       </span>
 
       {/* Close button */}
       <button
         type="button"
         onClick={closeTable}
-        aria-label="テーブルを閉じる"
+        aria-label={t("opportunities.closeTable")}
         className="flex items-center justify-center rounded-md p-1.5"
         style={{ color: "var(--panel-text-secondary)" }}
       >

@@ -5,6 +5,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
+import { HTTPError } from "ky";
 import { type ReactNode, useState } from "react";
 import { logger } from "@/lib/logger";
 
@@ -24,7 +25,11 @@ export function Providers({ children }: { children: ReactNode }) {
             staleTime: 60_000,
             gcTime: 300_000,
             retry: (failureCount, error) => {
-              if (error instanceof Error && error.message.includes("400"))
+              if (
+                error instanceof HTTPError &&
+                error.response.status >= 400 &&
+                error.response.status < 500
+              )
                 return false;
               return failureCount < 1;
             },

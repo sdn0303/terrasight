@@ -4,7 +4,7 @@ const SubScoreDto = z.object({
   id: z.string(),
   score: z.number(),
   available: z.boolean(),
-  detail: z.record(z.string(), z.number()),
+  detail: z.record(z.string(), z.union([z.number(), z.boolean(), z.string()])),
 });
 
 const AxisDto = z.object({

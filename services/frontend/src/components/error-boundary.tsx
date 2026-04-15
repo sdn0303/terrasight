@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="text-sm"
               style={{ color: "var(--panel-text-secondary)" }}
             >
-              {this.state.error?.message}
+              予期しないエラーが発生しました。再試行してください。
             </p>
             <button
               type="button"

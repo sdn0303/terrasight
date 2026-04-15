@@ -56,6 +56,13 @@ const messages: Record<Locale, Record<string, string>> = {
     "compare.title": "比較",
     "compare.address": "住所",
     "compare.score": "スコア",
+    "opportunities.search": "検索...",
+    "opportunities.searchLabel": "物件を検索",
+    "opportunities.openFilter": "フィルターを開く",
+    "opportunities.filter": "フィルター",
+    "opportunities.countLabel": "物件数",
+    "opportunities.countUnit": "件",
+    "opportunities.closeTable": "テーブルを閉じる",
   },
   en: {
     "sidebar.explore": "Explore",
@@ -110,6 +117,13 @@ const messages: Record<Locale, Record<string, string>> = {
     "compare.title": "Compare",
     "compare.address": "Address",
     "compare.score": "Score",
+    "opportunities.search": "Search...",
+    "opportunities.searchLabel": "Search properties",
+    "opportunities.openFilter": "Open filters",
+    "opportunities.filter": "Filter",
+    "opportunities.countLabel": "Properties",
+    "opportunities.countUnit": " items",
+    "opportunities.closeTable": "Close table",
   },
 };
 

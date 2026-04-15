@@ -19,7 +19,9 @@ interface Props {
  *
  * The value is used directly in interpolate expressions for color and extrusion height.
  */
-const DEPTH_RANK_EXPR = ["get", "depth_rank"] as unknown as ["get", string];
+import type { ExpressionSpecification } from "mapbox-gl";
+
+const DEPTH_RANK_EXPR: ExpressionSpecification = ["get", "depth_rank"];
 
 export function FloodLayer({ data, visible }: Props) {
   if (!visible) return null;
