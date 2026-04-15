@@ -31,14 +31,11 @@ export function RightDrawer() {
     return () => window.removeEventListener("keydown", handler);
   }, [visible, closeRightDrawer]);
 
-  if (!visible || rightDrawer === null) return null;
-
-  const title =
-    rightDrawer.type === "opportunity" ? "物件詳細" : "地点情報";
-
   return (
     <aside
-      aria-label={title}
+      aria-label={visible && rightDrawer !== null
+        ? (rightDrawer.type === "opportunity" ? "物件詳細" : "地点情報")
+        : undefined}
       style={{
         position: "absolute",
         top: 0,
@@ -51,52 +48,62 @@ export function RightDrawer() {
         zIndex: 20,
         display: "flex",
         flexDirection: "column",
-        transform: "translateX(0)",
+        transform: visible ? "translateX(0)" : "translateX(100%)",
         transition: "transform 0.3s ease",
+        pointerEvents: visible ? "auto" : "none",
+        visibility: visible ? "visible" : "hidden",
       }}
     >
-      {/* Header */}
-      <header
-        className="flex items-center justify-between px-4 py-3 border-b shrink-0"
-        style={{
-          borderColor: "var(--panel-border)",
-          paddingTop: PAGE_INSET,
-        }}
-      >
-        <h2
-          className="text-sm font-extrabold"
-          style={{ color: "var(--panel-text-primary)" }}
-        >
-          {title}
-        </h2>
-        <button
-          type="button"
-          onClick={closeRightDrawer}
-          aria-label="Close drawer"
-          className="flex items-center justify-center rounded-[10px]"
-          style={{
-            width: 28,
-            height: 28,
-            background: "var(--panel-border)",
-            color: "var(--panel-text-secondary)",
-          }}
-        >
-          <X size={13} aria-hidden="true" />
-        </button>
-      </header>
+      {visible && rightDrawer !== null && (() => {
+        const title =
+          rightDrawer.type === "opportunity" ? "物件詳細" : "地点情報";
+        return (
+          <>
+            {/* Header */}
+            <header
+              className="flex items-center justify-between px-4 py-3 border-b shrink-0"
+              style={{
+                borderColor: "var(--panel-border)",
+                paddingTop: PAGE_INSET,
+              }}
+            >
+              <h2
+                className="text-sm font-extrabold"
+                style={{ color: "var(--panel-text-primary)" }}
+              >
+                {title}
+              </h2>
+              <button
+                type="button"
+                onClick={closeRightDrawer}
+                aria-label="Close drawer"
+                className="flex items-center justify-center rounded-[10px]"
+                style={{
+                  width: 28,
+                  height: 28,
+                  background: "var(--panel-border)",
+                  color: "var(--panel-text-secondary)",
+                }}
+              >
+                <X size={13} aria-hidden="true" />
+              </button>
+            </header>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        {rightDrawer.type === "opportunity" && (
-          <OpportunityDetail id={rightDrawer.id} />
-        )}
-        {rightDrawer.type === "map-point" && (
-          <MapPointDetail
-            data={rightDrawer.data}
-            activeTab={rightDrawer.activeTab}
-          />
-        )}
-      </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {rightDrawer.type === "opportunity" && (
+                <OpportunityDetail id={rightDrawer.id} />
+              )}
+              {rightDrawer.type === "map-point" && (
+                <MapPointDetail
+                  data={rightDrawer.data}
+                  activeTab={rightDrawer.activeTab}
+                />
+              )}
+            </div>
+          </>
+        );
+      })()}
     </aside>
   );
 }
