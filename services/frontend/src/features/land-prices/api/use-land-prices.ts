@@ -17,10 +17,7 @@ export function useLandPrices(bbox: BBox | null, year: number, zoom: number) {
         LandPriceTimeSeriesResponse,
         "api/v1/land-prices",
         {
-          south: String(bbox.south),
-          west: String(bbox.west),
-          north: String(bbox.north),
-          east: String(bbox.east),
+          bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
           year: String(year),
           zoom: String(clampedZoom),
         },

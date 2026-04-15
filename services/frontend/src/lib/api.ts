@@ -69,10 +69,11 @@ export async function typedGet<T>(
   path: string,
   params?: Record<string, string>,
   signal?: AbortSignal,
+  options?: { timeout?: number },
 ): Promise<T> {
   const searchParams = params ? new URLSearchParams(params) : undefined;
   const data: unknown = await api
-    .get(path, { searchParams, signal: signal ?? null })
+    .get(path, { searchParams, signal: signal ?? null, ...options })
     .json();
 
   const result = schema.safeParse(data);

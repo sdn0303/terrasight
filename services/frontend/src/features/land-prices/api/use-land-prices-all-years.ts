@@ -28,14 +28,11 @@ export function useLandPricesAllYears(
       const clampedZoom = Math.min(Math.floor(zoom), 22);
       return typedGet(
         LandPriceTimeSeriesResponse,
-        "api/v1/land-prices",
+        "api/v1/land-prices/all-years",
         {
-          south: String(bbox.south),
-          west: String(bbox.west),
-          north: String(bbox.north),
-          east: String(bbox.east),
-          from_year: String(fromYear),
-          to_year: String(toYear),
+          bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
+          from: String(fromYear),
+          to: String(toYear),
           zoom: String(clampedZoom),
         },
         signal,

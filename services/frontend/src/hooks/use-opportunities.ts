@@ -74,10 +74,7 @@ export function useOpportunities(enabled: boolean) {
     }),
     queryFn: ({ signal }) => {
       const params: Record<string, string> = {
-        south: String(bbox.south),
-        west: String(bbox.west),
-        north: String(bbox.north),
-        east: String(bbox.east),
+        bbox: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
         limit: "50",
         offset: "0",
       };
@@ -96,6 +93,7 @@ export function useOpportunities(enabled: boolean) {
         "api/v1/opportunities",
         params,
         signal,
+        { timeout: 60_000 },
       );
     },
     enabled,
