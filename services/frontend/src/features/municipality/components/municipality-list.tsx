@@ -39,10 +39,28 @@ export function MunicipalityList() {
     return <div className="p-4 text-sm text-white/60">データなし</div>;
   }
 
+  const handleSelect = (m: (typeof municipalities)[number]) => {
+    selectArea({
+      code: m.city_code,
+      name: m.city_name,
+      level: "municipality",
+      // bbox は別途 WASM/API から取得予定。暫定値として現在の viewport bbox を使用
+      bbox: {
+        south: viewState.latitude - 0.05,
+        west: viewState.longitude - 0.05,
+        north: viewState.latitude + 0.05,
+        east: viewState.longitude + 0.05,
+      },
+    });
+    setViewState({
+      ...viewState,
+      zoom: 12,
+    });
+  };
+
   return (
-    <div
+    <ul
       className="flex flex-col gap-1 p-2 overflow-y-auto max-h-[calc(100vh-200px)]"
-      role="list"
       aria-label="市区町村一覧"
     >
       {municipalities.map((m) => {
@@ -54,40 +72,23 @@ export function MunicipalityList() {
             : null;
 
         return (
-          <button
-            key={m.city_code}
-            type="button"
-            role="listitem"
-            onClick={() => {
-              selectArea({
-                code: m.city_code,
-                name: m.city_name,
-                level: "municipality",
-                // bbox は別途 WASM/API から取得予定。暫定値として現在の viewport bbox を使用
-                bbox: {
-                  south: viewState.latitude - 0.05,
-                  west: viewState.longitude - 0.05,
-                  north: viewState.latitude + 0.05,
-                  east: viewState.longitude + 0.05,
-                },
-              });
-              setViewState({
-                ...viewState,
-                zoom: 12,
-              });
-            }}
-            className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 text-sm text-left transition-colors"
-          >
-            <span className="text-white/80">{m.city_name}</span>
-            {/* TODO: DataMode に応じたメトリクス表示 */}
-            {txCount !== null && (
-              <span className="text-white/50 text-xs tabular-nums">
-                {txCount.toLocaleString("ja-JP")}件
-              </span>
-            )}
-          </button>
+          <li key={m.city_code}>
+            <button
+              type="button"
+              onClick={() => handleSelect(m)}
+              className="flex w-full items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 text-sm text-left transition-colors"
+            >
+              <span className="text-white/80">{m.city_name}</span>
+              {/* TODO: DataMode に応じたメトリクス表示 */}
+              {txCount !== null && (
+                <span className="text-white/50 text-xs tabular-nums">
+                  {txCount.toLocaleString("ja-JP")}件
+                </span>
+              )}
+            </button>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

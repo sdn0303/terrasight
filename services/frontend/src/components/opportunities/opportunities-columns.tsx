@@ -1,4 +1,7 @@
-import type { Opportunity, OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
+import type {
+  Opportunity,
+  OpportunityRiskLevel,
+} from "@/lib/api/schemas/opportunities";
 
 export type OpportunityRow = Opportunity;
 
@@ -9,7 +12,10 @@ export interface ColumnDef {
   render: (row: OpportunityRow) => React.ReactNode;
 }
 
-const RISK_BADGE: Record<OpportunityRiskLevel, { label: string; bg: string; color: string }> = {
+const RISK_BADGE: Record<
+  OpportunityRiskLevel,
+  { label: string; bg: string; color: string }
+> = {
   low: { label: "低", bg: "rgba(34,197,94,0.15)", color: "#16a34a" },
   mid: { label: "中", bg: "rgba(234,179,8,0.15)", color: "#ca8a04" },
   high: { label: "高", bg: "rgba(239,68,68,0.15)", color: "#dc2626" },
@@ -19,6 +25,7 @@ function TlsBadge({ score }: { score: number }) {
   const hue = Math.round((score / 100) * 120); // 0=red, 120=green
   return (
     <span
+      role="img"
       className="inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums"
       style={{
         background: `hsl(${hue} 70% 92%)`,
@@ -35,6 +42,7 @@ function RiskBadge({ level }: { level: OpportunityRiskLevel }) {
   const cfg = RISK_BADGE[level];
   return (
     <span
+      role="img"
       className="inline-block rounded px-1.5 py-0.5 text-[11px] font-medium"
       style={{ background: cfg.bg, color: cfg.color }}
       aria-label={`リスク ${cfg.label}`}
@@ -48,6 +56,7 @@ function TrendCell({ pct }: { pct: number }) {
   const isUp = pct >= 0;
   return (
     <span
+      role="img"
       className="tabular-nums text-[12px] font-medium"
       style={{ color: isUp ? "#16a34a" : "#dc2626" }}
       aria-label={`トレンド ${isUp ? "上昇" : "下落"} ${Math.abs(pct).toFixed(1)}%`}
@@ -85,11 +94,16 @@ export const opportunityColumns: readonly ColumnDef[] = [
     width: "90px",
     render: (row) => (
       <span
+        role="img"
         className="tabular-nums text-[12px]"
         style={{ color: "var(--panel-text-primary)" }}
         aria-label={`地価 ${row.price_per_sqm.toLocaleString("ja-JP")}円`}
       >
-        ¥{(row.price_per_sqm / 1000).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}k
+        ¥
+        {(row.price_per_sqm / 1000).toLocaleString("ja-JP", {
+          maximumFractionDigits: 1,
+        })}
+        k
       </span>
     ),
   },

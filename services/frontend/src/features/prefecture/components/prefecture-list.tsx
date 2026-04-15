@@ -57,32 +57,33 @@ export function PrefectureList() {
   const selectedPrefCode = usePrefectureStore((s) => s.selectedPrefCode);
   const flyToPrefecture = useMapStore((s) => s.flyToPrefecture);
 
+  const handleSelect = (code: string, name: string) => {
+    selectPrefecture(code, name);
+    flyToPrefecture(code);
+  };
+
   return (
-    <div
+    <ul
       className="flex flex-col gap-1 p-2 overflow-y-auto max-h-[calc(100vh-200px)]"
-      role="list"
       aria-label="都道府県一覧"
     >
       {PREFECTURES.map((pref) => (
-        <button
-          key={pref.code}
-          type="button"
-          role="listitem"
-          onClick={() => {
-            selectPrefecture(pref.code, pref.name);
-            flyToPrefecture(pref.code);
-          }}
-          aria-current={selectedPrefCode === pref.code ? "true" : undefined}
-          className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-colors ${
-            selectedPrefCode === pref.code
-              ? "bg-white/20 text-white"
-              : "hover:bg-white/10 text-white/80"
-          }`}
-        >
-          <span>{pref.name}</span>
-          {/* TODO: DataMode に応じたスコア値を表示（パイプラインデータ依存） */}
-        </button>
+        <li key={pref.code}>
+          <button
+            type="button"
+            onClick={() => handleSelect(pref.code, pref.name)}
+            aria-current={selectedPrefCode === pref.code ? "true" : undefined}
+            className={`flex w-full items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+              selectedPrefCode === pref.code
+                ? "bg-white/20 text-white"
+                : "hover:bg-white/10 text-white/80"
+            }`}
+          >
+            <span>{pref.name}</span>
+            {/* TODO: DataMode に応じたスコア値を表示（パイプラインデータ依存） */}
+          </button>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

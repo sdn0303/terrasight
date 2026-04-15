@@ -1,6 +1,6 @@
 "use client";
 
-import { X, SlidersHorizontal, Search } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 
 interface OpportunitiesToolbarProps {
@@ -54,6 +54,7 @@ export function OpportunitiesToolbar({ total }: OpportunitiesToolbarProps) {
 
       {/* Count badge */}
       <span
+        role="status"
         className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
         style={{
           background: "var(--panel-hover-bg)",

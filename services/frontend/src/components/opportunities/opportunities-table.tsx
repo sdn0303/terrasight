@@ -1,40 +1,42 @@
 "use client";
 
-import { useUIStore } from "@/stores/ui-store";
 import { useOpportunities } from "@/hooks/use-opportunities";
 import { SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
-import { OpportunitiesToolbar } from "./opportunities-toolbar";
-import { opportunityColumns } from "./opportunities-columns";
+import { useUIStore } from "@/stores/ui-store";
 import type { OpportunityRow } from "./opportunities-columns";
+import { opportunityColumns } from "./opportunities-columns";
+import { OpportunitiesToolbar } from "./opportunities-toolbar";
 
 const ROW_HEIGHT_PX = 48;
 
 function TableHeader() {
   return (
-    <div
-      className="flex shrink-0 border-b text-[11px] font-semibold"
-      style={{
-        borderColor: "var(--panel-border)",
-        color: "var(--panel-text-secondary)",
-        background: "var(--panel-bg)",
-      }}
-      role="row"
-    >
-      {opportunityColumns.map((col) => (
-        <div
-          key={col.key}
-          role="columnheader"
-          className="flex items-center px-3 py-2"
-          style={{
-            width: col.width === "flex" ? undefined : col.width,
-            flex: col.width === "flex" ? 1 : undefined,
-            minWidth: col.width === "flex" ? 0 : undefined,
-          }}
-        >
-          {col.label}
-        </div>
-      ))}
-    </div>
+    <thead>
+      <tr
+        className="flex shrink-0 border-b text-[11px] font-semibold"
+        style={{
+          display: "flex",
+          borderColor: "var(--panel-border)",
+          color: "var(--panel-text-secondary)",
+          background: "var(--panel-bg)",
+        }}
+      >
+        {opportunityColumns.map((col) => (
+          <th
+            key={col.key}
+            scope="col"
+            className="flex items-center px-3 py-2"
+            style={{
+              width: col.width === "flex" ? undefined : col.width,
+              flex: col.width === "flex" ? 1 : undefined,
+              minWidth: col.width === "flex" ? 0 : undefined,
+            }}
+          >
+            {col.label}
+          </th>
+        ))}
+      </tr>
+    </thead>
   );
 }
 
@@ -46,12 +48,12 @@ interface TableRowProps {
 
 function TableRow({ row, isActive, onRowClick }: TableRowProps) {
   return (
-    <div
-      role="row"
+    <tr
       aria-selected={isActive}
       tabIndex={0}
       className="flex cursor-pointer items-center border-b outline-none transition-colors"
       style={{
+        display: "flex",
         height: `${ROW_HEIGHT_PX}px`,
         borderColor: "var(--panel-border)",
         background: isActive ? "var(--panel-active-bg)" : undefined,
@@ -65,31 +67,31 @@ function TableRow({ row, isActive, onRowClick }: TableRowProps) {
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
-          (e.currentTarget as HTMLDivElement).style.background =
+          (e.currentTarget as HTMLTableRowElement).style.background =
             "var(--panel-hover-bg)";
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
-          (e.currentTarget as HTMLDivElement).style.background = "";
+          (e.currentTarget as HTMLTableRowElement).style.background = "";
         }
       }}
     >
       {opportunityColumns.map((col) => (
-        <div
+        <td
           key={col.key}
-          role="cell"
           className="flex items-center overflow-hidden px-3"
           style={{
+            display: "flex",
             width: col.width === "flex" ? undefined : col.width,
             flex: col.width === "flex" ? 1 : undefined,
             minWidth: col.width === "flex" ? 0 : undefined,
           }}
         >
           {col.render(row)}
-        </div>
+        </td>
       ))}
-    </div>
+    </tr>
   );
 }
 
@@ -113,9 +115,6 @@ export function OpportunitiesTable() {
 
   return (
     <div
-      role="grid"
-      aria-label="物件一覧"
-      aria-rowcount={total}
       className="absolute top-0 z-20 flex h-full flex-col"
       style={{
         left: leftOffset,
@@ -129,29 +128,44 @@ export function OpportunitiesTable() {
       }}
     >
       <OpportunitiesToolbar total={total} />
-      <TableHeader />
-
-      <div
-        className="flex-1 overflow-y-auto"
-        role="rowgroup"
+      <table
+        aria-label="物件一覧"
+        aria-rowcount={total}
+        className="flex flex-1 flex-col overflow-hidden"
+        style={{ display: "flex", flexDirection: "column" }}
       >
-        {query.isLoading ? (
-          <LoadingSkeleton />
-        ) : query.error !== null ? (
-          <ErrorState onRetry={() => query.refetch()} />
-        ) : rows.length === 0 ? (
-          <EmptyState />
-        ) : (
-          rows.map((row) => (
-            <TableRow
-              key={row.id}
-              row={row}
-              isActive={selectedOpportunityId === String(row.id)}
-              onRowClick={handleRowClick}
-            />
-          ))
-        )}
-      </div>
+        <TableHeader />
+        <tbody className="flex-1 overflow-y-auto" style={{ display: "block" }}>
+          {query.isLoading ? (
+            <tr>
+              <td>
+                <LoadingSkeleton />
+              </td>
+            </tr>
+          ) : query.error !== null ? (
+            <tr>
+              <td>
+                <ErrorState onRetry={() => query.refetch()} />
+              </td>
+            </tr>
+          ) : rows.length === 0 ? (
+            <tr>
+              <td>
+                <EmptyState />
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <TableRow
+                key={row.id}
+                row={row}
+                isActive={selectedOpportunityId === String(row.id)}
+                onRowClick={handleRowClick}
+              />
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
