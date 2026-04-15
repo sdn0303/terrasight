@@ -1,9 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 import { spatialEngine } from "@/lib/wasm/spatial-engine";
 
-/** @deprecated Use useSpatialEngineState() for granular readiness. */
+const log = logger.child({ module: "spatial-engine" });
+
+/**
+ * Initialize and dispose the WASM spatial engine.
+ * Call once at the app root (e.g. App.tsx).
+ */
+export function useSpatialEngineInit(): void {
+  useEffect(() => {
+    spatialEngine.init().catch((err: unknown) => {
+      log.error({ err }, "WASM spatial engine failed to initialize");
+    });
+    return () => spatialEngine.dispose();
+  }, []);
+}
+
 export function useSpatialEngineReady(): boolean {
   const [ready, setReady] = useState(spatialEngine.ready);
   useEffect(() => spatialEngine.onReady(setReady), []);

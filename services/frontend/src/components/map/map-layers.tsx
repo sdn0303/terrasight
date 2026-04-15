@@ -2,7 +2,7 @@
 
 import type { FeatureCollection } from "geojson";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useLandPricesAllYears } from "@/features/land-prices/api/use-land-prices-all-years";
@@ -36,7 +36,10 @@ export const MapLayers = memo(function MapLayers({
   // preventing per-frame re-renders during pinch-to-zoom.
   const zoom = useMapStore((s) => Math.floor(s.viewState.zoom));
 
-  const [populationYear] = useState(2020);
+  const [populationYear] = useQueryState(
+    "popYear",
+    parseAsInteger.withDefault(2020),
+  );
   const [landPriceYear] = useQueryState(
     "year",
     parseAsInteger.withDefault(2026),
