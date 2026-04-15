@@ -45,6 +45,8 @@ services:
     build:
       context: ./services/frontend
       target: runner
+      args:
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
     depends_on:
       backend:
         condition: service_healthy

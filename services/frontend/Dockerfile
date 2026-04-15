@@ -23,10 +23,11 @@ COPY . .
 # Create empty public dirs that Vite expects (populated at runtime via volumes)
 RUN mkdir -p public/data/fgb public/wasm
 
-# VITE_API_URL is baked into the bundle at build time.
-# In production behind nginx reverse proxy, the SPA uses relative /api paths.
+# Vite env vars are baked into the bundle at build time.
 ARG VITE_API_URL=""
+ARG VITE_MAPBOX_TOKEN=""
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_MAPBOX_TOKEN=${VITE_MAPBOX_TOKEN}
 
 RUN corepack enable pnpm && \
     pnpm build
