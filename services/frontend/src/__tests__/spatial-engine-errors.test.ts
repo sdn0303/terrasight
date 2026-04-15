@@ -92,14 +92,13 @@ describe("SpatialEngineAdapter error isolation", () => {
     expect(adapter.pendingCount).toBe(0);
   });
 
-  it("computeStats throws unconditionally in Phase 1", async () => {
-    await expect(
-      adapter.computeStats({
-        south: 35.5,
-        west: 139.5,
-        north: 35.9,
-        east: 140.0,
-      }),
-    ).rejects.toThrow("WASM stats disabled in Phase 1");
+  it("computeStats returns null in Phase 1 when worker is not ready", async () => {
+    const result = await adapter.computeStats({
+      south: 35.5,
+      west: 139.5,
+      north: 35.9,
+      east: 140.0,
+    });
+    expect(result).toBeNull();
   });
 });
