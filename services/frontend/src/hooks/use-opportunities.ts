@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { type BBox, typedGet } from "@/lib/api";
 import type { OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
 import { OpportunitiesResponse } from "@/lib/api/schemas/opportunities";
@@ -30,7 +31,19 @@ export interface FetchOpportunitiesParams {
  * trigger a refetch.
  */
 export function useOpportunities(enabled: boolean) {
-  const bbox = useMapStore((s) => s.getBBox());
+  const latitude = useMapStore((s) => s.viewState.latitude);
+  const longitude = useMapStore((s) => s.viewState.longitude);
+  const zoom = useMapStore((s) => s.viewState.zoom);
+  const bbox = useMemo((): BBox => {
+    const latRange = 180 / 2 ** zoom;
+    const lngRange = 360 / 2 ** zoom;
+    return {
+      south: latitude - latRange / 2,
+      west: longitude - lngRange / 2,
+      north: latitude + latRange / 2,
+      east: longitude + lngRange / 2,
+    };
+  }, [latitude, longitude, zoom]);
 
   const tlsMin = useFilterStore((s) => s.criteria.tlsMin);
   const riskMax = useFilterStore((s) => s.criteria.riskMax);
