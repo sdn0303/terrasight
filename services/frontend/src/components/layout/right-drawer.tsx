@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import { X } from "lucide-react";
-import { OpportunityDetail } from "@/components/drawer/opportunity-detail";
+import { useEffect } from "react";
 import { MapPointDetail } from "@/components/drawer/map-point-detail";
-import { DRAWER_WIDTH, CARD_RADIUS, PAGE_INSET } from "@/lib/layout";
+import { OpportunityDetail } from "@/components/drawer/opportunity-detail";
+import { CARD_RADIUS, DRAWER_WIDTH, PAGE_INSET } from "@/lib/layout";
 import { useUIStore } from "@/stores/ui-store";
 
 /**
@@ -33,9 +33,13 @@ export function RightDrawer() {
 
   return (
     <aside
-      aria-label={visible && rightDrawer !== null
-        ? (rightDrawer.type === "opportunity" ? "物件詳細" : "地点情報")
-        : undefined}
+      aria-label={
+        visible && rightDrawer !== null
+          ? rightDrawer.type === "opportunity"
+            ? "物件詳細"
+            : "地点情報"
+          : undefined
+      }
       style={{
         position: "absolute",
         top: 0,
@@ -54,56 +58,58 @@ export function RightDrawer() {
         visibility: visible ? "visible" : "hidden",
       }}
     >
-      {visible && rightDrawer !== null && (() => {
-        const title =
-          rightDrawer.type === "opportunity" ? "物件詳細" : "地点情報";
-        return (
-          <>
-            {/* Header */}
-            <header
-              className="flex items-center justify-between px-4 py-3 border-b shrink-0"
-              style={{
-                borderColor: "var(--panel-border)",
-                paddingTop: PAGE_INSET,
-              }}
-            >
-              <h2
-                className="text-sm font-extrabold"
-                style={{ color: "var(--panel-text-primary)" }}
-              >
-                {title}
-              </h2>
-              <button
-                type="button"
-                onClick={closeRightDrawer}
-                aria-label="Close drawer"
-                className="flex items-center justify-center rounded-[10px]"
+      {visible &&
+        rightDrawer !== null &&
+        (() => {
+          const title =
+            rightDrawer.type === "opportunity" ? "物件詳細" : "地点情報";
+          return (
+            <>
+              {/* Header */}
+              <header
+                className="flex items-center justify-between px-4 py-3 border-b shrink-0"
                 style={{
-                  width: 28,
-                  height: 28,
-                  background: "var(--panel-border)",
-                  color: "var(--panel-text-secondary)",
+                  borderColor: "var(--panel-border)",
+                  paddingTop: PAGE_INSET,
                 }}
               >
-                <X size={13} aria-hidden="true" />
-              </button>
-            </header>
+                <h2
+                  className="text-sm font-extrabold"
+                  style={{ color: "var(--panel-text-primary)" }}
+                >
+                  {title}
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeRightDrawer}
+                  aria-label="Close drawer"
+                  className="flex items-center justify-center rounded-[10px]"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "var(--panel-border)",
+                    color: "var(--panel-text-secondary)",
+                  }}
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
+              </header>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto">
-              {rightDrawer.type === "opportunity" && (
-                <OpportunityDetail id={rightDrawer.id} />
-              )}
-              {rightDrawer.type === "map-point" && (
-                <MapPointDetail
-                  data={rightDrawer.data}
-                  activeTab={rightDrawer.activeTab}
-                />
-              )}
-            </div>
-          </>
-        );
-      })()}
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                {rightDrawer.type === "opportunity" && (
+                  <OpportunityDetail id={rightDrawer.id} />
+                )}
+                {rightDrawer.type === "map-point" && (
+                  <MapPointDetail
+                    data={rightDrawer.data}
+                    activeTab={rightDrawer.activeTab}
+                  />
+                )}
+              </div>
+            </>
+          );
+        })()}
     </aside>
   );
 }

@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   BRAND,
+  LAYER,
   NEUTRAL,
+  OVERLAY,
+  PRICE_STOPS,
+  SCORE,
   SEMANTIC,
   TREND,
-  LAYER,
-  PRICE_STOPS,
-  OVERLAY,
-  SCORE,
 } from "@/lib/palette";
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;

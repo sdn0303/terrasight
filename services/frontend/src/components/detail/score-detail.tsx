@@ -193,21 +193,27 @@ export function ScoreDetail({ lat, lng }: Props) {
             style={{ color: "var(--panel-text-primary)" }}
           >
             価値発見:{" "}
-            <strong>{(data.cross_analysis.value_discovery * 100).toFixed(0)}</strong>
+            <strong>
+              {(data.cross_analysis.value_discovery * 100).toFixed(0)}
+            </strong>
           </span>
           <span
             className="text-xs"
             style={{ color: "var(--panel-text-primary)" }}
           >
             需要シグナル:{" "}
-            <strong>{(data.cross_analysis.demand_signal * 100).toFixed(0)}</strong>
+            <strong>
+              {(data.cross_analysis.demand_signal * 100).toFixed(0)}
+            </strong>
           </span>
           <span
             className="text-xs"
             style={{ color: "var(--panel-text-primary)" }}
           >
             地盤安全:{" "}
-            <strong>{(data.cross_analysis.ground_safety * 100).toFixed(0)}</strong>
+            <strong>
+              {(data.cross_analysis.ground_safety * 100).toFixed(0)}
+            </strong>
           </span>
         </div>
       </div>

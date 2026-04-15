@@ -218,7 +218,11 @@ describe("useScore", () => {
       expect(mockTypedGet).toHaveBeenCalledWith(
         expect.anything(),
         "api/v1/score",
-        expect.objectContaining({ lat: "35.681", lng: "139.767", preset: "balance" }),
+        expect.objectContaining({
+          lat: "35.681",
+          lng: "139.767",
+          preset: "balance",
+        }),
         expect.any(AbortSignal),
       ),
     );

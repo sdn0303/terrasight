@@ -1,6 +1,10 @@
 "use client";
 
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { logger } from "@/lib/logger";
 

@@ -38,13 +38,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
-function PropertyRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function PropertyRow({ label, value }: { label: string; value: string }) {
   return (
     <tr>
       <td
@@ -72,7 +66,7 @@ function formatPropertyValue(value: unknown): string {
 }
 
 export function HazardDetail({ featureProperties }: Props) {
-  const riskLevel = toRiskLevel(featureProperties?.["risk_level"]);
+  const riskLevel = toRiskLevel(featureProperties?.risk_level);
 
   // Build display rows from feature properties, excluding internal fields
   const EXCLUDE_KEYS = new Set(["risk_level"]);
@@ -110,7 +104,11 @@ export function HazardDetail({ featureProperties }: Props) {
           <table className="w-full">
             <tbody>
               {rows.map((row) => (
-                <PropertyRow key={row.label} label={row.label} value={row.value} />
+                <PropertyRow
+                  key={row.label}
+                  label={row.label}
+                  value={row.value}
+                />
               ))}
             </tbody>
           </table>
@@ -118,10 +116,7 @@ export function HazardDetail({ featureProperties }: Props) {
       )}
 
       {rows.length === 0 && featureProperties === undefined && (
-        <p
-          className="text-xs"
-          style={{ color: "var(--panel-text-secondary)" }}
-        >
+        <p className="text-xs" style={{ color: "var(--panel-text-secondary)" }}>
           地図上のハザードレイヤーをクリックして詳細を確認してください
         </p>
       )}

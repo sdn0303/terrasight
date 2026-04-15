@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslation } from "@/lib/i18n";
 import type { TlsResponse } from "@/lib/api/schemas/score";
+import { useTranslation } from "@/lib/i18n";
 import { AxisDetail } from "./axis-detail";
 
 const AXIS_KEYS = [

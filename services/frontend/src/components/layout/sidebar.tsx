@@ -1,9 +1,9 @@
 import { ChevronLeft, ChevronRight, Search, Settings } from "lucide-react";
 import { useState } from "react";
-import { useUIStore } from "@/stores/ui-store";
-import { THEMES, type ThemeId } from "@/lib/theme-definitions";
-import { SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
 import { SettingsPanel } from "@/components/settings/settings-panel";
+import { SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
+import { THEMES, type ThemeId } from "@/lib/theme-definitions";
+import { useUIStore } from "@/stores/ui-store";
 import { SidebarItem } from "./sidebar-item";
 
 export function Sidebar() {

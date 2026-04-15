@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HealthResponse } from "@/lib/api/schemas/health";
-import { StatsResponse } from "@/lib/api/schemas/stats";
 import { TlsResponse } from "@/lib/api/schemas/score";
+import { StatsResponse } from "@/lib/api/schemas/stats";
 import { TrendResponse } from "@/lib/api/schemas/trend";
 
 describe("HealthResponse schema", () => {

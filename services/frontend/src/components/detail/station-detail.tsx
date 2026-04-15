@@ -44,12 +44,12 @@ function parseYearlyData(value: unknown): YearlyDataEntry[] {
       typeof item === "object" &&
       "year" in item &&
       "count" in item &&
-      typeof (item as Record<string, unknown>)["year"] === "number" &&
-      typeof (item as Record<string, unknown>)["count"] === "number"
+      typeof (item as Record<string, unknown>).year === "number" &&
+      typeof (item as Record<string, unknown>).count === "number"
     ) {
       result.push({
-        year: (item as Record<string, unknown>)["year"] as number,
-        count: (item as Record<string, unknown>)["count"] as number,
+        year: (item as Record<string, unknown>).year as number,
+        count: (item as Record<string, unknown>).count as number,
       });
     }
   }
@@ -57,10 +57,10 @@ function parseYearlyData(value: unknown): YearlyDataEntry[] {
 }
 
 export function StationDetail({ featureProperties }: Props) {
-  const stationName = asString(featureProperties?.["station_name"]) ?? "駅名不明";
-  const lineName = asString(featureProperties?.["line_name"]);
-  const passengerCount = asNumber(featureProperties?.["passenger_count"]);
-  const yearlyData = parseYearlyData(featureProperties?.["yearly_data"]);
+  const stationName = asString(featureProperties?.station_name) ?? "駅名不明";
+  const lineName = asString(featureProperties?.line_name);
+  const passengerCount = asNumber(featureProperties?.passenger_count);
+  const yearlyData = parseYearlyData(featureProperties?.yearly_data);
 
   return (
     <div className="space-y-4">
@@ -110,7 +110,10 @@ export function StationDetail({ featureProperties }: Props) {
             年次推移
           </p>
           <ResponsiveContainer width="100%" height={100}>
-            <BarChart data={yearlyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <BarChart
+              data={yearlyData}
+              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+            >
               <XAxis
                 dataKey="year"
                 tick={{ fontSize: 10, fill: "var(--panel-text-secondary)" }}
@@ -126,10 +129,10 @@ export function StationDetail({ featureProperties }: Props) {
                   fontSize: 11,
                 }}
                 formatter={(value) =>
-                typeof value === "number"
-                  ? [formatPassengers(value), "乗降客数"]
-                  : [String(value), "乗降客数"]
-              }
+                  typeof value === "number"
+                    ? [formatPassengers(value), "乗降客数"]
+                    : [String(value), "乗降客数"]
+                }
               />
               <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
             </BarChart>
@@ -138,10 +141,7 @@ export function StationDetail({ featureProperties }: Props) {
       )}
 
       {passengerCount === undefined && yearlyData.length === 0 && (
-        <p
-          className="text-xs"
-          style={{ color: "var(--panel-text-secondary)" }}
-        >
+        <p className="text-xs" style={{ color: "var(--panel-text-secondary)" }}>
           地図上の駅をクリックして詳細を確認してください
         </p>
       )}

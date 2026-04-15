@@ -30,7 +30,7 @@ async function loadLayerManifest(
   }
 
   // National layers (always loaded)
-  const nationalLayers = manifest.prefectures["national"]?.layers ?? [];
+  const nationalLayers = manifest.prefectures.national?.layers ?? [];
   for (const layer of nationalLayers) {
     layers.push({ id: layer.id, url: `${DATA_BASE}/${layer.path}` });
   }

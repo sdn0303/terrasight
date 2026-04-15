@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Line,
   LineChart,
@@ -11,7 +12,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useQueryClient } from "@tanstack/react-query";
 import type { OpportunitiesResponse } from "@/lib/api/schemas/opportunities";
 import { queryKeys } from "@/lib/query-keys";
 import { useOpportunityScore } from "./hooks/use-opportunity-score";
@@ -201,9 +201,7 @@ export function OpportunityDetail({ id }: OpportunityDetailProps) {
                 <YAxis
                   tick={{ fill: "var(--panel-text-secondary)", fontSize: 9 }}
                   width={50}
-                  tickFormatter={(v: number) =>
-                    `¥${(v / 1000).toFixed(0)}k`
-                  }
+                  tickFormatter={(v: number) => `¥${(v / 1000).toFixed(0)}k`}
                 />
                 <Line
                   type="monotone"

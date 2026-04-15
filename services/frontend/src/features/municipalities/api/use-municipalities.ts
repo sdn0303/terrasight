@@ -21,7 +21,10 @@ export function useMunicipalities(prefCode: string | null) {
     queryKey: prefCode
       ? queryKeys.municipalities.byPref(prefCode)
       : queryKeys.municipalities.all,
-    queryFn: ({ signal }) => fetchMunicipalities(prefCode!, signal),
+    queryFn: ({ signal }) => {
+      if (prefCode === null) throw new Error("prefCode is required");
+      return fetchMunicipalities(prefCode, signal);
+    },
     enabled: prefCode !== null,
     staleTime: 300_000, // 市区町村リストは頻繁に変わらない
   });

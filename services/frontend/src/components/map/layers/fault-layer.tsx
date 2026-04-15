@@ -19,7 +19,9 @@ export function FaultLayer({ visible, data: propData }: Props) {
       <Layer
         id="fault-confirmed"
         type="line"
-        filter={["==", ["get", "faultType2"], "実在断層"] as FilterSpecification}
+        filter={
+          ["==", ["get", "faultType2"], "実在断層"] as FilterSpecification
+        }
         paint={{
           "line-color": "#ef4444",
           "line-width": 2,
@@ -28,7 +30,9 @@ export function FaultLayer({ visible, data: propData }: Props) {
       <Layer
         id="fault-inferred"
         type="line"
-        filter={["!=", ["get", "faultType2"], "実在断層"] as FilterSpecification}
+        filter={
+          ["!=", ["get", "faultType2"], "実在断層"] as FilterSpecification
+        }
         paint={{
           "line-color": "#fbbf24",
           "line-width": 2,

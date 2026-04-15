@@ -22,13 +22,13 @@ export function SidebarItem({
       onClick={onClick}
       className={clsx(
         "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200",
-        active
-          ? "font-medium"
-          : "hover:bg-[var(--panel-hover-bg)]",
+        active ? "font-medium" : "hover:bg-[var(--panel-hover-bg)]",
         collapsed && "justify-center px-0",
       )}
       style={{
-        color: active ? "var(--panel-text-primary)" : "var(--panel-text-secondary)",
+        color: active
+          ? "var(--panel-text-primary)"
+          : "var(--panel-text-secondary)",
         backgroundColor: active ? "var(--panel-active-bg)" : undefined,
       }}
       title={collapsed ? label : undefined}

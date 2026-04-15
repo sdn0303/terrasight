@@ -99,7 +99,10 @@ export function LandPriceDetail({ lat, lng }: Props) {
           推移
         </p>
         <ResponsiveContainer width="100%" height={120}>
-          <LineChart data={data.data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <LineChart
+            data={data.data}
+            margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" />
             <XAxis
               dataKey="year"

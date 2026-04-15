@@ -26,9 +26,9 @@ pre-commit:
     # ── Frontend ──────────────────────────────────────────────
     fe-biome:
       root: "services/frontend/"
-      glob: "*.{ts,tsx,js,jsx,json}"
-      run: pnpm biome check src/
-      fail_text: "biome check failed — run `pnpm biome check --write src/` to fix"
+      glob: "*.{ts,tsx,js,jsx}"
+      run: pnpm biome check --no-errors-on-unmatched {staged_files}
+      fail_text: "biome check failed — run `pnpm biome check --write <file>` to fix"
 
     fe-tsc:
       root: "services/frontend/"

@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n";
-import { MapStyleSwitcher } from "./map-style-switcher";
 import { LanguageSwitcher } from "./language-switcher";
+import { MapStyleSwitcher } from "./map-style-switcher";
 
 interface SettingsPanelProps {
   open: boolean;

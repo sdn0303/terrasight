@@ -13,7 +13,8 @@ export function useWasmStats(bbox: BBox | null) {
   return useQuery<WasmStats>({
     queryKey: ["wasm-stats", bbox?.south, bbox?.west, bbox?.north, bbox?.east],
     queryFn: async () => {
-      const raw = await spatialEngine.computeStats(bbox!);
+      if (bbox === null) throw new Error("bbox is required");
+      const raw = await spatialEngine.computeStats(bbox);
       return WasmStatsSchema.parse(raw);
     },
     enabled: bbox !== null && ready,

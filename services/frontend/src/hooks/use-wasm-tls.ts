@@ -18,7 +18,8 @@ export function useWasmTls(bbox: BBox | null, preset = "balance") {
       preset,
     ],
     queryFn: async () => {
-      const raw = await spatialEngine.computeTls(bbox!, preset);
+      if (bbox === null) throw new Error("bbox is required");
+      const raw = await spatialEngine.computeTls(bbox, preset);
       return raw; // TODO: Zod validation once TLS schema is finalised
     },
     enabled: bbox !== null && ready,

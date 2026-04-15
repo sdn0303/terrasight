@@ -21,7 +21,10 @@ export function useTransactionSummary(prefCode: string | null) {
     queryKey: prefCode
       ? queryKeys.transactionSummary.byPref(prefCode)
       : queryKeys.transactionSummary.all,
-    queryFn: ({ signal }) => fetchTransactionSummary(prefCode!, signal),
+    queryFn: ({ signal }) => {
+      if (prefCode === null) throw new Error("prefCode is required");
+      return fetchTransactionSummary(prefCode, signal);
+    },
     enabled: prefCode !== null,
     staleTime: 60_000,
   });

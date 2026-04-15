@@ -2,11 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { type BBox, typedGet } from "@/lib/api";
+import type { OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
 import { OpportunitiesResponse } from "@/lib/api/schemas/opportunities";
 import { queryKeys } from "@/lib/query-keys";
 import { useFilterStore } from "@/stores/filter-store";
 import { useMapStore } from "@/stores/map-store";
-import type { OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
 
 export interface FetchOpportunitiesParams {
   bbox: BBox;
@@ -86,10 +86,17 @@ export function useOpportunities(enabled: boolean) {
       if (zonesFilter !== undefined) params.zones = zonesFilter.join(",");
       if (stationMaxFilter !== undefined)
         params.station_max = String(stationMaxFilter);
-      if (priceMinFilter !== undefined) params.price_min = String(priceMinFilter);
-      if (priceMaxFilter !== undefined) params.price_max = String(priceMaxFilter);
+      if (priceMinFilter !== undefined)
+        params.price_min = String(priceMinFilter);
+      if (priceMaxFilter !== undefined)
+        params.price_max = String(priceMaxFilter);
       if (presetFilter !== undefined) params.preset = presetFilter;
-      return typedGet(OpportunitiesResponse, "api/v1/opportunities", params, signal);
+      return typedGet(
+        OpportunitiesResponse,
+        "api/v1/opportunities",
+        params,
+        signal,
+      );
     },
     enabled,
     staleTime: 60_000,

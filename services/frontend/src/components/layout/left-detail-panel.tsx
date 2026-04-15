@@ -7,7 +7,11 @@ import { LandPriceDetail } from "@/components/detail/land-price-detail";
 import { ScoreDetail } from "@/components/detail/score-detail";
 import { StationDetail } from "@/components/detail/station-detail";
 import { TransactionDetail } from "@/components/detail/transaction-detail";
-import { LEFT_PANEL_WIDTH, SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
+import {
+  LEFT_PANEL_WIDTH,
+  SIDEBAR_COLLAPSED_W,
+  SIDEBAR_EXPANDED_W,
+} from "@/lib/layout";
 import { THEMES, type ThemeId } from "@/lib/theme-definitions";
 import { useUIStore } from "@/stores/ui-store";
 
@@ -34,7 +38,9 @@ export function LeftDetailPanel() {
   const setLeftPanelTab = useUIStore((s) => s.setLeftPanelTab);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
 
-  const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W;
+  const sidebarWidth = sidebarCollapsed
+    ? SIDEBAR_COLLAPSED_W
+    : SIDEBAR_EXPANDED_W;
   const isOpen = leftPanel !== null;
 
   useEffect(() => {
@@ -64,81 +70,86 @@ export function LeftDetailPanel() {
         visibility: isOpen ? "visible" : "hidden",
       }}
     >
-      {isOpen && leftPanel !== null && (() => {
-        const { data, activeTab } = leftPanel;
-        const DetailComponent = DETAIL_COMPONENTS[activeTab];
-        return (
-          <>
-            {/* Header */}
-            <header
-              className="flex items-start justify-between border-b px-4 py-3 flex-shrink-0"
-              style={{ borderColor: "var(--panel-border)" }}
-            >
-              <div className="flex-1 min-w-0 pr-2">
-                <p
-                  className="text-xs font-semibold truncate"
+      {isOpen &&
+        leftPanel !== null &&
+        (() => {
+          const { data, activeTab } = leftPanel;
+          const DetailComponent = DETAIL_COMPONENTS[activeTab];
+          return (
+            <>
+              {/* Header */}
+              <header
+                className="flex items-start justify-between border-b px-4 py-3 flex-shrink-0"
+                style={{ borderColor: "var(--panel-border)" }}
+              >
+                <div className="flex-1 min-w-0 pr-2">
+                  <p
+                    className="text-xs font-semibold truncate"
+                    style={{ color: "var(--panel-text-secondary)" }}
+                  >
+                    {data.address ??
+                      `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeLeftPanel}
+                  aria-label="パネルを閉じる"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg flex-shrink-0 transition-colors hover:bg-[var(--panel-hover-bg)]"
                   style={{ color: "var(--panel-text-secondary)" }}
                 >
-                  {data.address ?? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeLeftPanel}
-                aria-label="パネルを閉じる"
-                className="flex h-7 w-7 items-center justify-center rounded-lg flex-shrink-0 transition-colors hover:bg-[var(--panel-hover-bg)]"
-                style={{ color: "var(--panel-text-secondary)" }}
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </header>
+
+              {/* Tab bar */}
+              <nav
+                className="flex border-b flex-shrink-0 overflow-x-auto"
+                style={{ borderColor: "var(--panel-border)" }}
+                aria-label="テーマタブ"
               >
-                <X size={14} aria-hidden="true" />
-              </button>
-            </header>
-
-            {/* Tab bar */}
-            <nav
-              className="flex border-b flex-shrink-0 overflow-x-auto"
-              style={{ borderColor: "var(--panel-border)" }}
-              aria-label="テーマタブ"
-            >
-              {THEMES.map((theme) => {
-                const isActive = activeTab === theme.id;
-                const Icon = theme.icon;
-                return (
-                  <button
-                    key={theme.id}
-                    type="button"
-                    onClick={() => setLeftPanelTab(theme.id)}
-                    aria-current={isActive ? "page" : undefined}
-                    className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors min-w-[52px]"
-                    style={{
-                      color: isActive
-                        ? "var(--panel-text-primary)"
-                        : "var(--panel-text-secondary)",
-                      borderBottom: isActive
-                        ? "2px solid #6366f1"
-                        : "2px solid transparent",
-                      background: isActive ? "var(--panel-active-bg)" : "transparent",
-                    }}
-                  >
-                    <Icon size={14} aria-hidden="true" />
-                    <span className="whitespace-nowrap">{theme.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* Detail content */}
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <DetailComponent
-                lat={data.lat}
-                lng={data.lng}
-                {...(data.featureProperties !== undefined && {
-                  featureProperties: data.featureProperties,
+                {THEMES.map((theme) => {
+                  const isActive = activeTab === theme.id;
+                  const Icon = theme.icon;
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setLeftPanelTab(theme.id)}
+                      aria-current={isActive ? "page" : undefined}
+                      className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors min-w-[52px]"
+                      style={{
+                        color: isActive
+                          ? "var(--panel-text-primary)"
+                          : "var(--panel-text-secondary)",
+                        borderBottom: isActive
+                          ? "2px solid #6366f1"
+                          : "2px solid transparent",
+                        background: isActive
+                          ? "var(--panel-active-bg)"
+                          : "transparent",
+                      }}
+                    >
+                      <Icon size={14} aria-hidden="true" />
+                      <span className="whitespace-nowrap">{theme.label}</span>
+                    </button>
+                  );
                 })}
-              />
-            </div>
-          </>
-        );
-      })()}
+              </nav>
+
+              {/* Detail content */}
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                <DetailComponent
+                  lat={data.lat}
+                  lng={data.lng}
+                  {...(data.featureProperties !== undefined && {
+                    featureProperties: data.featureProperties,
+                  })}
+                />
+              </div>
+            </>
+          );
+        })()}
     </aside>
   );
 }

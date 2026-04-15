@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { LAYERS } from "@/lib/layers";
-import { LandPriceProperties } from "@/lib/api/schemas/land-prices";
 import {
   FloodProperties,
   MedicalProperties,
@@ -8,6 +6,8 @@ import {
   SteepSlopeProperties,
   ZoningProperties,
 } from "@/lib/api/schemas/area-data";
+import { LandPriceProperties } from "@/lib/api/schemas/land-prices";
+import { LAYERS } from "@/lib/layers";
 
 const SCHEMA_MAP: Record<string, Record<string, unknown>> = {
   land_price_ts: LandPriceProperties.shape,

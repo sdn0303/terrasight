@@ -19,10 +19,7 @@ interface Props {
  *
  * The value is used directly in interpolate expressions for color and extrusion height.
  */
-const DEPTH_RANK_EXPR = [
-  "get",
-  "depth_rank",
-] as unknown as ["get", string];
+const DEPTH_RANK_EXPR = ["get", "depth_rank"] as unknown as ["get", string];
 
 export function FloodLayer({ data, visible }: Props) {
   if (!visible) return null;

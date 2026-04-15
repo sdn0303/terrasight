@@ -56,11 +56,7 @@ export function TransactionDetail({ featureProperties }: Props) {
             className="rounded-full flex items-center justify-center w-12 h-12"
             style={{ background: "var(--panel-hover-bg)" }}
           >
-            <span
-              className="text-xl"
-              role="img"
-              aria-label="construction"
-            >
+            <span className="text-xl" role="img" aria-label="construction">
               🔨
             </span>
           </div>

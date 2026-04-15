@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { queryKeys } from "@/lib/query-keys";
 import { LandPriceTimeSeriesResponse } from "@/lib/api/schemas/land-prices";
+import { queryKeys } from "@/lib/query-keys";
 import { createQueryWrapper } from "./test-utils";
 
 // ─── Mocks ───────────────────────────────────────────
@@ -306,4 +306,3 @@ describe("useLandPrices", () => {
 // LandPriceExtrusionLayer tests require react-map-gl/mapbox subpath
 // which is not resolvable in the vitest jsdom environment.
 // Component is verified via integration test instead.
-

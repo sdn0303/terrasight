@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { layerResponse } from "@/lib/schemas";
 import { LandPriceProperties } from "@/lib/api/schemas/land-prices";
+import { layerResponse } from "@/lib/schemas";
 
 export const ZoningProperties = z.object({
   id: z.number(),

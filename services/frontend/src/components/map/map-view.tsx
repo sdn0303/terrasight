@@ -2,6 +2,7 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
+import type { Map as MapboxMap } from "mapbox-gl";
 import {
   type ReactNode,
   useCallback,
@@ -15,7 +16,6 @@ import type {
   ViewStateChangeEvent,
 } from "react-map-gl/mapbox";
 import { Map as MapGL, NavigationControl } from "react-map-gl/mapbox";
-import type { Map as MapboxMap } from "mapbox-gl";
 import type { BBox } from "@/lib/api";
 import { DEBOUNCE_MS } from "@/lib/constants";
 import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
@@ -93,121 +93,127 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
     [onFeatureClick],
   );
 
-  const handleLoad = useCallback((e: MapEvent) => {
-    const map = e.target;
-    mapRef.current = map;
+  const handleLoad = useCallback(
+    (e: MapEvent) => {
+      const map = e.target;
+      mapRef.current = map;
 
-    // Emit initial real bbox so queries don't rely on the center+zoom approximation
-    const bounds = map.getBounds();
-    if (bounds) {
-      onMoveEnd?.({
-        south: bounds.getSouth(),
-        west: bounds.getWest(),
-        north: bounds.getNorth(),
-        east: bounds.getEast(),
-      });
-    }
-
-    // ─── CRITICAL GAP FIX: try/catch wrapper for addSource ───
-    // Protects against malformed data or duplicate source IDs
-    try {
-      map.addSource("terrain-dem", {
-        type: "raster-dem",
-        tiles: [
-          "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
-        ],
-        tileSize: 256,
-        maxzoom: 15,
-        encoding: "terrarium",
-      });
-
-      map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
-    } catch (err) {
-      log.error({ err }, "failed to add terrain source");
-    }
-
-    // Add 3D building extrusion layer using CARTO vector tiles
-    try {
-      const style = map.getStyle();
-      const layers = style.layers ?? [];
-      const hasBuildingLayer = layers.some(
-        (l) =>
-          l.id === "building" ||
-          ("source-layer" in l && l["source-layer"] === "building"),
-      );
-
-      if (!hasBuildingLayer) {
-        const labelLayerId = layers.find(
-          (l) =>
-            l.type === "symbol" &&
-            "source-layer" in l &&
-            typeof l["source-layer"] === "string" &&
-            l["source-layer"].includes("place"),
-        )?.id;
-
-        map.addLayer(
-          {
-            id: "3d-buildings",
-            type: "fill-extrusion",
-            source: "carto",
-            "source-layer": "building",
-            filter: ["==", ["geometry-type"], "Polygon"],
-            paint: {
-              "fill-extrusion-color": "#1e1e2e",
-              "fill-extrusion-height": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                14,
-                0,
-                16,
-                ["coalesce", ["get", "render_height"], ["get", "height"], 10],
-              ],
-              "fill-extrusion-base": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                14,
-                0,
-                16,
-                [
-                  "coalesce",
-                  ["get", "render_min_height"],
-                  ["get", "min_height"],
-                  0,
-                ],
-              ],
-              "fill-extrusion-opacity": 0.7,
-            },
-          },
-          labelLayerId,
-        );
+      // Emit initial real bbox so queries don't rely on the center+zoom approximation
+      const bounds = map.getBounds();
+      if (bounds) {
+        onMoveEnd?.({
+          south: bounds.getSouth(),
+          west: bounds.getWest(),
+          north: bounds.getNorth(),
+          east: bounds.getEast(),
+        });
       }
-    } catch (err) {
-      log.error({ err }, "failed to add 3D buildings layer");
-    }
 
-    // ─── WebGL context lost recovery ───
-    const canvas = map.getCanvas();
-    const handleContextLost = (event: Event) => {
-      event.preventDefault();
-      log.warn("webgl context lost — attempting recovery");
-      setWebglLost(true);
-    };
-    const handleContextRestored = () => {
-      log.info("webgl context restored");
-      setWebglLost(false);
-    };
+      // ─── CRITICAL GAP FIX: try/catch wrapper for addSource ───
+      // Protects against malformed data or duplicate source IDs
+      try {
+        map.addSource("terrain-dem", {
+          type: "raster-dem",
+          tiles: [
+            "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
+          ],
+          tileSize: 256,
+          maxzoom: 15,
+          encoding: "terrarium",
+        });
 
-    canvas.addEventListener("webglcontextlost", handleContextLost);
-    canvas.addEventListener("webglcontextrestored", handleContextRestored);
+        map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
+      } catch (err) {
+        log.error({ err }, "failed to add terrain source");
+      }
 
-    // Cleanup: remove listeners when map is unmounted
-    return () => {
-      canvas.removeEventListener("webglcontextlost", handleContextLost);
-      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
-    };
-  }, []);
+      // Add 3D building extrusion layer using CARTO vector tiles
+      try {
+        const style = map.getStyle();
+        const layers = style.layers ?? [];
+        const hasBuildingLayer = layers.some(
+          (l) =>
+            l.id === "building" ||
+            ("source-layer" in l && l["source-layer"] === "building"),
+        );
+
+        if (!hasBuildingLayer) {
+          const labelLayerId = layers.find(
+            (l) =>
+              l.type === "symbol" &&
+              "source-layer" in l &&
+              typeof l["source-layer"] === "string" &&
+              l["source-layer"].includes("place"),
+          )?.id;
+
+          map.addLayer(
+            {
+              id: "3d-buildings",
+              type: "fill-extrusion",
+              source: "carto",
+              "source-layer": "building",
+              filter: ["==", ["geometry-type"], "Polygon"],
+              paint: {
+                "fill-extrusion-color": "#1e1e2e",
+                "fill-extrusion-height": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  14,
+                  0,
+                  16,
+                  ["coalesce", ["get", "render_height"], ["get", "height"], 10],
+                ],
+                "fill-extrusion-base": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  14,
+                  0,
+                  16,
+                  [
+                    "coalesce",
+                    ["get", "render_min_height"],
+                    ["get", "min_height"],
+                    0,
+                  ],
+                ],
+                "fill-extrusion-opacity": 0.7,
+              },
+            },
+            labelLayerId,
+          );
+        }
+      } catch (err) {
+        log.error({ err }, "failed to add 3D buildings layer");
+      }
+
+      // ─── WebGL context lost recovery ───
+      const canvas = map.getCanvas();
+      const handleContextLost = (event: Event) => {
+        event.preventDefault();
+        log.warn("webgl context lost — attempting recovery");
+        setWebglLost(true);
+      };
+      const handleContextRestored = () => {
+        log.info("webgl context restored");
+        setWebglLost(false);
+      };
+
+      canvas.addEventListener("webglcontextlost", handleContextLost);
+      canvas.addEventListener("webglcontextrestored", handleContextRestored);
+
+      // Cleanup: remove listeners when map is unmounted
+      return () => {
+        canvas.removeEventListener("webglcontextlost", handleContextLost);
+        canvas.removeEventListener(
+          "webglcontextrestored",
+          handleContextRestored,
+        );
+      };
+    },
+    [onMoveEnd],
+  );
 
   const handleForceReload = useCallback(() => {
     if (mapRef.current) {

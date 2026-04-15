@@ -32,16 +32,23 @@ export function computeLandPriceStats(
 
   const sum = prices.reduce((s, p) => s + p, 0);
   const mid = Math.floor(prices.length / 2);
+
+  const midLow = prices[mid - 1];
+  const midVal = prices[mid];
+  if (midVal === undefined) return empty;
+
   const median =
-    prices.length % 2 === 0
-      ? (prices[mid - 1]! + prices[mid]!) / 2
-      : prices[mid]!;
+    prices.length % 2 === 0 ? ((midLow ?? midVal) + midVal) / 2 : midVal;
+
+  const minVal = prices[0];
+  const maxVal = prices[prices.length - 1];
+  if (minVal === undefined || maxVal === undefined) return empty;
 
   return {
     avg_per_sqm: Math.round(sum / prices.length),
     median_per_sqm: Math.round(median),
-    min_per_sqm: prices[0]!,
-    max_per_sqm: prices[prices.length - 1]!,
+    min_per_sqm: minVal,
+    max_per_sqm: maxVal,
     count: prices.length,
   };
 }

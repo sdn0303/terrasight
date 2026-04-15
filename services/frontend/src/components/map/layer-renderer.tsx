@@ -1,7 +1,6 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import { useMemo } from "react";
 import { AreaHighlight } from "@/components/map/area-highlight";
 import {
   AdminBoundaryLayer,
@@ -116,13 +115,9 @@ export function LayerRenderer({
     visibleLayers.has(id) || visibleLayerIds.has(id);
 
   // Compute visible static layer IDs for batched hook
-  const visibleStaticIds = useMemo(
-    () =>
-      staticLayers
-        .filter((l) => isVisible(l.id) && l.id !== "population_mesh")
-        .map((l) => l.id),
-    [staticLayers, visibleLayers, visibleLayerIds],
-  );
+  const visibleStaticIds = staticLayers
+    .filter((l) => isVisible(l.id) && l.id !== "population_mesh")
+    .map((l) => l.id);
 
   // Single batched query for all visible static layers
   const staticLayerData = useVisibleStaticLayers(visibleStaticIds);
