@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { MapLayers } from "@/components/map/map-layers";
 import { MapView } from "@/components/map/map-view";
@@ -12,7 +12,9 @@ export default function Home() {
   return (
     <AppShell>
       <MapView onMoveEnd={handleMoveEnd}>
-        <MapLayers bbox={bbox} />
+        <Suspense fallback={null}>
+          <MapLayers bbox={bbox} />
+        </Suspense>
       </MapView>
       <OpportunitiesTable />
     </AppShell>
