@@ -9,16 +9,16 @@ export function useMapInteraction() {
   const selectFeature = useMapStore((s) => s.selectFeature);
   const selectArea = useMapStore((s) => s.selectArea);
   const setAnalysisPoint = useMapStore((s) => s.setAnalysisPoint);
-  const setInsight = useUIStore((s) => s.setInsight);
+  const openLeftPanel = useUIStore((s) => s.openLeftPanel);
 
   const handleFeatureClick = useCallback(
     (e: MapMouseEvent) => {
       const feature = e.features?.[0];
 
-      // Progressive disclosure: click opens the insight drawer for the
+      // Progressive disclosure: click opens the left panel for the
       // feature. Pre-Phase-6 this branched on an `explore` vs `compare`
       // app mode; compare is now driven by the OpportunitiesSheet
-      // checkbox column, so map clicks always take the drawer path.
+      // checkbox column, so map clicks always take the panel path.
       if (feature) {
         const layerId = feature.layer?.id;
         if (
@@ -49,16 +49,16 @@ export function useMapInteraction() {
           lng: e.lngLat.lng,
           ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
-        setInsight({
-          kind: "point",
+        openLeftPanel({
           lat: e.lngLat.lat,
           lng: e.lngLat.lng,
+          ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
       } else {
         selectFeature(null);
       }
     },
-    [selectArea, selectFeature, setAnalysisPoint, setInsight],
+    [selectArea, selectFeature, setAnalysisPoint, openLeftPanel],
   );
 
   return { handleFeatureClick };

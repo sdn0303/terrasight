@@ -1,19 +1,19 @@
 import { useMunicipalities } from "@/features/municipalities/api/use-municipalities";
 import { useTransactionSummary } from "@/features/transactions/api/use-transaction-summary";
-import { useDataModeStore } from "@/stores/data-mode-store";
 import { useMapStore } from "@/stores/map-store";
 import { usePrefectureStore } from "@/stores/prefecture-store";
+import { useUIStore } from "@/stores/ui-store";
 
 export function MunicipalityList() {
   const prefCode = usePrefectureStore((s) => s.selectedPrefCode);
-  const dataMode = useDataModeStore((s) => s.mode);
+  const activeTheme = useUIStore((s) => s.activeTheme);
   const {
     data: municipalities,
     isLoading,
     isError,
   } = useMunicipalities(prefCode);
   const { data: transactionSummary } = useTransactionSummary(
-    dataMode === "transactions" ? prefCode : null,
+    activeTheme === "transactions" ? prefCode : null,
   );
   const selectArea = useMapStore((s) => s.selectArea);
   const setViewState = useMapStore((s) => s.setViewState);
@@ -46,9 +46,9 @@ export function MunicipalityList() {
       aria-label="市区町村一覧"
     >
       {municipalities.map((m) => {
-        // DataMode "transactions" 時の取引件数表示
+        // "transactions" テーマ時の取引件数表示
         const txCount =
-          dataMode === "transactions"
+          activeTheme === "transactions"
             ? (transactionSummary?.find((t) => t.city_code === m.city_code)
                 ?.tx_count ?? null)
             : null;

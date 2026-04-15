@@ -21,5 +21,10 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
+    alias: {
+      // react-map-gl/mapbox is a subpath export not exposed in the test
+      // environment. Alias it to the root package so vi.mock intercepts it.
+      "react-map-gl/mapbox": "react-map-gl",
+    },
   },
 });

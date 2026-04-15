@@ -1,22 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { AxisBreakdown } from "@/components/insight/axis-breakdown";
-import { InfraTab } from "@/components/insight/infra-tab";
-import { IntelTab } from "@/components/insight/intel-tab";
-import { RiskTab } from "@/components/insight/risk-tab";
 import { ScoreHeroCard } from "@/components/insight/score-hero-card";
-import { TrendTab } from "@/components/insight/trend-tab";
-
-function renderWithQuery(ui: ReactNode) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
-  );
-}
 
 describe("ScoreHeroCard", () => {
   it("renders the TLS score big and the Top X% pill", () => {
@@ -111,39 +96,5 @@ describe("AxisBreakdown", () => {
     expect(screen.getByText("84")).toBeInTheDocument();
     expect(screen.getByText("68")).toBeInTheDocument();
     expect(screen.getByText("79")).toBeInTheDocument();
-  });
-});
-
-describe("IntelTab", () => {
-  it("renders loading state before score data arrives", () => {
-    renderWithQuery(<IntelTab lat={35.68} lng={139.76} />);
-    expect(
-      screen.getByRole("status", { name: /loading/i }),
-    ).toBeInTheDocument();
-  });
-});
-
-describe("TrendTab", () => {
-  it("renders the Price Trend wrapper heading", () => {
-    renderWithQuery(<TrendTab lat={35.68} lng={139.76} />);
-    expect(screen.getByText(/Price Trend/i)).toBeInTheDocument();
-  });
-});
-
-describe("RiskTab", () => {
-  it("renders loading state before score data arrives", () => {
-    renderWithQuery(<RiskTab lat={35.68} lng={139.76} />);
-    expect(
-      screen.getByRole("status", { name: /loading/i }),
-    ).toBeInTheDocument();
-  });
-});
-
-describe("InfraTab", () => {
-  it("renders loading state before score data arrives", () => {
-    renderWithQuery(<InfraTab lat={35.68} lng={139.76} />);
-    expect(
-      screen.getByRole("status", { name: /loading/i }),
-    ).toBeInTheDocument();
   });
 });

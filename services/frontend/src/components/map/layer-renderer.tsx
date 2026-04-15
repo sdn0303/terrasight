@@ -3,7 +3,6 @@
 import type { FeatureCollection } from "geojson";
 import { useMemo } from "react";
 import { AreaHighlight } from "@/components/map/area-highlight";
-import { LandPriceYearSlider } from "@/components/map/land-price-year-slider";
 import {
   AdminBoundaryLayer,
   DIDLayer,
@@ -28,7 +27,6 @@ import {
   ZoningLayer,
 } from "@/components/map/layers";
 import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
-import { YearSlider } from "@/components/map/year-slider";
 import { useThemeLayers } from "@/hooks/use-theme-layers";
 import { useVisibleStaticLayers } from "@/hooks/use-visible-static-layers";
 import { canonicalLayerId } from "@/lib/layer-ids";
@@ -79,13 +77,8 @@ interface LayerRendererProps {
   areaData: Record<string, unknown> | null;
   landPriceData: FeatureCollection;
   isLandPriceFetching: boolean;
-  isLandPriceError: boolean;
-  isZoomTooLow: boolean;
   populationYear: number;
-  setPopulationYear: (year: number) => void;
   landPriceYear: number;
-  setLandPriceYear: (year: number | null) => void;
-  landPriceFeatureCount?: number;
 }
 
 export function LayerRenderer({
@@ -95,13 +88,8 @@ export function LayerRenderer({
   areaData,
   landPriceData,
   isLandPriceFetching,
-  isLandPriceError,
-  isZoomTooLow,
   populationYear,
-  setPopulationYear,
   landPriceYear,
-  setLandPriceYear,
-  landPriceFeatureCount,
 }: LayerRendererProps) {
   const { visibleLayerIds } = useThemeLayers();
 
@@ -173,23 +161,6 @@ export function LayerRenderer({
         );
       })}
 
-      <YearSlider
-        value={populationYear}
-        onChange={setPopulationYear}
-        visible={isVisible("population_mesh")}
-      />
-
-      <LandPriceYearSlider
-        value={landPriceYear}
-        onChange={setLandPriceYear}
-        visible={isVisible("land_price_ts")}
-        isFetching={isLandPriceFetching}
-        isError={isLandPriceError}
-        isZoomTooLow={isZoomTooLow}
-        {...(landPriceFeatureCount !== undefined
-          ? { featureCount: landPriceFeatureCount }
-          : {})}
-      />
     </>
   );
 }

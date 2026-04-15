@@ -23,11 +23,11 @@ const L3_MIN_ZOOM = 12;
  */
 export function useNavigationLevel(): NavigationLevel {
   const zoom = useMapStore((s) => s.viewState.zoom);
-  const insight = useUIStore((s) => s.insight);
+  const leftPanel = useUIStore((s) => s.leftPanel);
   const selectedPref = usePrefectureStore((s) => s.selectedPrefCode);
 
-  // L4 takes priority when insight is open
-  if (insight !== null) {
+  // L4 takes priority when the left panel is open
+  if (leftPanel !== null) {
     return "L4";
   }
 

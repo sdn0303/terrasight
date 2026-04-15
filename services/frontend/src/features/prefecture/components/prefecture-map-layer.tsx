@@ -12,8 +12,6 @@ import {
   CHOROPLETH_LINE_WIDTH,
   SCORE_PALETTE,
 } from "@/lib/map-colors";
-import type { DataMode } from "@/stores/data-mode-store";
-import { useDataModeStore } from "@/stores/data-mode-store";
 import { useMapStore } from "@/stores/map-store";
 import { usePrefectureStore } from "@/stores/prefecture-store";
 
@@ -29,29 +27,12 @@ import { usePrefectureStore } from "@/stores/prefecture-store";
 //         cityName  — ward/city name for label layer
 //         score     — 0.0–1.0 normalised TLS composite score (may be absent)
 
-/** Score property field per DataMode.
+/** Score property field used for choropleth fill colour.
  *
- * TODO: Extend this map when per-mode score fields are added to the pipeline.
- *       For now every mode falls back to the generic "score" property.
+ * TODO: Extend when per-theme score fields are added to the pipeline.
+ *       For now every theme falls back to the generic "score" property.
  */
-function scoreFieldForMode(mode: DataMode): string {
-  switch (mode) {
-    case "tls":
-      return "score";
-    case "land-price":
-      return "score";
-    case "yield":
-      return "score";
-    case "risk":
-      return "score";
-    case "population":
-      return "score";
-    case "transactions":
-      return "score";
-    case "hazard":
-      return "score";
-  }
-}
+const SCORE_FIELD = "score";
 
 interface PrefectureMapLayerProps {
   visible?: boolean;
@@ -101,17 +82,15 @@ export function PrefectureMapLayer({
   visible = true,
 }: PrefectureMapLayerProps) {
   const { data } = useStaticLayer("admin-boundary", visible);
-  const dataMode = useDataModeStore((s) => s.mode);
 
-  // Build the fill-color MapLibre expression based on the active DataMode.
+  // Build the fill-color MapLibre expression based on the active theme.
   // The interpolation maps a 0–1 normalised score to bad→mid→good colours.
   const fillColor =
     useMemo((): DataDrivenPropertyValueSpecification<string> => {
-      const field = scoreFieldForMode(dataMode);
       return [
         "interpolate",
         ["linear"],
-        ["coalesce", ["get", field], 0.5],
+        ["coalesce", ["get", SCORE_FIELD], 0.5],
         0.0,
         SCORE_PALETTE.bad,
         0.5,
@@ -119,7 +98,7 @@ export function PrefectureMapLayer({
         1.0,
         SCORE_PALETTE.good,
       ];
-    }, [dataMode]);
+    }, []);
 
   // Filter to prefecture-level features only.
   // TODO: Confirm "level" field name and "prefecture" value against real data.

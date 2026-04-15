@@ -7,7 +7,7 @@ import { LandPriceDetail } from "@/components/detail/land-price-detail";
 import { ScoreDetail } from "@/components/detail/score-detail";
 import { StationDetail } from "@/components/detail/station-detail";
 import { TransactionDetail } from "@/components/detail/transaction-detail";
-import { LEFT_LEFT_PANEL_WIDTH, SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
+import { LEFT_PANEL_WIDTH, SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from "@/lib/layout";
 import { THEMES, type ThemeId } from "@/lib/theme-definitions";
 import { useUIStore } from "@/stores/ui-store";
 
