@@ -16,6 +16,7 @@ import type {
   ViewStateChangeEvent,
 } from "react-map-gl/mapbox";
 import { Map as MapGL, NavigationControl } from "react-map-gl/mapbox";
+import { useMapUrlState } from "@/hooks/use-map-url-state";
 import type { BBox } from "@/lib/api";
 import { DEBOUNCE_MS } from "@/lib/constants";
 import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
@@ -41,6 +42,7 @@ interface MapViewProps {
 const WEBGL_RECOVERY_TIMEOUT_MS = 5000;
 
 export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
+  useMapUrlState();
   const [mounted, setMounted] = useState(false);
   const [webglLost, setWebglLost] = useState(false);
   const { viewState, setViewState } = useMapStore();
@@ -114,12 +116,9 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
       try {
         map.addSource("terrain-dem", {
           type: "raster-dem",
-          tiles: [
-            "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
-          ],
-          tileSize: 256,
-          maxzoom: 15,
-          encoding: "terrarium",
+          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+          tileSize: 512,
+          maxzoom: 14,
         });
 
         map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });

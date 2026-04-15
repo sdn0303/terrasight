@@ -11,7 +11,7 @@ export function App() {
       <NuqsAdapter>
         <Providers>
           <TooltipProvider>
-            <Suspense>
+            <Suspense fallback={null}>
               <Home />
             </Suspense>
           </TooltipProvider>
