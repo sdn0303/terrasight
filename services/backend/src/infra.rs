@@ -16,6 +16,7 @@
 //! | [`pg_tls_repository`] | [`TlsRepository`](crate::domain::repository::TlsRepository) |
 //! | [`pg_trend_repository`] | [`TrendRepository`](crate::domain::repository::TrendRepository) |
 //! | [`pg_admin_area_stats_repository`] | [`AdminAreaStatsRepository`](crate::domain::repository::AdminAreaStatsRepository) |
+//! | [`pg_aggregation_repository`] | [`AggregationRepository`](crate::domain::repository::AggregationRepository) |
 //! | [`pg_health_repository`] | [`HealthRepository`](crate::domain::repository::HealthRepository) |
 //! | [`pg_appraisal_repository`] | [`AppraisalRepository`](crate::domain::repository::AppraisalRepository) |
 //! | [`pg_municipality_repository`] | [`MunicipalityRepository`](crate::domain::repository::MunicipalityRepository) |
@@ -31,6 +32,7 @@ pub(crate) mod geo_convert;
 pub(crate) mod map_db_err;
 pub(crate) mod opportunities_cache;
 pub(crate) mod pg_admin_area_stats_repository;
+pub(crate) mod pg_aggregation_repository;
 pub(crate) mod pg_appraisal_repository;
 pub(crate) mod pg_area_repository;
 pub(crate) mod pg_health_repository;

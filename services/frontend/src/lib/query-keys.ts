@@ -2,7 +2,7 @@ import type { BBox } from "@/stores/types";
 
 /** Serialize BBox as stable tuple for React Query deep equality */
 function bboxKey(bbox: BBox): [number, number, number, number] {
-	return [bbox.south, bbox.west, bbox.north, bbox.east];
+  return [bbox.south, bbox.west, bbox.north, bbox.east];
 }
 
 export const queryKeys = {
@@ -28,9 +28,12 @@ export const queryKeys = {
   },
   landPrices: {
     all: ["land-prices"] as const,
-    byYear: (bbox: BBox, year: number) => ["land-prices", ...bboxKey(bbox), year] as const,
+    byYear: (bbox: BBox, year: number) =>
+      ["land-prices", ...bboxKey(bbox), year] as const,
     allYears: (bbox: BBox, fromYear: number, toYear: number) =>
       ["land-prices", "all-years", ...bboxKey(bbox), fromYear, toYear] as const,
+    aggregation: (bbox: BBox) =>
+      ["land-prices", "aggregation", ...bboxKey(bbox)] as const,
   },
   areaStats: {
     all: ["area-stats"] as const,
@@ -54,6 +57,10 @@ export const queryKeys = {
   transactionSummary: {
     all: ["transaction-summary"] as const,
     byPref: (prefCode: string) => ["transaction-summary", prefCode] as const,
+  },
+  transactions: {
+    aggregation: (bbox: BBox) =>
+      ["transactions", "aggregation", ...bboxKey(bbox)] as const,
   },
   municipalities: {
     all: ["municipalities"] as const,

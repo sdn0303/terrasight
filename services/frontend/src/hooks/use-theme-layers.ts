@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useUIStore } from "@/stores/ui-store";
 import type { ThemeId } from "@/lib/theme-definitions";
+import { useUIStore } from "@/stores/ui-store";
 
 /**
  * Maps each theme to its Mapbox layer IDs.
@@ -8,7 +8,7 @@ import type { ThemeId } from "@/lib/theme-definitions";
  * See docs/designs/map-visualization-spec.md for layer style details.
  */
 const THEME_LAYERS: Record<ThemeId, string[]> = {
-  "land-price": ["land_price_polygon"],
+  "land-price": ["land_price_polygon", "land_price_polygon_label"],
   hazard: [
     "flood",
     "flood_history",
@@ -16,7 +16,7 @@ const THEME_LAYERS: Record<ThemeId, string[]> = {
     "landslide",
     "liquefaction",
   ],
-  transactions: ["transaction_polygon"],
+  transactions: ["transaction_polygon", "transaction_polygon_label"],
   station: ["station", "railway"],
   score: [],
 };

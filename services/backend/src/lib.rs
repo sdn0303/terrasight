@@ -27,12 +27,14 @@
 //! | `GET` | `/api/v1/area-stats` | `get_area_stats` |
 //! | `GET` | `/api/v1/land-prices` | `get_land_prices` |
 //! | `GET` | `/api/v1/land-prices/all-years` | `get_land_prices_by_year_range` |
+//! | `GET` | `/api/v1/land-prices/aggregation` | `get_land_price_aggregation` |
 //! | `GET` | `/api/v1/opportunities` | `get_opportunities` |
 //! | `GET` | `/api/v1/score` | `compute_tls` |
 //! | `GET` | `/api/v1/stats` | `get_stats` |
 //! | `GET` | `/api/v1/trend` | `get_trend` |
 //! | `GET` | `/api/v1/transactions/summary` | `get_transaction_summary` |
 //! | `GET` | `/api/v1/transactions` | `get_transactions` |
+//! | `GET` | `/api/v1/transactions/aggregation` | `get_transaction_aggregation` |
 //! | `GET` | `/api/v1/appraisals` | `get_appraisals` |
 //! | `GET` | `/api/v1/municipalities` | `get_municipalities` |
 
@@ -76,6 +78,10 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
             get(handler::land_price_by_year_range::get_land_prices_by_year_range),
         )
         .route(
+            "/api/v1/land-prices/aggregation",
+            get(handler::land_price_aggregation::get_land_price_aggregation),
+        )
+        .route(
             "/api/v1/opportunities",
             get(handler::opportunities::get_opportunities),
         )
@@ -89,6 +95,10 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
         .route(
             "/api/v1/transactions",
             get(handler::transactions::get_transactions),
+        )
+        .route(
+            "/api/v1/transactions/aggregation",
+            get(handler::transaction_aggregation::get_transaction_aggregation),
         )
         .route(
             "/api/v1/appraisals",
