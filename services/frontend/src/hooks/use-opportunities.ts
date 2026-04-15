@@ -30,14 +30,7 @@ export interface FetchOpportunitiesParams {
  * trigger a refetch.
  */
 export function useOpportunities(enabled: boolean) {
-  // Subscribe to viewState so the component re-renders on pan/zoom, then
-  // call getBBox() unconditionally. The query key serialization handles
-  // structural comparison: bbox identity changes are harmless.
-  const viewState = useMapStore((s) => s.viewState);
-  const bbox = useMapStore.getState().getBBox();
-  // `viewState` is intentionally referenced to force re-subscription even
-  // though the derived bbox is read via `getState()`.
-  void viewState;
+  const bbox = useMapStore((s) => s.getBBox());
 
   const tlsMin = useFilterStore((s) => s.criteria.tlsMin);
   const riskMax = useFilterStore((s) => s.criteria.riskMax);

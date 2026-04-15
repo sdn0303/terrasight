@@ -7,6 +7,7 @@ import { LayerRenderer } from "@/components/map/layer-renderer";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useLandPricesAllYears } from "@/features/land-prices/api/use-land-prices-all-years";
 import type { BBox } from "@/lib/api";
+import { LAND_PRICE_FROM_YEAR, LAND_PRICE_TO_YEAR } from "@/lib/constants";
 import { LAYERS } from "@/lib/layers";
 import { useMapStore } from "@/stores/map-store";
 
@@ -54,14 +55,14 @@ export const MapLayers = memo(function MapLayers({
 
   const { data: areaData } = useAreaData(bbox, apiLayerIds, zoom);
   const { data: landPriceData, isFetching: isLandPriceFetching } =
-    useLandPricesAllYears(bbox, 2020, 2026, zoom);
+    useLandPricesAllYears(bbox, LAND_PRICE_FROM_YEAR, LAND_PRICE_TO_YEAR, zoom);
 
   return (
     <LayerRenderer
       visibleLayers={visibleLayers}
       staticLayers={staticLayers}
       apiLayers={apiLayers}
-      areaData={areaData as Record<string, unknown> | null}
+      areaData={areaData ?? null}
       landPriceData={landPriceData ?? EMPTY_FC}
       isLandPriceFetching={isLandPriceFetching}
       populationYear={populationYear}

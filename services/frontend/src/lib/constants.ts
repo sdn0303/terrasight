@@ -8,3 +8,8 @@ export const MAP_CONFIG = {
 
 export const DEBOUNCE_MS = 300;
 export const BBOX_MAX_DEGREES = 0.5;
+
+/** Inclusive lower bound for land-prices/all-years queries. */
+export const LAND_PRICE_FROM_YEAR = 2020;
+/** Inclusive upper bound for land-prices/all-years queries. */
+export const LAND_PRICE_TO_YEAR = 2026;

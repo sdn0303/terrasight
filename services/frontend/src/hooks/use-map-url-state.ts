@@ -68,7 +68,7 @@ export function useMapUrlState() {
     if (theme !== null && isValidThemeId(theme)) {
       setActiveTheme(theme);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Write to URL on state change
   useEffect(() => {

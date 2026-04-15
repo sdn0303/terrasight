@@ -9,8 +9,13 @@ export const queryKeys = {
   health: ["health"] as const,
   areaData: {
     all: ["area-data"] as const,
-    bbox: (bbox: BBox, layers: string[]) =>
-      ["area-data", ...bboxKey(bbox), [...layers].sort().join(",")] as const,
+    bbox: (bbox: BBox, layers: string[], zoom?: number) =>
+      [
+        "area-data",
+        ...bboxKey(bbox),
+        [...layers].sort().join(","),
+        zoom,
+      ] as const,
   },
   score: {
     all: ["score"] as const,
