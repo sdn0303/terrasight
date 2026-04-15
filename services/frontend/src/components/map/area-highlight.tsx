@@ -1,6 +1,6 @@
 "use client";
 
-import { Layer } from "react-map-gl/maplibre";
+import { Layer } from "react-map-gl/mapbox";
 import { useMapStore } from "@/stores/map-store";
 
 export function AreaHighlight() {
@@ -8,7 +8,8 @@ export function AreaHighlight() {
 
   if (!selectedArea) return null;
 
-  const sourceId = selectedArea.level === "prefecture" ? "n03-pref" : "n03-muni";
+  const sourceId =
+    selectedArea.level === "prefecture" ? "n03-pref" : "n03-muni";
   const property = selectedArea.level === "prefecture" ? "prefCode" : "code";
 
   return (

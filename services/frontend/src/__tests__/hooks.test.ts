@@ -4,18 +4,12 @@ import { createQueryWrapper } from "./test-utils";
 
 // ─── Mocks ───────────────────────────────────────────
 
-const mockFetchHealth = vi.fn();
-const mockFetchStats = vi.fn();
-const mockFetchScore = vi.fn();
-const mockFetchTrend = vi.fn();
-const mockFetchAreaData = vi.fn();
+const mockTypedGet = vi.fn();
 
 vi.mock("@/lib/api", () => ({
-  fetchHealth: (...args: unknown[]) => mockFetchHealth(...args),
-  fetchStats: (...args: unknown[]) => mockFetchStats(...args),
-  fetchScore: (...args: unknown[]) => mockFetchScore(...args),
-  fetchTrend: (...args: unknown[]) => mockFetchTrend(...args),
-  fetchAreaData: (...args: unknown[]) => mockFetchAreaData(...args),
+  typedGet: (...args: unknown[]) => mockTypedGet(...args),
+  api: {},
+  BBox: {},
 }));
 
 // useSpatialEngineReady returns false so useStats exercises the API fallback path
@@ -93,16 +87,15 @@ const BBOX = { south: 35.6, west: 139.7, north: 35.8, east: 139.9 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockTypedGet.mockReset();
 });
 
 // ─── useHealth ───────────────────────────────────────
 
 describe("useHealth", () => {
   it("fetches and returns health data", async () => {
-    mockFetchHealth.mockResolvedValueOnce(HEALTH_OK);
-    const { useHealth } = await import(
-      "@/features/health/api/use-health"
-    );
+    mockTypedGet.mockResolvedValueOnce(HEALTH_OK);
+    const { useHealth } = await import("@/features/health/api/use-health");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useHealth(), { wrapper });
@@ -112,16 +105,19 @@ describe("useHealth", () => {
   });
 
   it("forwards AbortSignal to fetchHealth", async () => {
-    mockFetchHealth.mockResolvedValueOnce(HEALTH_OK);
-    const { useHealth } = await import(
-      "@/features/health/api/use-health"
-    );
+    mockTypedGet.mockResolvedValueOnce(HEALTH_OK);
+    const { useHealth } = await import("@/features/health/api/use-health");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useHealth(), { wrapper });
 
     await waitFor(() =>
-      expect(mockFetchHealth).toHaveBeenCalledWith(expect.any(AbortSignal)),
+      expect(mockTypedGet).toHaveBeenCalledWith(
+        expect.anything(),
+        "api/v1/health",
+        undefined,
+        expect.any(AbortSignal),
+      ),
     );
   });
 });
@@ -130,10 +126,8 @@ describe("useHealth", () => {
 
 describe("useStats", () => {
   it("fetches stats when bbox is provided", async () => {
-    mockFetchStats.mockResolvedValueOnce(STATS_FIXTURE);
-    const { useStats } = await import(
-      "@/features/stats/api/use-stats"
-    );
+    mockTypedGet.mockResolvedValueOnce(STATS_FIXTURE);
+    const { useStats } = await import("@/features/stats/api/use-stats");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useStats(BBOX, 12), { wrapper });
@@ -143,28 +137,34 @@ describe("useStats", () => {
   });
 
   it("does not fetch when bbox is null (enabled: false)", async () => {
-    const { useStats } = await import(
-      "@/features/stats/api/use-stats"
-    );
+    const { useStats } = await import("@/features/stats/api/use-stats");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useStats(null, 12), { wrapper });
 
     expect(result.current.fetchStatus).toBe("idle");
-    expect(mockFetchStats).not.toHaveBeenCalled();
+    expect(mockTypedGet).not.toHaveBeenCalled();
   });
 
   it("forwards AbortSignal to fetchStats", async () => {
-    mockFetchStats.mockResolvedValueOnce(STATS_FIXTURE);
-    const { useStats } = await import(
-      "@/features/stats/api/use-stats"
-    );
+    mockTypedGet.mockResolvedValueOnce(STATS_FIXTURE);
+    const { useStats } = await import("@/features/stats/api/use-stats");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useStats(BBOX, 12), { wrapper });
 
     await waitFor(() =>
-      expect(mockFetchStats).toHaveBeenCalledWith(BBOX, expect.any(AbortSignal)),
+      expect(mockTypedGet).toHaveBeenCalledWith(
+        expect.anything(),
+        "api/v1/stats",
+        expect.objectContaining({
+          south: String(BBOX.south),
+          west: String(BBOX.west),
+          north: String(BBOX.north),
+          east: String(BBOX.east),
+        }),
+        expect.any(AbortSignal),
+      ),
     );
   });
 });
@@ -173,10 +173,8 @@ describe("useStats", () => {
 
 describe("useScore", () => {
   it("fetches score when lat/lng are provided", async () => {
-    mockFetchScore.mockResolvedValueOnce(SCORE_FIXTURE);
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    mockTypedGet.mockResolvedValueOnce(SCORE_FIXTURE);
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useScore(35.681, 139.767), {
@@ -188,9 +186,7 @@ describe("useScore", () => {
   });
 
   it("does not fetch when lat is null", async () => {
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useScore(null, 139.767), {
@@ -201,9 +197,7 @@ describe("useScore", () => {
   });
 
   it("does not fetch when lng is null", async () => {
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useScore(35.681, null), {
@@ -214,19 +208,21 @@ describe("useScore", () => {
   });
 
   it("forwards AbortSignal to fetchScore", async () => {
-    mockFetchScore.mockResolvedValueOnce(SCORE_FIXTURE);
-    const { useScore } = await import(
-      "@/features/score/api/use-score"
-    );
+    mockTypedGet.mockResolvedValueOnce(SCORE_FIXTURE);
+    const { useScore } = await import("@/features/score/api/use-score");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useScore(35.681, 139.767), { wrapper });
 
     await waitFor(() =>
-      expect(mockFetchScore).toHaveBeenCalledWith(
-        35.681,
-        139.767,
-        "balance",
+      expect(mockTypedGet).toHaveBeenCalledWith(
+        expect.anything(),
+        "api/v1/score",
+        expect.objectContaining({
+          lat: "35.681",
+          lng: "139.767",
+          preset: "balance",
+        }),
         expect.any(AbortSignal),
       ),
     );
@@ -237,10 +233,8 @@ describe("useScore", () => {
 
 describe("useTrend", () => {
   it("fetches trend when lat/lng are provided", async () => {
-    mockFetchTrend.mockResolvedValueOnce(TREND_FIXTURE);
-    const { useTrend } = await import(
-      "@/features/trend/api/use-trend"
-    );
+    mockTypedGet.mockResolvedValueOnce(TREND_FIXTURE);
+    const { useTrend } = await import("@/features/trend/api/use-trend");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useTrend(35.681, 139.767), {
@@ -252,9 +246,7 @@ describe("useTrend", () => {
   });
 
   it("does not fetch when lat is null", async () => {
-    const { useTrend } = await import(
-      "@/features/trend/api/use-trend"
-    );
+    const { useTrend } = await import("@/features/trend/api/use-trend");
     const { wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useTrend(null, 139.767), {
@@ -265,19 +257,17 @@ describe("useTrend", () => {
   });
 
   it("passes years parameter through", async () => {
-    mockFetchTrend.mockResolvedValueOnce(TREND_FIXTURE);
-    const { useTrend } = await import(
-      "@/features/trend/api/use-trend"
-    );
+    mockTypedGet.mockResolvedValueOnce(TREND_FIXTURE);
+    const { useTrend } = await import("@/features/trend/api/use-trend");
     const { wrapper } = createQueryWrapper();
 
     renderHook(() => useTrend(35.681, 139.767, 10), { wrapper });
 
     await waitFor(() =>
-      expect(mockFetchTrend).toHaveBeenCalledWith(
-        35.681,
-        139.767,
-        10,
+      expect(mockTypedGet).toHaveBeenCalledWith(
+        expect.anything(),
+        "api/v1/trend",
+        expect.objectContaining({ lat: "35.681", lng: "139.767", years: "10" }),
         expect.any(AbortSignal),
       ),
     );
@@ -288,17 +278,18 @@ describe("useTrend", () => {
 
 describe("useAreaData", () => {
   it("fetches area data when bbox and layers are provided", async () => {
-    const areaFixture = { landprice: { type: "FeatureCollection", features: [] } };
-    mockFetchAreaData.mockResolvedValueOnce(areaFixture);
+    const areaFixture = {
+      landprice: { type: "FeatureCollection", features: [] },
+    };
+    mockTypedGet.mockResolvedValueOnce(areaFixture);
     const { useAreaData } = await import(
       "@/features/area-data/api/use-area-data"
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(
-      () => useAreaData(BBOX, ["landprice"], 12),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useAreaData(BBOX, ["landprice"], 12), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(areaFixture);
@@ -310,10 +301,9 @@ describe("useAreaData", () => {
     );
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(
-      () => useAreaData(null, ["landprice"], 12),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useAreaData(null, ["landprice"], 12), {
+      wrapper,
+    });
 
     expect(result.current.fetchStatus).toBe("idle");
   });
@@ -332,8 +322,10 @@ describe("useAreaData", () => {
   });
 
   it("forwards AbortSignal to fetchAreaData", async () => {
-    const areaFixture = { landprice: { type: "FeatureCollection", features: [] } };
-    mockFetchAreaData.mockResolvedValueOnce(areaFixture);
+    const areaFixture = {
+      landprice: { type: "FeatureCollection", features: [] },
+    };
+    mockTypedGet.mockResolvedValueOnce(areaFixture);
     const { useAreaData } = await import(
       "@/features/area-data/api/use-area-data"
     );
@@ -342,10 +334,16 @@ describe("useAreaData", () => {
     renderHook(() => useAreaData(BBOX, ["landprice"], 12), { wrapper });
 
     await waitFor(() =>
-      expect(mockFetchAreaData).toHaveBeenCalledWith(
-        BBOX,
-        ["landprice"],
-        12,
+      expect(mockTypedGet).toHaveBeenCalledWith(
+        expect.anything(),
+        "api/v1/area-data",
+        expect.objectContaining({
+          south: String(BBOX.south),
+          west: String(BBOX.west),
+          north: String(BBOX.north),
+          east: String(BBOX.east),
+          layers: "landprice",
+        }),
         expect.any(AbortSignal),
       ),
     );

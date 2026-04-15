@@ -1,9 +1,10 @@
-# lefthook.yml — Git hooks for Rust backend quality gates
+# lefthook.yml — Git hooks for quality gates
 # Install: lefthook install
 
 pre-commit:
   parallel: true
   commands:
+    # ── Rust backend ──────────────────────────────────────────
     rust-fmt:
       root: "services/backend/"
       glob: "*.rs"
@@ -22,15 +23,64 @@ pre-commit:
       run: sqruff lint migrations/
       fail_text: "SQL lint failed — run `sqruff fix migrations/` to fix"
 
+    # ── Frontend ──────────────────────────────────────────────
+    fe-biome:
+      root: "services/frontend/"
+      glob: "*.{ts,tsx,js,jsx}"
+      run: pnpm biome check --no-errors-on-unmatched {staged_files}
+      fail_text: "biome check failed — run `pnpm biome check --write <file>` to fix"
+
+    fe-tsc:
+      root: "services/frontend/"
+      glob: "*.{ts,tsx}"
+      run: pnpm tsc --noEmit
+      fail_text: "TypeScript errors found — fix before committing"
+
+    # ── WASM ──────────────────────────────────────────────────
+    wasm-fmt:
+      root: "services/wasm/"
+      glob: "*.rs"
+      run: cargo fmt --all -- --check
+      fail_text: "wasm cargo fmt failed — run `cargo fmt --all` to fix"
+
+    wasm-clippy:
+      root: "services/wasm/"
+      glob: "*.rs"
+      run: cargo clippy -- -D warnings
+      fail_text: "wasm clippy warnings found — fix before committing"
+
 pre-push:
   parallel: false
   commands:
-    rust-test:
-      root: "services/backend/"
-      run: cargo test --workspace
-      fail_text: "tests failed — fix before pushing"
-
+    # ── Rust backend ──────────────────────────────────────────
     rust-build:
       root: "services/backend/"
+      glob: "*.rs"
       run: cargo build --workspace
-      fail_text: "build failed — fix before pushing"
+      fail_text: "backend build failed — fix before pushing"
+
+    rust-test:
+      root: "services/backend/"
+      glob: "*.rs"
+      run: cargo test --workspace
+      fail_text: "backend tests failed — fix before pushing"
+
+    # ── Frontend ──────────────────────────────────────────────
+    fe-test:
+      root: "services/frontend/"
+      glob: "*.{ts,tsx}"
+      run: pnpm vitest run
+      fail_text: "frontend tests failed — fix before pushing"
+
+    fe-build:
+      root: "services/frontend/"
+      glob: "*.{ts,tsx,css,json}"
+      run: pnpm build
+      fail_text: "frontend build failed — fix before pushing"
+
+    # ── WASM ──────────────────────────────────────────────────
+    wasm-test:
+      root: "services/wasm/"
+      glob: "*.rs"
+      run: cargo test
+      fail_text: "wasm tests failed — fix before pushing"

@@ -1,10 +1,25 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchOpportunities } from "@/lib/api";
+import { type BBox, typedGet } from "@/lib/api";
+import type { OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
+import { OpportunitiesResponse } from "@/lib/api/schemas/opportunities";
 import { queryKeys } from "@/lib/query-keys";
 import { useFilterStore } from "@/stores/filter-store";
 import { useMapStore } from "@/stores/map-store";
+
+export interface FetchOpportunitiesParams {
+  bbox: BBox;
+  limit: number;
+  offset: number;
+  tlsMin?: number;
+  riskMax?: OpportunityRiskLevel;
+  zones?: string[];
+  stationMax?: number;
+  priceMin?: number;
+  priceMax?: number;
+  preset?: string;
+}
 
 /**
  * Fetches opportunities for the current viewport bbox, gated by `enabled`
@@ -57,22 +72,32 @@ export function useOpportunities(enabled: boolean) {
       priceMax: priceMaxFilter,
       preset: presetFilter,
     }),
-    queryFn: ({ signal }) =>
-      fetchOpportunities(
-        {
-          bbox,
-          limit: 50,
-          offset: 0,
-          tlsMin: tlsMinFilter,
-          riskMax: riskMaxFilter,
-          zones: zonesFilter,
-          stationMax: stationMaxFilter,
-          priceMin: priceMinFilter,
-          priceMax: priceMaxFilter,
-          preset: presetFilter,
-        },
+    queryFn: ({ signal }) => {
+      const params: Record<string, string> = {
+        south: String(bbox.south),
+        west: String(bbox.west),
+        north: String(bbox.north),
+        east: String(bbox.east),
+        limit: "50",
+        offset: "0",
+      };
+      if (tlsMinFilter !== undefined) params.tls_min = String(tlsMinFilter);
+      if (riskMaxFilter !== undefined) params.risk_max = riskMaxFilter;
+      if (zonesFilter !== undefined) params.zones = zonesFilter.join(",");
+      if (stationMaxFilter !== undefined)
+        params.station_max = String(stationMaxFilter);
+      if (priceMinFilter !== undefined)
+        params.price_min = String(priceMinFilter);
+      if (priceMaxFilter !== undefined)
+        params.price_max = String(priceMaxFilter);
+      if (presetFilter !== undefined) params.preset = presetFilter;
+      return typedGet(
+        OpportunitiesResponse,
+        "api/v1/opportunities",
+        params,
         signal,
-      ),
+      );
+    },
     enabled,
     staleTime: 60_000,
     retry: 1,

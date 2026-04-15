@@ -1,11 +1,16 @@
-import type { BBox } from "./api";
+import type { BBox } from "@/stores/types";
+
+/** Serialize BBox as stable tuple for React Query deep equality */
+function bboxKey(bbox: BBox): [number, number, number, number] {
+  return [bbox.south, bbox.west, bbox.north, bbox.east];
+}
 
 export const queryKeys = {
   health: ["health"] as const,
   areaData: {
     all: ["area-data"] as const,
     bbox: (bbox: BBox, layers: string[]) =>
-      ["area-data", bbox, [...layers].sort().join(",")] as const,
+      ["area-data", ...bboxKey(bbox), [...layers].sort().join(",")] as const,
   },
   score: {
     all: ["score"] as const,
@@ -14,7 +19,7 @@ export const queryKeys = {
   },
   stats: {
     all: ["stats"] as const,
-    bbox: (bbox: BBox) => ["stats", bbox] as const,
+    bbox: (bbox: BBox) => ["stats", ...bboxKey(bbox)] as const,
   },
   trend: {
     all: ["trend"] as const,
@@ -23,9 +28,12 @@ export const queryKeys = {
   },
   landPrices: {
     all: ["land-prices"] as const,
-    byYear: (bbox: BBox, year: number) => ["land-prices", bbox, year] as const,
+    byYear: (bbox: BBox, year: number) =>
+      ["land-prices", ...bboxKey(bbox), year] as const,
     allYears: (bbox: BBox, fromYear: number, toYear: number) =>
-      ["land-prices", "all-years", bbox, fromYear, toYear] as const,
+      ["land-prices", "all-years", ...bboxKey(bbox), fromYear, toYear] as const,
+    aggregation: (bbox: BBox) =>
+      ["land-prices", "aggregation", ...bboxKey(bbox)] as const,
   },
   areaStats: {
     all: ["area-stats"] as const,
@@ -44,11 +52,16 @@ export const queryKeys = {
         priceMax: number | undefined;
         preset: string | undefined;
       },
-    ) => ["opportunities", "list", bbox, filters] as const,
+    ) => ["opportunities", "list", ...bboxKey(bbox), filters] as const,
   },
   transactionSummary: {
     all: ["transaction-summary"] as const,
     byPref: (prefCode: string) => ["transaction-summary", prefCode] as const,
+  },
+  transactions: {
+    all: ["transactions"] as const,
+    aggregation: (bbox: BBox) =>
+      ["transactions", "aggregation", ...bboxKey(bbox)] as const,
   },
   municipalities: {
     all: ["municipalities"] as const,

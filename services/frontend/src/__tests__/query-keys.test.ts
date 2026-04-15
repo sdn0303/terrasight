@@ -31,7 +31,13 @@ describe("queryKeys", () => {
 
   it("stats.bbox includes the bbox object", () => {
     const bbox = { south: 35.6, west: 139.7, north: 35.8, east: 139.9 };
-    expect(queryKeys.stats.bbox(bbox)).toEqual(["stats", bbox]);
+    expect(queryKeys.stats.bbox(bbox)).toEqual([
+      "stats",
+      bbox.south,
+      bbox.west,
+      bbox.north,
+      bbox.east,
+    ]);
   });
 
   it("trend.coord includes optional years parameter", () => {

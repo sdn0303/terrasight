@@ -1,6 +1,6 @@
 "use client";
 
-import type { TlsResponse } from "@/lib/schemas";
+import type { TlsResponse } from "@/lib/api/schemas/score";
 
 interface InfraProximityProps {
   livabilityAxis: TlsResponse["axes"]["livability"];

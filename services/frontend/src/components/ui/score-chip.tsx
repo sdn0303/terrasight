@@ -1,5 +1,3 @@
-"use client";
-
 import { GLOW_SHADOW, scoreGradient } from "@/lib/theme-tokens";
 
 interface ScoreChipProps {

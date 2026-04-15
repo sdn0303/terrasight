@@ -10,11 +10,15 @@
 //! using the `$2::text IS NULL OR city_code = $2` pattern to avoid dynamic
 //! SQL construction. Results are ordered by `city_code, price_per_sqm DESC`.
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
-use super::map_db_err;
 use crate::domain::error::DomainError;
+use crate::infra::query_helpers::run_query;
+
+const APPRAISAL_QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 use crate::domain::model::{Address, AppraisalDetail, AreaName, CityCode, PrefCode, ZoneCode};
 use crate::domain::repository::AppraisalRepository;
 
@@ -93,8 +97,11 @@ impl AppraisalRepository for PgAppraisalRepository {
         pref_code: &PrefCode,
         city_code: Option<&CityCode>,
     ) -> Result<Vec<AppraisalDetail>, DomainError> {
-        let rows = sqlx::query_as::<_, AppraisalDetailRow>(
-            r#"
+        let rows = run_query(
+            APPRAISAL_QUERY_TIMEOUT,
+            "appraisals query",
+            sqlx::query_as::<_, AppraisalDetailRow>(
+                r#"
             SELECT
                 city_code,
                 city_name,
@@ -115,12 +122,12 @@ impl AppraisalRepository for PgAppraisalRepository {
               AND ($2::text IS NULL OR city_code = $2)
             ORDER BY city_code, price_per_sqm DESC
             "#,
+            )
+            .bind(pref_code.as_str())
+            .bind(city_code.map(CityCode::as_str))
+            .fetch_all(&self.pool),
         )
-        .bind(pref_code.as_str())
-        .bind(city_code.map(CityCode::as_str))
-        .fetch_all(&self.pool)
         .await
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(
                 count = rows.len(),

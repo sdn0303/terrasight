@@ -1,37 +1,107 @@
-FROM node:22-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# -----------------------------------------------------------------------
+# Stage 1: deps — install dependencies (cached separately from source)
+# -----------------------------------------------------------------------
+FROM node:22-slim AS deps
 
-FROM base AS deps
 WORKDIR /app
+
 COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-FROM base AS builder
+RUN corepack enable pnpm && \
+    pnpm install --frozen-lockfile
+
+# -----------------------------------------------------------------------
+# Stage 2: builder — build the Vite SPA
+# -----------------------------------------------------------------------
+FROM node:22-slim AS builder
+
 WORKDIR /app
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
 
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
+# VITE_API_URL is baked into the bundle at build time.
+# In production behind nginx reverse proxy, the SPA uses relative /api paths.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+RUN corepack enable pnpm && \
+    pnpm build
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# -----------------------------------------------------------------------
+# Stage 3: runner — serve static files with nginx
+# -----------------------------------------------------------------------
+FROM nginx:1.27-alpine AS runner
 
-USER nextjs
+LABEL maintainer="terrasight"
+LABEL description="Terrasight frontend — Vite SPA served by nginx"
+LABEL version="0.1.0"
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Custom nginx config for SPA routing + API reverse proxy
+COPY <<'EOF' /etc/nginx/conf.d/terrasight.conf
+server {
+    listen 3000;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Pre-compressed static files: serve .gz directly when available (zero CPU)
+    gzip_static on;
+
+    # Dynamic gzip fallback for non-pre-compressed responses
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml image/svg+xml application/wasm application/octet-stream;
+    gzip_min_length 256;
+
+    # Static assets with long cache
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # FlatGeobuf data files (pre-compressed .gz available)
+    location /data/fgb/ {
+        gzip_static on;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    # WASM files (pre-compressed .gz available)
+    location /wasm/ {
+        gzip_static on;
+        expires 7d;
+        add_header Cache-Control "public";
+        add_header Cross-Origin-Embedder-Policy "require-corp";
+        add_header Cross-Origin-Opener-Policy "same-origin";
+    }
+
+    # API reverse proxy to backend
+    location /api/ {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SPA fallback — all non-file routes serve index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOF
+
+# Copy build output
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# nginx runs as non-root by default in the alpine image (nginx user)
+# Override the default port (80 → 3000) via config above
 
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD ["node", "-e", "fetch('http://localhost:3000').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
-
-CMD ["node", "server.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]

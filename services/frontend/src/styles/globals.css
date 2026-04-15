@@ -1,0 +1,230 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-ds-bg-primary: var(--bg-primary);
+  --color-ds-bg-secondary: var(--bg-secondary);
+  --color-ds-bg-tertiary: var(--bg-tertiary);
+  --color-ds-text-primary: var(--text-primary);
+  --color-ds-text-secondary: var(--text-secondary);
+  --color-ds-text-muted: var(--text-muted);
+  --color-ds-text-heading: var(--text-heading);
+  --color-ds-border-primary: var(--border-primary);
+  --color-ds-accent-primary: var(--accent-primary);
+  --color-ds-accent-cyan: var(--accent-cyan);
+  --color-ds-accent-danger: var(--accent-danger);
+  --color-ds-accent-warning: var(--accent-warning);
+  --color-ds-accent-success: var(--accent-success);
+  --color-ds-hover-accent: var(--hover-accent);
+
+  /* Phase 0/1: Map-canvas shell tokens */
+  --color-mc-card: var(--card-fill);
+  --color-mc-card-solid: var(--card-fill-solid);
+  --color-mc-neutral-0: var(--neutral-0);
+  --color-mc-neutral-50: var(--neutral-50);
+  --color-mc-neutral-100: var(--neutral-100);
+  --color-mc-neutral-200: var(--neutral-200);
+  --color-mc-neutral-400: var(--neutral-400);
+  --color-mc-neutral-500: var(--neutral-500);
+  --color-mc-neutral-600: var(--neutral-600);
+  --color-mc-neutral-700: var(--neutral-700);
+  --color-mc-neutral-900: var(--neutral-900);
+  --color-mc-brand: var(--brand-indigo);
+  --color-mc-brand-violet: var(--brand-violet);
+  --color-mc-brand-cyan: var(--brand-cyan);
+  --color-mc-tint-indigo: var(--tint-indigo);
+  --color-mc-tint-violet: var(--tint-violet);
+  --color-mc-tint-red: var(--tint-red);
+  --color-mc-tint-amber: var(--tint-amber);
+  --color-mc-tint-emerald: var(--tint-emerald);
+}
+
+:root {
+  /* ─── Terrasight Indigo design tokens ─────── */
+  --bg-primary: #0a0a12;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1e1b4b;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --text-heading: #f1f5f9;
+  --border-primary: rgba(99, 102, 241, 0.15);
+  --accent-primary: #818cf8;
+  --accent-secondary: #a78bfa;
+  --accent-cyan: var(--accent-primary);
+  --accent-danger: #e04030;
+  --accent-warning: #ffd000;
+  --accent-success: #10b981;
+  --hover-accent: rgba(99, 102, 241, 0.1);
+  --font-mono: "Geist Mono", monospace, system-ui;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* ─── Sidebar gradient ─────────────────────── */
+  --accent-gradient-start: #1e1b4b;
+  --accent-gradient-end: #0f0d24;
+  --bg-sidebar: linear-gradient(
+    180deg,
+    var(--accent-gradient-start) 0%,
+    var(--accent-gradient-end) 100%
+  );
+  --surface-elevated: rgba(99, 102, 241, 0.05);
+
+  /* ─── Layer color tokens ─────────────────────── */
+  --layer-landprice: #fbbf24;
+  --layer-flood-history: #60a5fa;
+  --layer-did: #a78bfa;
+  --layer-flood: #0ea5e9;
+  --layer-steep-slope: #f97316;
+  --layer-fault: #ef4444;
+  --layer-volcano: #f43f5e;
+  --layer-landform: #d4a574;
+  --layer-geology: #8b7355;
+  --layer-soil: #a0845c;
+  --layer-schools: #34d399;
+  --layer-medical: #2dd4bf;
+  --layer-boundary: #a1a1aa;
+  --layer-zoning: #818cf8;
+  --layer-station: #f472b6;
+  --layer-landslide: #fb923c;
+  --layer-population: #c084fc;
+  --layer-liquefaction: #eab308;
+  --layer-seismic: #ef4444;
+  --layer-railway: #22d3ee;
+
+  /* ─── shadcn/ui theme (indigo dark) ──────────── */
+  --radius: 0.5rem;
+  --background: #0a0a12;
+  --foreground: #e2e8f0;
+  --card: #111827;
+  --card-foreground: #e2e8f0;
+  --popover: #111827;
+  --popover-foreground: #e2e8f0;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #1e1b4b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e1b4b;
+  --muted-foreground: #94a3b8;
+  --accent: rgba(99, 102, 241, 0.1);
+  --accent-foreground: #e2e8f0;
+  --destructive: #e04030;
+  --border: rgba(99, 102, 241, 0.15);
+  --input: rgba(99, 102, 241, 0.15);
+  --ring: #6366f1;
+
+  /* ─── Phase 0/1: Map-canvas design tokens (new shell) ─── */
+  /* Card surfaces — semi-opaque white floating on map canvas */
+  --card-fill: rgba(255, 255, 255, 0.98);
+  --card-fill-solid: #ffffff;
+  --card-ring: rgba(255, 255, 255, 0.5);
+
+  /* Neutrals (shared with Tailwind slate palette) */
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-900: #0f172a;
+
+  /* Brand gradient stops */
+  --brand-indigo: #6366f1;
+  --brand-violet: #8b5cf6;
+  --brand-cyan: #06b6d4;
+  --brand-purple: #a855f7;
+
+  /* Semantic gradient stops */
+  --score-good-start: #10b981;
+  --score-good-end: #059669;
+  --score-mid-start: #f59e0b;
+  --score-mid-end: #d97706;
+  --score-bad-start: #ef4444;
+  --score-bad-end: #dc2626;
+  --signal-hot-start: #f43f5e;
+  --signal-hot-end: #e11d48;
+
+  /* Light tints */
+  --tint-indigo: #eef2ff;
+  --tint-violet: #f5f3ff;
+  --tint-blue: #eff6ff;
+  --tint-red: #fef2f2;
+  --tint-amber: #fef3c7;
+  --tint-emerald: #d1fae5;
+
+  /* Shadows (strong for main cards, medium for chips, subtle for overlays) */
+  --shadow-card-strong:
+    0 40px 100px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.5);
+  --shadow-card-medium:
+    0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.4);
+  --shadow-card-subtle: 0 10px 24px rgba(0, 0, 0, 0.18);
+
+  /* Glow shadows for gradient elements */
+  --glow-primary: 0 12px 28px rgba(99, 102, 241, 0.45);
+  --glow-primary-subtle: 0 8px 20px rgba(99, 102, 241, 0.35);
+  --glow-success: 0 6px 14px rgba(16, 185, 129, 0.35);
+  --glow-warn: 0 6px 14px rgba(245, 158, 11, 0.35);
+  --glow-danger: 0 6px 14px rgba(239, 68, 68, 0.35);
+  --glow-hot: 0 6px 16px rgba(244, 63, 94, 0.4);
+}
+
+/* ─── Panel theme variables (D44: data-theme attribute sync) ─── */
+:root,
+[data-theme="light"] {
+  --panel-bg: #ffffff;
+  --panel-border: #e2e8f0;
+  --panel-text-primary: #1e293b;
+  --panel-text-secondary: #64748b;
+  --panel-hover-bg: rgba(59, 130, 246, 0.06);
+  --panel-active-bg: rgba(99, 102, 241, 0.12);
+  --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+  --panel-bg: #0c0c14;
+  --panel-border: #27272a;
+  --panel-text-primary: #e4e4e7;
+  --panel-text-secondary: #a1a1aa;
+  --panel-hover-bg: rgba(59, 130, 246, 0.12);
+  --panel-active-bg: rgba(99, 102, 241, 0.20);
+  --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Monospace only for numeric/data contexts */
+code,
+kbd,
+samp,
+pre,
+.font-mono {
+  font-family: var(--font-mono);
+}

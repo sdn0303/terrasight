@@ -34,6 +34,7 @@ use crate::config::Config;
 use crate::domain::reinfolib::ReinfolibDataSource;
 use crate::infra::opportunities_cache::OpportunitiesCache;
 use crate::infra::pg_admin_area_stats_repository::PgAdminAreaStatsRepository;
+use crate::infra::pg_aggregation_repository::PgAggregationRepository;
 use crate::infra::pg_appraisal_repository::PgAppraisalRepository;
 use crate::infra::pg_area_repository::PgAreaRepository;
 use crate::infra::pg_health_repository::PgHealthRepository;
@@ -49,11 +50,13 @@ use crate::usecase::compute_tls::ComputeTlsUsecase;
 use crate::usecase::get_appraisals::GetAppraisalsUsecase;
 use crate::usecase::get_area_data::GetAreaDataUsecase;
 use crate::usecase::get_area_stats::GetAreaStatsUsecase;
+use crate::usecase::get_land_price_aggregation::GetLandPriceAggregationUsecase;
 use crate::usecase::get_land_prices::GetLandPricesUsecase;
 use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
 use crate::usecase::get_municipalities::GetMunicipalitiesUsecase;
 use crate::usecase::get_opportunities::GetOpportunitiesUsecase;
 use crate::usecase::get_stats::GetStatsUsecase;
+use crate::usecase::get_transaction_aggregation::GetTransactionAggregationUsecase;
 use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
 use crate::usecase::get_transactions::GetTransactionsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
@@ -92,6 +95,10 @@ pub struct AppState {
     pub(crate) transaction_summary: Arc<GetTransactionSummaryUsecase>,
     /// Handles `GET /api/v1/transactions`.
     pub(crate) transactions: Arc<GetTransactionsUsecase>,
+    /// Handles `GET /api/v1/land-prices/aggregation`.
+    pub(crate) land_price_aggregation: Arc<GetLandPriceAggregationUsecase>,
+    /// Handles `GET /api/v1/transactions/aggregation`.
+    pub(crate) transaction_aggregation: Arc<GetTransactionAggregationUsecase>,
     /// Handles `GET /api/v1/trend`.
     pub(crate) trend: Arc<GetTrendUsecase>,
     /// Reinfolib geospatial data source.
@@ -150,6 +157,7 @@ impl AppState {
             opportunities_cache,
         ));
         let tx_repo = Arc::new(PgTransactionRepository::new(pool.clone()));
+        let aggregation_repo = Arc::new(PgAggregationRepository::new(pool.clone()));
 
         Self {
             appraisals: Arc::new(GetAppraisalsUsecase::new(Arc::new(
@@ -179,6 +187,12 @@ impl AppState {
             )))),
             transaction_summary: Arc::new(GetTransactionSummaryUsecase::new(tx_repo.clone())),
             transactions: Arc::new(GetTransactionsUsecase::new(tx_repo)),
+            land_price_aggregation: Arc::new(GetLandPriceAggregationUsecase::new(
+                aggregation_repo.clone(),
+            )),
+            transaction_aggregation: Arc::new(GetTransactionAggregationUsecase::new(
+                aggregation_repo,
+            )),
             trend: Arc::new(GetTrendUsecase::new(trend_repo)),
             reinfolib,
         }
@@ -273,5 +287,17 @@ impl FromRef<AppState> for Arc<GetTransactionSummaryUsecase> {
 impl FromRef<AppState> for Arc<GetTransactionsUsecase> {
     fn from_ref(state: &AppState) -> Self {
         Arc::clone(&state.transactions)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetLandPriceAggregationUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.land_price_aggregation)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetTransactionAggregationUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.transaction_aggregation)
     }
 }

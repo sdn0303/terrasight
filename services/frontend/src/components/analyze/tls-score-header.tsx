@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslation } from "@/lib/i18n";
 
 type TlsGrade = "S" | "A" | "B" | "C" | "D" | "E";
 
@@ -20,12 +20,12 @@ interface TlsScoreHeaderProps {
 }
 
 export function TlsScoreHeader({ score, grade, label }: TlsScoreHeaderProps) {
-  const t = useTranslations("tls");
+  const { t } = useTranslation();
 
   return (
     <div className="px-4 py-4 text-center">
       <div className="text-[9px] font-semibold tracking-widest uppercase text-ds-text-muted mb-2">
-        {t("score").toUpperCase()}
+        {t("tls.score").toUpperCase()}
       </div>
       <div
         className="text-4xl font-bold"

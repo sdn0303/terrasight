@@ -1,7 +1,8 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import { Layer, Source } from "react-map-gl/maplibre";
+import type { FilterSpecification } from "mapbox-gl";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
@@ -31,7 +32,7 @@ export function SeismicLayer({ visible, data: propData }: Props) {
       <Layer
         id="seismic-fill"
         type="fill"
-        filter={["==", ["geometry-type"], "Polygon"] as unknown as boolean}
+        filter={["==", ["geometry-type"], "Polygon"] as FilterSpecification}
         paint={{
           "fill-color": [
             "step",
@@ -50,7 +51,7 @@ export function SeismicLayer({ visible, data: propData }: Props) {
       <Layer
         id="seismic-outline"
         type="line"
-        filter={["==", ["geometry-type"], "Polygon"] as unknown as boolean}
+        filter={["==", ["geometry-type"], "Polygon"] as FilterSpecification}
         paint={{
           "line-color": "#ef4444",
           "line-width": 1,
@@ -61,7 +62,7 @@ export function SeismicLayer({ visible, data: propData }: Props) {
       <Layer
         id="seismic-trace"
         type="line"
-        filter={["==", ["geometry-type"], "LineString"] as unknown as boolean}
+        filter={["==", ["geometry-type"], "LineString"] as FilterSpecification}
         paint={{
           "line-color": "#fbbf24",
           "line-width": 2,

@@ -1,7 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useMapStore, type WeightPreset } from "@/stores/map-store";
+import { useTranslation } from "@/lib/i18n";
+import { useMapStore } from "@/stores/map-store";
+import type { WeightPreset } from "@/stores/types";
 
 const PRESETS: WeightPreset[] = [
   "balance",
@@ -11,7 +12,7 @@ const PRESETS: WeightPreset[] = [
 ];
 
 export function WeightPresetSelector() {
-  const t = useTranslations("analyze.weightPreset");
+  const { t } = useTranslation();
   const weightPreset = useMapStore((s) => s.weightPreset);
   const setWeightPreset = useMapStore((s) => s.setWeightPreset);
 
@@ -33,7 +34,7 @@ export function WeightPresetSelector() {
             }`}
             aria-pressed={weightPreset === preset}
           >
-            {t(preset)}
+            {t(`analyze.weightPreset.${preset}`)}
           </button>
         ))}
       </div>

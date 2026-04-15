@@ -1,6 +1,6 @@
 "use client";
 
-import type { TlsResponse } from "@/lib/schemas";
+import type { TlsResponse } from "@/lib/api/schemas/score";
 
 const RISK_COLORS: Record<string, string> = {
   flood: "#3b82f6",

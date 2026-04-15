@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAreaData, type BBox } from "@/lib/api";
+import { type BBox, typedGet } from "@/lib/api";
+import { isBBoxValid } from "@/lib/api/bbox-guard";
+import { AreaDataResponse } from "@/lib/api/schemas/area-data";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useAreaData(bbox: BBox | null, layers: string[], zoom: number) {
@@ -10,9 +12,22 @@ export function useAreaData(bbox: BBox | null, layers: string[], zoom: number) {
     ),
     queryFn: ({ signal }) => {
       if (bbox === null) throw new Error("bbox is required");
-      return fetchAreaData(bbox, layers, zoom, signal);
+      const clampedZoom = Math.min(Math.floor(zoom), 22);
+      return typedGet(
+        AreaDataResponse,
+        "api/v1/area-data",
+        {
+          south: String(bbox.south),
+          west: String(bbox.west),
+          north: String(bbox.north),
+          east: String(bbox.east),
+          layers: layers.join(","),
+          zoom: String(clampedZoom),
+        },
+        signal,
+      );
     },
-    enabled: bbox !== null && layers.length > 0 && zoom >= 10,
+    enabled: !!bbox && isBBoxValid(bbox) && layers.length > 0 && zoom >= 10,
     staleTime: 60_000,
   });
 }

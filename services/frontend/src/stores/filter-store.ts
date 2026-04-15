@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { WeightPreset } from "@/stores/map-store";
+import type { WeightPreset } from "@/stores/types";
 
 export type { WeightPreset };
 export type RiskLevel = "low" | "mid" | "high";

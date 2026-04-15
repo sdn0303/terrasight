@@ -1,6 +1,4 @@
-"use client";
-
-import type { Signal } from "@/lib/schemas";
+import type { Signal } from "@/lib/api/schemas/opportunities";
 import { GLOW_SHADOW, signalGradient } from "@/lib/theme-tokens";
 
 interface StatusPillProps {

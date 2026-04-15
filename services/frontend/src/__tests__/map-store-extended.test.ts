@@ -31,9 +31,9 @@ describe("useMapStore — extended tests", () => {
 
   it("toggleLayer adds new layer to set", () => {
     useMapStore.getState().toggleLayer("population_mesh");
-    expect(
-      useMapStore.getState().visibleLayers.has("population_mesh"),
-    ).toBe(true);
+    expect(useMapStore.getState().visibleLayers.has("population_mesh")).toBe(
+      true,
+    );
   });
 
   it("toggleLayer is idempotent — double toggle returns to original", () => {

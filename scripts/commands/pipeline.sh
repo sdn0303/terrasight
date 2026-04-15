@@ -46,9 +46,14 @@ fi
 echo "--- Step 1: Convert ---"
 uv run scripts/tools/pipeline/convert.py --pref "$PREF" --priority "$PRIORITY"
 
-# Step 2: Build FlatGeobuf + manifest
+# Step 2: Build FlatGeobuf + manifest (includes gzip pre-compression)
 echo "--- Step 2: Build FGB ---"
 uv run scripts/tools/pipeline/build_fgb.py --pref "$PREF"
+
+# Step 2b: Verify gzip pre-compression
+echo "--- Step 2b: Verify gzip ---"
+gz_count=$(find data/fgb/"$PREF" data/fgb/national -name "*.gz" 2>/dev/null | wc -l | tr -d ' ')
+echo "  $gz_count .gz files generated"
 
 # Step 3: Import to PostGIS
 echo "--- Step 3: Import ---"

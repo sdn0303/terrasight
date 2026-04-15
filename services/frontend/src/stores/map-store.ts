@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { LAYERS } from "@/lib/layers";
 import { getBboxByCode } from "@/lib/prefecture";
+import type { BBox, WeightPreset } from "./types";
 
 interface ViewState {
   latitude: number;
@@ -21,14 +22,8 @@ export interface SelectedArea {
   code: string; // Administrative code (e.g., "13" for Tokyo, "13105" for Bunkyo)
   name: string; // Display name
   level: "prefecture" | "municipality";
-  bbox: { south: number; west: number; north: number; east: number };
+  bbox: BBox;
 }
-
-export type WeightPreset =
-  | "balance"
-  | "investment"
-  | "residential"
-  | "disaster";
 
 export interface AnalysisPoint {
   lat: number;
@@ -50,7 +45,7 @@ interface MapState {
   resetToDefaults: () => void;
   selectFeature: (feature: SelectedFeature | null) => void;
   selectArea: (area: SelectedArea | null) => void;
-  getBBox: () => { south: number; west: number; north: number; east: number };
+  getBBox: () => BBox;
   setAnalysisPoint: (point: AnalysisPoint | null) => void;
   setWeightPreset: (preset: WeightPreset) => void;
   setAnalysisRadius: (radius: number) => void;

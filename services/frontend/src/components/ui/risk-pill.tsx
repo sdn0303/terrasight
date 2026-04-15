@@ -1,6 +1,4 @@
-"use client";
-
-import type { OpportunityRiskLevel } from "@/lib/schemas";
+import type { OpportunityRiskLevel } from "@/lib/api/schemas/opportunities";
 
 interface RiskPillProps {
   level: OpportunityRiskLevel;

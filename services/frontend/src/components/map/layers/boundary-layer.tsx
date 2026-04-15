@@ -1,6 +1,6 @@
 "use client";
 
-import { Layer, Source } from "react-map-gl/maplibre";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 export function BoundaryLayer() {
@@ -14,7 +14,15 @@ export function BoundaryLayer() {
         paint={{
           "line-color": "#ffffff",
           "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.8, 10, 2],
-          "line-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 10, 0.8],
+          "line-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            4,
+            0.6,
+            10,
+            0.8,
+          ],
         }}
       />
       <Layer
@@ -23,14 +31,28 @@ export function BoundaryLayer() {
         paint={{
           "line-color": "#ffffff",
           "line-width": 0.5,
-          "line-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0, 8, 0.3, 12, 0.6],
+          "line-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            7,
+            0,
+            8,
+            0.3,
+            12,
+            0.6,
+          ],
         }}
       />
       <Layer
         id="n03-pref-label"
         type="symbol"
         layout={{
-          "text-field": ["coalesce", ["get", "prefName"], ""] as unknown as string,
+          "text-field": [
+            "coalesce",
+            ["get", "prefName"],
+            "",
+          ] as unknown as string,
           "text-size": ["interpolate", ["linear"], ["zoom"], 4, 10, 8, 14],
           "text-anchor": "center",
         }}
@@ -51,12 +73,32 @@ export function BoundaryLayer() {
             ["get", "cityName"],
             "",
           ] as unknown as string,
-          "text-size": ["interpolate", ["linear"], ["zoom"], 8, 0, 10, 10, 14, 13],
+          "text-size": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            0,
+            10,
+            10,
+            14,
+            13,
+          ],
           "text-anchor": "center",
         }}
         paint={{
           "text-color": "#ffffff",
-          "text-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 10, 0.5, 14, 0.8],
+          "text-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            0,
+            10,
+            0.5,
+            14,
+            0.8,
+          ],
           "text-halo-color": "#000000",
           "text-halo-width": 1,
         }}

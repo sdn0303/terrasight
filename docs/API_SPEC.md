@@ -75,9 +75,11 @@ Content-Encoding: gzip
 | GET | `/api/v1/trend` | 地価推移データ |
 | GET | `/api/v1/land-prices` | 地価公示（単年 + bbox） |
 | GET | `/api/v1/land-prices/all-years` | 地価公示時系列 |
+| GET | `/api/v1/land-prices/aggregation` | 地価ポリゴン集計 |
 | GET | `/api/v1/opportunities` | 投資機会一覧 |
 | GET | `/api/v1/transactions/summary` | 取引価格集計 |
 | GET | `/api/v1/transactions` | 取引価格明細 |
+| GET | `/api/v1/transactions/aggregation` | 取引事例ポリゴン集計 |
 | GET | `/api/v1/appraisals` | 鑑定評価 |
 | GET | `/api/v1/municipalities` | 市区町村リスト |
 
@@ -377,15 +379,85 @@ bbox 内の統計集約（土地価格、リスク、施設、用途地域分布
 
 ---
 
-## 4. Planned (未実装)
+### 3.14 GET /api/v1/land-prices/aggregation
 
-### Phase 2（SaaS 化）
+市区町村ポリゴン別の地価集計。admin_boundaries と land_prices を空間結合し、
+市区町村ごとの平均・中央値・最小・最大・件数・前年比を GeoJSON FeatureCollection で返却。
 
-| Method | Path | 概要 |
-| --- | --- | --- |
-| POST | `/api/auth/register` | ユーザー登録 |
-| POST | `/api/auth/login` | ログイン |
-| POST | `/api/auth/refresh` | トークン更新 |
-| GET | `/api/watchlist` | ウォッチリスト取得 |
-| POST | `/api/watchlist` | ウォッチリスト追加 |
-| DELETE | `/api/watchlist/:id` | ウォッチリスト削除 |
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| south | f64 | Yes | bbox 南端緯度 |
+| west | f64 | Yes | bbox 西端経度 |
+| north | f64 | Yes | bbox 北端緯度 |
+| east | f64 | Yes | bbox 東端経度 |
+| pref_code | string | No | 都道府県フィルタ |
+
+**Response 200:** GeoJSON FeatureCollection
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [{
+    "type": "Feature",
+    "geometry": { "type": "MultiPolygon", "coordinates": ["..."] },
+    "properties": {
+      "admin_code": "13101",
+      "pref_name": "東京都",
+      "city_name": "千代田区",
+      "avg_price": 1250000.0,
+      "median_price": 980000.0,
+      "min_price": 320000.0,
+      "max_price": 3180000.0,
+      "count": 42,
+      "prev_year_avg": 1130000.0,
+      "change_pct": 10.6
+    }
+  }]
+}
+```
+
+**Error codes:** 400 (`INVALID_PARAMS` — invalid bbox), 404 (`NOT_FOUND` — no data for area)
+
+**Zod Schema:** `LandPriceAggregationResponse` (`services/frontend/src/lib/api/schemas/land-price-aggregation.ts`)
+
+---
+
+### 3.15 GET /api/v1/transactions/aggregation
+
+市区町村ポリゴン別の取引事例集計。admin_boundaries と transaction_prices を
+city_code で結合し、市区町村ごとの取引件数・平均単価・平均総額を GeoJSON FeatureCollection で返却。
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| south | f64 | Yes | bbox 南端緯度 |
+| west | f64 | Yes | bbox 西端経度 |
+| north | f64 | Yes | bbox 北端緯度 |
+| east | f64 | Yes | bbox 東端経度 |
+| pref_code | string | No | 都道府県フィルタ |
+
+**Response 200:** GeoJSON FeatureCollection
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [{
+    "type": "Feature",
+    "geometry": { "type": "MultiPolygon", "coordinates": ["..."] },
+    "properties": {
+      "admin_code": "13101",
+      "city_name": "千代田区",
+      "tx_count": 156,
+      "avg_price_sqm": 850000.0,
+      "avg_total_price": 42500000.0
+    }
+  }]
+}
+```
+
+**Error codes:** 400 (`INVALID_PARAMS` — invalid bbox)
+
+**Zod Schema:** `TransactionAggregationResponse` (`services/frontend/src/lib/api/schemas/transaction-aggregation.ts`)

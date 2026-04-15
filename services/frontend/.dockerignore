@@ -1,8 +1,6 @@
 # Build artifacts (rebuilt in Docker)
-.next/
+dist/
 node_modules/
-.turbo/
-out/
 
 # Version control
 .git
@@ -19,13 +17,14 @@ out/
 .env
 .env.*
 
-# OS
-.DS_Store
-
 # Tests (not needed in production build)
 src/__tests__/
+e2e/
 vitest.config.ts
-vitest-setup.ts
+playwright.config.ts
+
+# OS
+.DS_Store
 
 # Misc
 *.log

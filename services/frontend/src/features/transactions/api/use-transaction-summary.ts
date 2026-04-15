@@ -1,11 +1,9 @@
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { TransactionSummarySchema } from "@/lib/api/schemas/transaction";
 import { queryKeys } from "@/lib/query-keys";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function fetchTransactionSummary(
   prefCode: string,
@@ -23,7 +21,10 @@ export function useTransactionSummary(prefCode: string | null) {
     queryKey: prefCode
       ? queryKeys.transactionSummary.byPref(prefCode)
       : queryKeys.transactionSummary.all,
-    queryFn: ({ signal }) => fetchTransactionSummary(prefCode!, signal),
+    queryFn: ({ signal }) => {
+      if (prefCode === null) throw new Error("prefCode is required");
+      return fetchTransactionSummary(prefCode, signal);
+    },
     enabled: prefCode !== null,
     staleTime: 60_000,
   });

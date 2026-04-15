@@ -49,18 +49,10 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - ./data/fgb:/app/public/data/fgb:ro
-      - ./services/frontend/public/wasm:/app/public/wasm:ro
-    environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      - ./data/fgb:/usr/share/nginx/html/data/fgb:ro
+      - ./services/frontend/public/wasm:/usr/share/nginx/html/wasm:ro
     ports:
       - "3001:3000"
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
     restart: unless-stopped
 
 volumes:

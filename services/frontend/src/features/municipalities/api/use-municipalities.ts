@@ -1,11 +1,9 @@
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { MunicipalitySchema } from "@/lib/api/schemas/municipality";
 import { queryKeys } from "@/lib/query-keys";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function fetchMunicipalities(
   prefCode: string,
@@ -23,7 +21,10 @@ export function useMunicipalities(prefCode: string | null) {
     queryKey: prefCode
       ? queryKeys.municipalities.byPref(prefCode)
       : queryKeys.municipalities.all,
-    queryFn: ({ signal }) => fetchMunicipalities(prefCode!, signal),
+    queryFn: ({ signal }) => {
+      if (prefCode === null) throw new Error("prefCode is required");
+      return fetchMunicipalities(prefCode, signal);
+    },
     enabled: prefCode !== null,
     staleTime: 300_000, // 市区町村リストは頻繁に変わらない
   });

@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  LineChart,
   Line,
+  LineChart,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
 } from "recharts";
-import type { TrendResponse } from "@/lib/schemas";
+import type { TrendResponse } from "@/lib/api/schemas/trend";
 
 interface SparklineProps {
   trend: TrendResponse;

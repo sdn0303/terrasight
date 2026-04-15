@@ -1,7 +1,8 @@
 "use client";
 
 import type { FeatureCollection } from "geojson";
-import { Layer, Source } from "react-map-gl/maplibre";
+import type { FilterSpecification } from "mapbox-gl";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
@@ -18,7 +19,9 @@ export function FaultLayer({ visible, data: propData }: Props) {
       <Layer
         id="fault-confirmed"
         type="line"
-        filter={["==", ["get", "faultType2"], "実在断層"] as unknown as boolean}
+        filter={
+          ["==", ["get", "faultType2"], "実在断層"] as FilterSpecification
+        }
         paint={{
           "line-color": "#ef4444",
           "line-width": 2,
@@ -27,7 +30,9 @@ export function FaultLayer({ visible, data: propData }: Props) {
       <Layer
         id="fault-inferred"
         type="line"
-        filter={["!=", ["get", "faultType2"], "実在断層"] as unknown as boolean}
+        filter={
+          ["!=", ["get", "faultType2"], "実在断層"] as FilterSpecification
+        }
         paint={{
           "line-color": "#fbbf24",
           "line-width": 2,

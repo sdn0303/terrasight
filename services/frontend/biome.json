@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
   "files": {
-    "includes": ["src/**", "e2e/**", "*.ts", "*.tsx", "*.json"]
+    "includes": ["src/**", "e2e/**", "*.ts", "*.tsx", "*.json", "!src/styles/globals.css"]
   },
   "assist": {
     "actions": {

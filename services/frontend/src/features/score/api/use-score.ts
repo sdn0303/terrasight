@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchScore } from "@/lib/api";
+import { typedGet } from "@/lib/api";
+import { TlsResponse } from "@/lib/api/schemas/score";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useScore(
@@ -12,7 +13,12 @@ export function useScore(
     queryFn: ({ signal }) => {
       if (lat === null) throw new Error("lat is required");
       if (lng === null) throw new Error("lng is required");
-      return fetchScore(lat, lng, preset, signal);
+      return typedGet(
+        TlsResponse,
+        "api/v1/score",
+        { lat: String(lat), lng: String(lng), preset },
+        signal,
+      );
     },
     enabled: lat !== null && lng !== null,
     staleTime: 60_000,

@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  HealthResponse,
-  TlsResponse,
-  StatsResponse,
-  TrendResponse,
-} from "@/lib/schemas";
+import { HealthResponse } from "@/lib/api/schemas/health";
+import { TlsResponse } from "@/lib/api/schemas/score";
+import { StatsResponse } from "@/lib/api/schemas/stats";
+import { TrendResponse } from "@/lib/api/schemas/trend";
 
 describe("HealthResponse schema", () => {
   it("parses valid health response", () => {

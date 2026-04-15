@@ -7,7 +7,7 @@ describe("getPrefectureCodes", () => {
     const codes = getPrefectureCodes({
       south: 35.68,
       west: 139.69,
-      north: 35.70,
+      north: 35.7,
       east: 139.71,
     });
     expect(codes).toContain("13");
@@ -18,9 +18,9 @@ describe("getPrefectureCodes", () => {
     // A bbox straddling ~35.55 will intersect both
     const codes = getPrefectureCodes({
       south: 35.48,
-      west: 139.40,
+      west: 139.4,
       north: 35.68,
-      east: 139.60,
+      east: 139.6,
     });
     expect(codes).toContain("13");
     expect(codes).toContain("14");

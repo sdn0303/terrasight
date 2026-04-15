@@ -1,17 +1,38 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { HTTPError } from "ky";
+import { type ReactNode, useState } from "react";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ module: "react-query" });
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({
+          onError: (error, query) => {
+            log.error({ err: error, queryKey: query.queryKey }, "query error");
+          },
+        }),
         defaultOptions: {
           queries: {
             staleTime: 60_000,
             gcTime: 300_000,
-            retry: 1,
+            retry: (failureCount, error) => {
+              if (
+                error instanceof HTTPError &&
+                error.response.status >= 400 &&
+                error.response.status < 500
+              )
+                return false;
+              return failureCount < 1;
+            },
             refetchOnWindowFocus: false,
           },
         },

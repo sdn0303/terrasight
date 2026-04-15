@@ -34,7 +34,11 @@ vi.mock("@/hooks/use-spatial-engine", () => ({
 
 // useMapStore: provide stable primitive viewState values
 vi.mock("@/stores/map-store", () => ({
-  useMapStore: (selector: (s: { viewState: { latitude: number; longitude: number; zoom: number } }) => unknown) =>
+  useMapStore: (
+    selector: (s: {
+      viewState: { latitude: number; longitude: number; zoom: number };
+    }) => unknown,
+  ) =>
     selector({ viewState: { latitude: 35.681, longitude: 139.767, zoom: 12 } }),
 }));
 
@@ -98,10 +102,9 @@ describe("useStaticLayer", () => {
 
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(
-      () => useStaticLayer(LAYER_ID, true),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useStaticLayer(LAYER_ID, true), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -124,10 +127,9 @@ describe("useStaticLayer", () => {
 
     const { wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(
-      () => useStaticLayer("missing-layer", true),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useStaticLayer("missing-layer", true), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect((result.current.error as Error).message).toMatch("404");

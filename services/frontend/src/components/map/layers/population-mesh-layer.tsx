@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Layer, Source } from "react-map-gl/maplibre";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { useStaticLayer } from "@/hooks/use-static-layer";
 
 interface Props {
@@ -48,11 +48,7 @@ export function PopulationMeshLayer({ visible, selectedYear }: Props) {
   if (!visible || !data) return null;
 
   return (
-    <Source
-      id="population-mesh"
-      type="geojson"
-      data={data}
-    >
+    <Source id="population-mesh" type="geojson" data={data}>
       <Layer
         id="population-mesh-fill"
         type="fill"

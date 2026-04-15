@@ -69,7 +69,7 @@ impl AdminAreaStatsRepository for PgAdminAreaStatsRepository {
                 r#"
             SELECT
                 AVG(price_per_sqm)::float8 AS avg_price,
-                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm)::float8 AS median_price,
+                (PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm))::float8 AS median_price,
                 MIN(price_per_sqm)::int8 AS min_price,
                 MAX(price_per_sqm)::int8 AS max_price,
                 COUNT(*) AS count

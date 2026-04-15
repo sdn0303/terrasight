@@ -8,6 +8,7 @@
 //!
 //! | Trait | Infra impl |
 //! |-------|------------|
+//! | [`AggregationRepository`] | `PgAggregationRepository` |
 //! | [`AdminAreaStatsRepository`] | `PgAdminAreaStatsRepository` |
 //! | [`AppraisalRepository`] | `PgAppraisalRepository` |
 //! | [`HealthRepository`] | `PgHealthRepository` |
@@ -29,6 +30,7 @@
 //!   this module, gated behind `#[cfg(test)]`.
 
 mod admin_area;
+mod aggregation;
 mod appraisal;
 mod health;
 mod land_price;
@@ -40,6 +42,7 @@ mod transaction;
 mod trend;
 
 pub use admin_area::AdminAreaStatsRepository;
+pub use aggregation::AggregationRepository;
 pub use appraisal::AppraisalRepository;
 pub use health::HealthRepository;
 pub use land_price::LandPriceRepository;

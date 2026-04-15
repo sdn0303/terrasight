@@ -1,115 +1,134 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Locale } from "@/i18n/config";
-import type { ThemeId } from "@/lib/themes";
+import type { ThemeId } from "@/lib/theme-definitions";
 
-/** Overlay state types (Phase 1+). */
-export type LeftPanelKind = "finder" | "layers" | "themes";
-export type BottomSheetKind = "opportunities";
-export type DrawerTab = "intel" | "trend" | "risk" | "infra" | "compare";
 export type BaseMap = "light" | "dark" | "satellite";
 
-export type InsightContext =
-  | null
-  | { kind: "point"; lat: number; lng: number }
-  | { kind: "property"; id: string; lat: number; lng: number };
-
-export type ComparePoint = {
+export interface PointDetailData {
   lat: number;
   lng: number;
-  address: string;
-};
+  address?: string;
+  featureProperties?: Record<string, unknown>;
+}
+
+interface LeftPanel {
+  type: "point-detail";
+  data: PointDetailData;
+  activeTab: ThemeId;
+}
+
+type RightDrawer =
+  | { type: "opportunity"; id: string }
+  | { type: "map-point"; data: PointDetailData; activeTab: ThemeId };
 
 interface UIState {
-  // ─── Overlay state ─────────
-  leftPanel: LeftPanelKind | null;
-  setLeftPanel: (p: LeftPanelKind | null) => void;
-  toggleLeftPanel: (p: LeftPanelKind) => void;
+  // Sidebar
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 
-  bottomSheet: BottomSheetKind | null;
-  setBottomSheet: (b: BottomSheetKind | null) => void;
-  bottomSheetHeightPct: number;
-  setBottomSheetHeightPct: (h: number) => void;
+  // Active theme (exclusive)
+  activeTheme: ThemeId | null;
+  setActiveTheme: (t: ThemeId | null) => void;
 
-  insight: InsightContext;
-  setInsight: (c: InsightContext) => void;
-  activeTab: DrawerTab;
-  setActiveTab: (t: DrawerTab) => void;
+  // Left panel (map-only point detail)
+  leftPanel: LeftPanel | null;
+  openLeftPanel: (data: PointDetailData) => void;
+  closeLeftPanel: () => void;
+  setLeftPanelTab: (tab: ThemeId) => void;
 
-  settingsOpen: boolean;
-  setSettingsOpen: (o: boolean) => void;
+  // Opportunities table
+  tableOpen: boolean;
+  openTable: () => void;
+  closeTable: () => void;
 
+  // Right drawer (table mode only)
+  rightDrawer: RightDrawer | null;
+  openOpportunityDrawer: (id: string) => void;
+  openMapPointDrawer: (data: PointDetailData) => void;
+  closeRightDrawer: () => void;
+
+  // Selected opportunity (table highlight + drawer link)
+  selectedOpportunityId: string | null;
+  setSelectedOpportunityId: (id: string | null) => void;
+
+  // Map style
   baseMap: BaseMap;
   setBaseMap: (m: BaseMap) => void;
 
-  // ─── Compare points ───────
-  comparePoints: ComparePoint[];
-  addComparePoint: (point: ComparePoint) => void;
-  removeComparePoint: (index: number) => void;
-  resetCompare: () => void;
-
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-
-  activeThemes: Set<ThemeId>;
-  toggleTheme: (themeId: ThemeId) => void;
-  clearThemes: () => void;
+  // Locale
+  locale: "ja" | "en";
+  setLocale: (l: "ja" | "en") => void;
 }
 
 export const useUIStore = create<UIState>()(
   devtools(
-    (set) => ({
-      // Overlay state
+    (set, _get) => ({
+      // Sidebar
+      sidebarCollapsed: false,
+      toggleSidebar: () =>
+        set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+      // Theme (exclusive)
+      activeTheme: null,
+      setActiveTheme: (t) => set({ activeTheme: t, leftPanel: null }),
+
+      // Left panel
       leftPanel: null,
-      setLeftPanel: (p) => set({ leftPanel: p }),
-      toggleLeftPanel: (p) =>
-        set((s) => ({ leftPanel: s.leftPanel === p ? null : p })),
+      openLeftPanel: (data) =>
+        set((s) => ({
+          leftPanel: {
+            type: "point-detail",
+            data,
+            activeTab: s.activeTheme ?? "land-price",
+          },
+          tableOpen: false,
+          rightDrawer: null,
+        })),
+      closeLeftPanel: () => set({ leftPanel: null }),
+      setLeftPanelTab: (tab) =>
+        set((s) =>
+          s.leftPanel ? { leftPanel: { ...s.leftPanel, activeTab: tab } } : {},
+        ),
 
-      bottomSheet: null,
-      setBottomSheet: (b) => set({ bottomSheet: b }),
-      bottomSheetHeightPct: 40,
-      setBottomSheetHeightPct: (h) =>
-        set({ bottomSheetHeightPct: Math.max(20, Math.min(80, h)) }),
+      // Table
+      tableOpen: false,
+      openTable: () => set({ tableOpen: true, leftPanel: null }),
+      closeTable: () =>
+        set({
+          tableOpen: false,
+          rightDrawer: null,
+          selectedOpportunityId: null,
+        }),
 
-      insight: null,
-      setInsight: (c) => set({ insight: c }),
-      activeTab: "intel",
-      setActiveTab: (t) => set({ activeTab: t }),
+      // Right drawer
+      rightDrawer: null,
+      openOpportunityDrawer: (id) =>
+        set({
+          rightDrawer: { type: "opportunity", id },
+          selectedOpportunityId: id,
+        }),
+      openMapPointDrawer: (data) =>
+        set((s) => ({
+          rightDrawer: {
+            type: "map-point",
+            data,
+            activeTab: s.activeTheme ?? "land-price",
+          },
+        })),
+      closeRightDrawer: () =>
+        set({ rightDrawer: null, selectedOpportunityId: null }),
 
-      settingsOpen: false,
-      setSettingsOpen: (o) => set({ settingsOpen: o }),
+      // Selected opportunity
+      selectedOpportunityId: null,
+      setSelectedOpportunityId: (id) => set({ selectedOpportunityId: id }),
 
+      // Map style
       baseMap: "light",
       setBaseMap: (m) => set({ baseMap: m }),
 
-      // Compare points
-      comparePoints: [],
-      addComparePoint: (point) =>
-        set((state) => {
-          if (state.comparePoints.length >= 3) return state;
-          return { comparePoints: [...state.comparePoints, point] };
-        }),
-      removeComparePoint: (index) =>
-        set((state) => ({
-          comparePoints: state.comparePoints.filter((_, i) => i !== index),
-        })),
-      resetCompare: () => set({ comparePoints: [] }),
-
+      // Locale
       locale: "ja",
-      setLocale: (locale) => set({ locale }),
-
-      activeThemes: new Set<ThemeId>(),
-      toggleTheme: (themeId) =>
-        set((state) => {
-          const next = new Set(state.activeThemes);
-          if (next.has(themeId)) {
-            next.delete(themeId);
-          } else {
-            next.add(themeId);
-          }
-          return { activeThemes: next };
-        }),
-      clearThemes: () => set({ activeThemes: new Set<ThemeId>() }),
+      setLocale: (l) => set({ locale: l }),
     }),
     { name: "ui-store" },
   ),

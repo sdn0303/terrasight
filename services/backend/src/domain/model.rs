@@ -7,6 +7,7 @@
 //! use crate::domain::model::{BBox, GeoFeature, PrefCode};
 //! ```
 
+mod aggregation;
 mod appraisal;
 mod area;
 mod geo;
@@ -20,6 +21,7 @@ mod transaction;
 mod trend;
 
 // Re-export everything flat
+pub use aggregation::*;
 pub use appraisal::*;
 pub use area::*;
 pub use geo::*;

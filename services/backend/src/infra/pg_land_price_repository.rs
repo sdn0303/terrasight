@@ -10,10 +10,15 @@
 //!    year count so each year gets roughly the same budget.
 //! 3. **Opportunity fetch** — `find_for_opportunities`: `INNER JOIN zoning` via
 //!    `ST_Within` so that `building_coverage_ratio` and `floor_area_ratio` are
-//!    always populated. Dynamic filters (`price_range`, `zones`) are appended
-//!    with [`sqlx::QueryBuilder`] to avoid string concatenation.
+//!    always populated. An `ST_Intersects(z.geom, bbox)` pre-filter on the JOIN
+//!    eliminates non-overlapping zoning rows before the expensive `ST_Within`.
+//!    `building_coverage` is rounded with `ROUND()` before casting to `int`.
+//!    Dynamic filters (`price_range`, `zones`) are appended with
+//!    [`sqlx::QueryBuilder`] to avoid string concatenation.
 //!
-//! All queries use `ST_MakeEnvelope($1, $2, $3, $4, 4326)` (SRID 4326, WGS84).
+//! Queries 1 and 2 use `ST_MakeEnvelope($1, $2, $3, $4, 4326)` (SRID 4326,
+//! WGS84). Query 3 binds the bbox twice: `$1–$4` pre-filter on `z.geom`,
+//! `$5–$8` filter on `lp.geom`.
 //! Timeouts are enforced via [`run_query`](crate::infra::query_helpers::run_query).
 
 use std::time::Duration;
@@ -220,16 +225,35 @@ impl LandPriceRepository for PgLandPriceRepository {
         zones: &[ZoneCode],
         pref_code: Option<&PrefCode>,
     ) -> Result<Vec<OpportunityRecord>, DomainError> {
+        // Bind order for bbox params:
+        //   $1–$4 : zoning pre-filter  (ST_Intersects z.geom in JOIN)
+        //   $5–$8 : lp.geom filter     (ST_Intersects lp.geom in WHERE)
+        // Remaining dynamic params follow: pref_code, price_range, zones, limit.
         let mut builder = QueryBuilder::<Postgres>::new(
             "SELECT lp.id, lp.price_per_sqm, lp.address, lp.zone_type, \
-                    z.building_coverage::int AS building_coverage_ratio, \
+                    ROUND(z.building_coverage)::int AS building_coverage_ratio, \
                     z.floor_area_ratio::int AS floor_area_ratio, \
                     ST_X(lp.geom) AS lng, ST_Y(lp.geom) AS lat, lp.survey_year \
              FROM land_prices lp \
              INNER JOIN zoning z ON ST_Within(lp.geom, z.geom) \
+               AND ST_Intersects(z.geom, ST_MakeEnvelope(",
+        );
+        // $1–$4: zoning bbox pre-filter (eliminates non-overlapping zoning rows
+        // before the expensive ST_Within, giving the planner a much smaller set).
+        builder
+            .push_bind(bbox.west())
+            .push(", ")
+            .push_bind(bbox.south())
+            .push(", ")
+            .push_bind(bbox.east())
+            .push(", ")
+            .push_bind(bbox.north())
+            .push(
+                ", 4326)) \
              WHERE lp.zone_type IS NOT NULL \
                AND ST_Intersects(lp.geom, ST_MakeEnvelope(",
-        );
+            );
+        // $5–$8: land price bbox filter.
         builder
             .push_bind(bbox.west())
             .push(", ")
