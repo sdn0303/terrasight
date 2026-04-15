@@ -7,8 +7,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gzip as gzip_mod
 import json
 import logging
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +42,14 @@ def build_fgb_from_geojson(geojson_path: Path, fgb_path: Path) -> int:
     return count
 
 
+def compress_gzip(src: Path) -> int:
+    """Pre-compress a file with gzip -9. Returns compressed size."""
+    dst = src.with_suffix(src.suffix + ".gz")
+    with open(src, "rb") as f_in, gzip_mod.open(dst, "wb", compresslevel=9) as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    return dst.stat().st_size
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build FlatGeobuf + manifest")
     parser.add_argument("--pref", required=True, help="Prefecture code (e.g., 13)")
@@ -67,24 +77,29 @@ def main() -> None:
             if geojson_path.exists():
                 count = build_fgb_from_geojson(geojson_path, fgb_path)
                 size_bytes = fgb_path.stat().st_size if fgb_path.exists() else 0
+                gz_size = compress_gzip(fgb_path) if fgb_path.exists() else 0
                 layers.append({
                     "id": entry.id,
                     "path": fgb_rel.replace("data/fgb/", ""),
                     "features": count,
                     "size_bytes": size_bytes,
+                    "size_bytes_gz": gz_size,
                 })
-                logger.info(f"Built FGB {entry.id}: {count} features -> {fgb_path}")
+                savings = f"{(1 - gz_size / size_bytes) * 100:.0f}%" if size_bytes > 0 else "N/A"
+                logger.info(f"Built FGB {entry.id}: {count} features -> {fgb_path} (gzip {savings})")
             else:
                 logger.debug(f"GeoJSON not found for {entry.id}: {geojson_path}")
 
         # If FGB already exists (manual static), register it
         if fgb_path.exists() and not any(l["id"] == entry.id for l in layers):
             size_bytes = fgb_path.stat().st_size
+            gz_size = compress_gzip(fgb_path)
             layers.append({
                 "id": entry.id,
                 "path": fgb_rel.replace("data/fgb/", ""),
                 "features": 0,
                 "size_bytes": size_bytes,
+                "size_bytes_gz": gz_size,
             })
 
     # Build manifest

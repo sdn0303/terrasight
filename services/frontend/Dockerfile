@@ -49,9 +49,12 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # gzip for static assets
+    # Pre-compressed static files: serve .gz directly when available (zero CPU)
+    gzip_static on;
+
+    # Dynamic gzip fallback for non-pre-compressed responses
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml image/svg+xml;
+    gzip_types text/plain text/css application/json application/javascript text/xml image/svg+xml application/wasm application/octet-stream;
     gzip_min_length 256;
 
     # Static assets with long cache
@@ -60,14 +63,16 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # FlatGeobuf data files
+    # FlatGeobuf data files (pre-compressed .gz available)
     location /data/fgb/ {
+        gzip_static on;
         expires 7d;
         add_header Cache-Control "public";
     }
 
-    # WASM files
+    # WASM files (pre-compressed .gz available)
     location /wasm/ {
+        gzip_static on;
         expires 7d;
         add_header Cache-Control "public";
         add_header Cross-Origin-Embedder-Policy "require-corp";

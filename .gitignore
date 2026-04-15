@@ -44,8 +44,12 @@ data/estat/
 data/raw/*.zip
 data/geojson/**/*.geojson
 data/fgb/**/*.fgb
+data/fgb/**/*.gz
 data/fgb/manifest.json
 data/catalog/convert_log.json
+
+# Pre-compressed static files (built by pipeline/scripts)
+services/frontend/public/wasm/*.gz
 
 # IDE
 .vscode/
