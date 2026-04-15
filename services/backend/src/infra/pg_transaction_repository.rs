@@ -17,11 +17,15 @@
 //! dynamic SQL. Summary results are ordered `city_code, transaction_year DESC`;
 //! detail results are ordered `transaction_year DESC, transaction_q DESC`.
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
-use super::map_db_err;
 use crate::domain::error::DomainError;
+use crate::infra::query_helpers::run_query;
+
+const TRANSACTION_QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 use crate::domain::model::{
     AreaName, CityCode, PrefCode, TransactionDetail, TransactionSummary, Year,
 };
@@ -128,8 +132,11 @@ impl TransactionRepository for PgTransactionRepository {
         year_from: Option<&Year>,
         property_type: Option<&str>,
     ) -> Result<Vec<TransactionSummary>, DomainError> {
-        let rows = sqlx::query_as::<_, TransactionSummaryRow>(
-            r#"
+        let rows = run_query(
+            TRANSACTION_QUERY_TIMEOUT,
+            "transaction_summary query",
+            sqlx::query_as::<_, TransactionSummaryRow>(
+                r#"
             SELECT
                 city_code,
                 transaction_year,
@@ -146,13 +153,13 @@ impl TransactionRepository for PgTransactionRepository {
               AND ($3::text IS NULL OR property_type = $3)
             ORDER BY city_code, transaction_year DESC
             "#,
+            )
+            .bind(pref_code.as_str())
+            .bind(year_from.map(|y| y.value() as i16))
+            .bind(property_type)
+            .fetch_all(&self.pool),
         )
-        .bind(pref_code.as_str())
-        .bind(year_from.map(|y| y.value() as i16))
-        .bind(property_type)
-        .fetch_all(&self.pool)
         .await
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(
                 count = rows.len(),
@@ -180,8 +187,11 @@ impl TransactionRepository for PgTransactionRepository {
         year_from: Option<&Year>,
         limit: u32,
     ) -> Result<Vec<TransactionDetail>, DomainError> {
-        let rows = sqlx::query_as::<_, TransactionDetailRow>(
-            r#"
+        let rows = run_query(
+            TRANSACTION_QUERY_TIMEOUT,
+            "transactions query",
+            sqlx::query_as::<_, TransactionDetailRow>(
+                r#"
             SELECT
                 city_code,
                 city_name,
@@ -198,17 +208,18 @@ impl TransactionRepository for PgTransactionRepository {
                 transaction_quarter
             FROM transaction_prices
             WHERE city_code = $1
+              AND pref_code = LEFT($1, 2)
               AND ($2::smallint IS NULL OR transaction_year >= $2)
             ORDER BY transaction_year DESC, transaction_q DESC
             LIMIT $3
             "#,
+            )
+            .bind(city_code.as_str())
+            .bind(year_from.map(|y| y.value() as i16))
+            .bind(i64::from(limit))
+            .fetch_all(&self.pool),
         )
-        .bind(city_code.as_str())
-        .bind(year_from.map(|y| y.value() as i16))
-        .bind(i64::from(limit))
-        .fetch_all(&self.pool)
         .await
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(
                 count = rows.len(),

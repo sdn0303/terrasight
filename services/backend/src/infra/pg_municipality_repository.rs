@@ -12,13 +12,18 @@
 //! from geometry partitioning (multi-polygon boundaries stored as separate rows).
 //! Results are ordered by `city_code` for deterministic output.
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use sqlx::{FromRow, PgPool};
 
-use super::map_db_err;
 use crate::domain::error::DomainError;
 use crate::domain::model::{AreaName, CityCode, Municipality, PrefCode};
 use crate::domain::repository::MunicipalityRepository;
+use crate::infra::query_helpers::run_query;
+
+/// Maximum time to wait for the municipality list query.
+const MUNICIPALITY_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Raw row returned by the `admin_boundaries` table.
 ///
@@ -61,8 +66,11 @@ impl MunicipalityRepository for PgMunicipalityRepository {
         &self,
         pref_code: &PrefCode,
     ) -> Result<Vec<Municipality>, DomainError> {
-        let rows = sqlx::query_as::<_, MunicipalityRow>(
-            r#"
+        let rows = run_query(
+            MUNICIPALITY_QUERY_TIMEOUT,
+            "municipalities query",
+            sqlx::query_as::<_, MunicipalityRow>(
+                r#"
             SELECT DISTINCT
                 city_code,
                 city_name,
@@ -73,11 +81,11 @@ impl MunicipalityRepository for PgMunicipalityRepository {
               AND city_code IS NOT NULL
             ORDER BY city_code
             "#,
+            )
+            .bind(pref_code.as_str())
+            .fetch_all(&self.pool),
         )
-        .bind(pref_code.as_str())
-        .fetch_all(&self.pool)
         .await
-        .map_err(map_db_err)
         .inspect(|rows| {
             tracing::debug!(
                 count = rows.len(),

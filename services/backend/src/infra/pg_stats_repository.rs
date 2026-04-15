@@ -78,13 +78,17 @@ impl StatsRepository for PgStatsRepository {
                     r#"
             SELECT
                 AVG(price_per_sqm)::float8 AS avg_price,
-                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm)::float8 AS median_price,
+                (PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_per_sqm))::float8 AS median_price,
                 MIN(price_per_sqm)::int8 AS min_price,
                 MAX(price_per_sqm)::int8 AS max_price,
                 COUNT(*) AS count
             FROM land_prices
             WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
-              AND survey_year = (SELECT MAX(survey_year) FROM land_prices WHERE ($5::text IS NULL OR pref_code = $5))
+              AND survey_year = (
+                  SELECT MAX(survey_year) FROM land_prices
+                  WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                    AND ($5::text IS NULL OR pref_code = $5)
+              )
               AND ($5::text IS NULL OR pref_code = $5)
             "#,
                 ),

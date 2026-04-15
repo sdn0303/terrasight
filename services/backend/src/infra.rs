@@ -45,5 +45,3 @@ pub(crate) mod pg_trend_repository;
 pub(crate) mod query_helpers;
 pub(crate) mod reinfolib_mock;
 pub(crate) mod row_types;
-
-pub(crate) use map_db_err::map_db_err;

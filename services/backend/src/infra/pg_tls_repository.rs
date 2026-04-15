@@ -413,7 +413,7 @@ impl TlsRepository for PgTlsRepository {
             lng: coord.lng(),
             lat: coord.lat(),
         };
-        let row = run_query(
+        let maybe_row = run_query(
             TLS_QUERY_TIMEOUT,
             "tls price_z_score query",
             bind_coord(
@@ -448,18 +448,22 @@ impl TlsRepository for PgTlsRepository {
                 &geo_coord,
             )
             .bind(TLS_PRICE_SEARCH_RADIUS_M)
-            .fetch_one(&self.pool),
+            .fetch_optional(&self.pool),
         )
         .await
-        .inspect(|row| {
-            tracing::debug!(
-                z_score = row.z_score,
-                zone_type = %row.zone_type,
-                sample_count = row.sample_count,
-                "price_z_score computed"
-            )
-        })?;
+        .inspect(|opt| tracing::debug!(found = opt.is_some(), "tls price_z_score fetched"))?;
 
+        let row = maybe_row.unwrap_or(ZScoreRow {
+            z_score: 0.0,
+            zone_type: String::new(),
+            sample_count: 0,
+        });
+        tracing::debug!(
+            z_score = row.z_score,
+            zone_type = %row.zone_type,
+            sample_count = row.sample_count,
+            "price_z_score computed"
+        );
         Ok(row.into())
     }
 
