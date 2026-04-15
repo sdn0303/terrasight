@@ -1,27 +1,24 @@
 "use client";
 
-import type { FeatureCollection } from "geojson";
+import type { GeoJSON } from "geojson";
 import { Layer, Source } from "react-map-gl/mapbox";
-
-/** Transaction count color ramp: few (blue) → many (red) */
-const TX_COUNT_STOPS = {
-  min: "#3b82f6",
-  low: "#06b6d4",
-  mid: "#10b981",
-  midHigh: "#eab308",
-  high: "#f97316",
-  max: "#ef4444",
-} as const;
+import type { TransactionAggregation } from "@/lib/api/schemas/transaction-aggregation";
+import { PRICE_STOPS, TX_COUNT_THRESHOLDS } from "@/lib/palette";
 
 interface Props {
-  data: FeatureCollection;
+  data: TransactionAggregation;
   visible: boolean;
 }
 
 export function TransactionPolygonLayer({ data, visible }: Props) {
   if (!visible) return null;
   return (
-    <Source id="transaction-aggregation" type="geojson" data={data}>
+    // coordinates: unknown in Zod schema; cast at react-map-gl boundary after API validation
+    <Source
+      id="transaction-aggregation"
+      type="geojson"
+      data={data as unknown as GeoJSON}
+    >
       <Layer
         id="transaction_polygon"
         type="fill"
@@ -30,18 +27,18 @@ export function TransactionPolygonLayer({ data, visible }: Props) {
             "interpolate",
             ["linear"],
             ["get", "tx_count"],
-            10,
-            TX_COUNT_STOPS.min,
-            50,
-            TX_COUNT_STOPS.low,
-            100,
-            TX_COUNT_STOPS.mid,
-            300,
-            TX_COUNT_STOPS.midHigh,
-            500,
-            TX_COUNT_STOPS.high,
-            1000,
-            TX_COUNT_STOPS.max,
+            TX_COUNT_THRESHOLDS.min,
+            PRICE_STOPS.min,
+            TX_COUNT_THRESHOLDS.low,
+            PRICE_STOPS.low,
+            TX_COUNT_THRESHOLDS.mid,
+            PRICE_STOPS.mid,
+            TX_COUNT_THRESHOLDS.midHigh,
+            PRICE_STOPS.midHigh,
+            TX_COUNT_THRESHOLDS.high,
+            PRICE_STOPS.high,
+            TX_COUNT_THRESHOLDS.max,
+            PRICE_STOPS.max,
           ],
           "fill-opacity": 0.6,
           "fill-opacity-transition": { duration: 300, delay: 0 },
@@ -58,7 +55,7 @@ export function TransactionPolygonLayer({ data, visible }: Props) {
             [
               "number-format",
               ["get", "avg_price_sqm"],
-              { "min-fraction-digits": 0 },
+              { locale: "ja-JP", "min-fraction-digits": 0 },
             ],
           ],
           "text-size": 11,

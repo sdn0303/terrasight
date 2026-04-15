@@ -1,18 +1,24 @@
 "use client";
 
-import type { FeatureCollection } from "geojson";
+import type { GeoJSON } from "geojson";
 import { Layer, Source } from "react-map-gl/mapbox";
-import { PRICE_STOPS } from "@/lib/palette";
+import type { LandPriceAggregation } from "@/lib/api/schemas/land-price-aggregation";
+import { PRICE_STOPS, PRICE_THRESHOLDS } from "@/lib/palette";
 
 interface Props {
-  data: FeatureCollection;
+  data: LandPriceAggregation;
   visible: boolean;
 }
 
 export function LandPricePolygonLayer({ data, visible }: Props) {
   if (!visible) return null;
   return (
-    <Source id="land-price-aggregation" type="geojson" data={data}>
+    // coordinates: unknown in Zod schema; cast at react-map-gl boundary after API validation
+    <Source
+      id="land-price-aggregation"
+      type="geojson"
+      data={data as unknown as GeoJSON}
+    >
       <Layer
         id="land_price_polygon"
         type="fill"
@@ -21,17 +27,17 @@ export function LandPricePolygonLayer({ data, visible }: Props) {
             "interpolate",
             ["linear"],
             ["get", "avg_price"],
-            50_000,
+            PRICE_THRESHOLDS.min,
             PRICE_STOPS.min,
-            200_000,
+            PRICE_THRESHOLDS.low,
             PRICE_STOPS.low,
-            500_000,
+            PRICE_THRESHOLDS.mid,
             PRICE_STOPS.mid,
-            1_000_000,
+            PRICE_THRESHOLDS.midHigh,
             PRICE_STOPS.midHigh,
-            2_000_000,
+            PRICE_THRESHOLDS.high,
             PRICE_STOPS.high,
-            5_000_000,
+            PRICE_THRESHOLDS.max,
             PRICE_STOPS.max,
           ],
           "fill-opacity": 0.6,
@@ -48,7 +54,7 @@ export function LandPricePolygonLayer({ data, visible }: Props) {
             [
               "number-format",
               ["get", "avg_price"],
-              { "min-fraction-digits": 0 },
+              { locale: "ja-JP", "min-fraction-digits": 0 },
             ],
           ],
           "text-size": 12,

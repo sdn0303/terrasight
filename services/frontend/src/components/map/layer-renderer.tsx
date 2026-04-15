@@ -12,6 +12,7 @@ import {
   GeologyLayer,
   LandformLayer,
   LandPriceExtrusionLayer,
+  LandPricePolygonLayer,
   LandpriceLayer,
   LandslideLayer,
   LiquefactionLayer,
@@ -23,16 +24,31 @@ import {
   SoilLayer,
   StationLayer,
   SteepSlopeLayer,
+  TransactionPolygonLayer,
   VolcanoLayer,
   ZoningLayer,
 } from "@/components/map/layers";
 import { BoundaryLayer } from "@/components/map/layers/boundary-layer";
+import { useLandPriceAggregation } from "@/features/land-prices/api/use-land-price-aggregation";
+import { useTransactionAggregation } from "@/features/transactions/api/use-transaction-aggregation";
 import { useThemeLayers } from "@/hooks/use-theme-layers";
 import { useVisibleStaticLayers } from "@/hooks/use-visible-static-layers";
+import type { LandPriceAggregation } from "@/lib/api/schemas/land-price-aggregation";
+import type { TransactionAggregation } from "@/lib/api/schemas/transaction-aggregation";
 import { canonicalLayerId } from "@/lib/layer-ids";
 import type { LayerConfig } from "@/lib/layers";
 
 const EMPTY_FC: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+const EMPTY_LAND_PRICE_AGG: LandPriceAggregation = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+const EMPTY_TRANSACTION_AGG: TransactionAggregation = {
   type: "FeatureCollection",
   features: [],
 };
@@ -92,6 +108,8 @@ export function LayerRenderer({
   landPriceYear,
 }: LayerRendererProps) {
   const { visibleLayerIds } = useThemeLayers();
+  const { data: landPriceAggData } = useLandPriceAggregation();
+  const { data: transactionAggData } = useTransactionAggregation();
 
   // A layer is visible if the map-store toggles it OR the active theme includes it.
   const isVisible = (id: string) =>
@@ -119,6 +137,16 @@ export function LayerRenderer({
         visible={isVisible("land_price_ts")}
         selectedYear={landPriceYear}
         isFetching={isLandPriceFetching}
+      />
+
+      <LandPricePolygonLayer
+        data={landPriceAggData ?? EMPTY_LAND_PRICE_AGG}
+        visible={isVisible("land_price_polygon")}
+      />
+
+      <TransactionPolygonLayer
+        data={transactionAggData ?? EMPTY_TRANSACTION_AGG}
+        visible={isVisible("transaction_polygon")}
       />
 
       {apiLayers.map((layer) => {
@@ -160,7 +188,6 @@ export function LayerRenderer({
           />
         );
       })}
-
     </>
   );
 }

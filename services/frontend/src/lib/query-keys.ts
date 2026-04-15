@@ -59,6 +59,7 @@ export const queryKeys = {
     byPref: (prefCode: string) => ["transaction-summary", prefCode] as const,
   },
   transactions: {
+    all: ["transactions"] as const,
     aggregation: (bbox: BBox) =>
       ["transactions", "aggregation", ...bboxKey(bbox)] as const,
   },

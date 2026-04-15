@@ -67,3 +67,29 @@ export const SCORE = {
   mid: "#eab308",
   high: "#10b981",
 } as const;
+
+/**
+ * Domain stop values (¥/m²) for the land-price color interpolation.
+ * Keys match the PRICE_STOPS color keys exactly.
+ */
+export const PRICE_THRESHOLDS = {
+  min: 50_000,
+  low: 200_000,
+  mid: 500_000,
+  midHigh: 1_000_000,
+  high: 2_000_000,
+  max: 5_000_000,
+} as const satisfies Record<keyof typeof PRICE_STOPS, number>;
+
+/**
+ * Domain stop values (transaction count) for the transaction-polygon color
+ * interpolation. Paired with PRICE_STOPS which reuses the same color ramp.
+ */
+export const TX_COUNT_THRESHOLDS = {
+  min: 10,
+  low: 50,
+  mid: 100,
+  midHigh: 300,
+  high: 500,
+  max: 1_000,
+} as const satisfies Record<keyof typeof PRICE_STOPS, number>;
