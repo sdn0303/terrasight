@@ -20,6 +20,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Create empty public dirs that Vite expects (populated at runtime via volumes)
+RUN mkdir -p public/data/fgb public/wasm
+
 # VITE_API_URL is baked into the bundle at build time.
 # In production behind nginx reverse proxy, the SPA uses relative /api paths.
 ARG VITE_API_URL=""

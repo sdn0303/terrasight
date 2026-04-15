@@ -2,6 +2,9 @@
 dist/
 node_modules/
 
+# Public data (symlinks to large files — mounted at runtime via volumes)
+public/
+
 # Version control
 .git
 .gitignore
