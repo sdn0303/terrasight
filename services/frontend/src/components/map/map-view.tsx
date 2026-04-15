@@ -54,9 +54,6 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
     return () => {
       if (moveEndTimerRef.current) clearTimeout(moveEndTimerRef.current);
     };
@@ -86,13 +83,6 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
       }, DEBOUNCE_MS);
     },
     [onMoveEnd],
-  );
-
-  const handleClick = useCallback(
-    (e: MapMouseEvent) => {
-      onFeatureClick?.(e);
-    },
-    [onFeatureClick],
   );
 
   const handleLoad = useCallback(
@@ -126,7 +116,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         log.error({ err }, "failed to add terrain source");
       }
 
-      // Add 3D building extrusion layer using CARTO vector tiles
+      // Add 3D building extrusion layer using Mapbox composite source
       try {
         const style = map.getStyle();
         const layers = style.layers ?? [];
@@ -136,7 +126,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
             ("source-layer" in l && l["source-layer"] === "building"),
         );
 
-        if (!hasBuildingLayer) {
+        if (!hasBuildingLayer && map.getSource("composite")) {
           const labelLayerId = layers.find(
             (l) =>
               l.type === "symbol" &&
@@ -149,7 +139,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
             {
               id: "3d-buildings",
               type: "fill-extrusion",
-              source: "carto",
+              source: "composite",
               "source-layer": "building",
               filter: ["==", ["geometry-type"], "Polygon"],
               paint: {
@@ -275,7 +265,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         bearing={viewState.bearing}
         onMove={handleMove}
         onMoveEnd={handleMoveEnd}
-        onClick={handleClick}
+        {...(onFeatureClick ? { onClick: onFeatureClick } : {})}
         onLoad={handleLoad}
         mapStyle={MAPBOX_STYLES[baseMap]}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}

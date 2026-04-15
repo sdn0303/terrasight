@@ -1,6 +1,5 @@
 "use client";
 
-import type { FeatureCollection } from "geojson";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { memo, useMemo } from "react";
 import { LayerRenderer } from "@/components/map/layer-renderer";
@@ -8,13 +7,9 @@ import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useLandPricesAllYears } from "@/features/land-prices/api/use-land-prices-all-years";
 import type { BBox } from "@/lib/api";
 import { LAND_PRICE_FROM_YEAR, LAND_PRICE_TO_YEAR } from "@/lib/constants";
+import { EMPTY_FC } from "@/lib/geo-constants";
 import { LAYERS } from "@/lib/layers";
 import { useMapStore } from "@/stores/map-store";
-
-const EMPTY_FC: FeatureCollection = {
-  type: "FeatureCollection",
-  features: [],
-};
 
 const staticLayers = LAYERS.filter((l) => l.source === "static");
 const apiLayers = LAYERS.filter((l) => l.source === "api");
