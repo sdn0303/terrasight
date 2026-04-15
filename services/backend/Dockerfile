@@ -16,20 +16,18 @@ RUN apt-get update && \
 # Copy ALL workspace manifests first so that `cargo build --release` can
 # cache dependency compilation independently of source changes.
 COPY Cargo.toml Cargo.lock ./
-COPY lib/telemetry/Cargo.toml lib/telemetry/Cargo.toml
-COPY lib/geo-math/Cargo.toml lib/geo-math/Cargo.toml
-COPY lib/mlit-client/Cargo.toml lib/mlit-client/Cargo.toml
-COPY lib/db/Cargo.toml lib/db/Cargo.toml
-COPY lib/api-core/Cargo.toml lib/api-core/Cargo.toml
+COPY lib/domain/Cargo.toml lib/domain/Cargo.toml
+COPY lib/server/Cargo.toml lib/server/Cargo.toml
+COPY lib/geo/Cargo.toml lib/geo/Cargo.toml
+COPY lib/mlit/Cargo.toml lib/mlit/Cargo.toml
 
 # Build dummy sources to cache all dependency compilation.
 # This layer is reused as long as Cargo.toml / Cargo.lock are unchanged.
 RUN mkdir src && echo 'fn main() {}' > src/main.rs && \
-    mkdir -p lib/telemetry/src && echo '' > lib/telemetry/src/lib.rs && \
-    mkdir -p lib/geo-math/src && echo '' > lib/geo-math/src/lib.rs && \
-    mkdir -p lib/mlit-client/src && echo '' > lib/mlit-client/src/lib.rs && \
-    mkdir -p lib/db/src && echo '' > lib/db/src/lib.rs && \
-    mkdir -p lib/api-core/src && echo '' > lib/api-core/src/lib.rs && \
+    mkdir -p lib/domain/src && echo '' > lib/domain/src/lib.rs && \
+    mkdir -p lib/server/src && echo '' > lib/server/src/lib.rs && \
+    mkdir -p lib/geo/src && echo '' > lib/geo/src/lib.rs && \
+    mkdir -p lib/mlit/src && echo '' > lib/mlit/src/lib.rs && \
     cargo build --release && \
     rm -rf src lib
 
@@ -48,8 +46,8 @@ RUN touch src/main.rs && \
 # -----------------------------------------------------------------------
 FROM debian:bookworm-slim AS runtime
 
-LABEL maintainer="realestate-api"
-LABEL description="Real Estate Investment API — Rust Axum + PostGIS backend"
+LABEL maintainer="terrasight"
+LABEL description="Terrasight API — Rust Axum + PostGIS backend"
 LABEL version="0.1.0"
 
 # ca-certificates: required for TLS connections to external APIs
@@ -63,13 +61,13 @@ RUN apt-get update && \
 # Create a dedicated non-root user
 RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser
 
-COPY --from=builder /app/target/release/realestate-api /usr/local/bin/realestate-api
+COPY --from=builder /app/target/release/terrasight-api /usr/local/bin/terrasight-api
 
 USER appuser
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["curl", "-f", "http://localhost:8000/api/health"]
+    CMD ["curl", "-f", "http://localhost:8000/api/v1/health"]
 
-ENTRYPOINT ["realestate-api"]
+ENTRYPOINT ["terrasight-api"]
