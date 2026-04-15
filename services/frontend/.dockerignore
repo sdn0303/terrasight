@@ -1,0 +1,31 @@
+# Build artifacts (rebuilt in Docker)
+dist/
+node_modules/
+
+# Version control
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Documentation
+*.md
+
+# Environment files
+.env
+.env.*
+
+# Tests (not needed in production build)
+src/__tests__/
+e2e/
+vitest.config.ts
+playwright.config.ts
+
+# OS
+.DS_Store
+
+# Misc
+*.log
+coverage/
