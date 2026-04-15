@@ -93,3 +93,6 @@ docs/research/
 
 # Superpowers brainstorming visual companion artifacts
 .superpowers/
+
+# Playwright
+.playwright-mcp/
