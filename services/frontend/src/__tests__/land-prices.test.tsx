@@ -230,10 +230,7 @@ describe("useLandPrices", () => {
         expect.anything(),
         "api/v1/land-prices",
         expect.objectContaining({
-          south: String(BBOX.south),
-          west: String(BBOX.west),
-          north: String(BBOX.north),
-          east: String(BBOX.east),
+          bbox: `${BBOX.west},${BBOX.south},${BBOX.east},${BBOX.north}`,
           year: "2024",
           zoom: "12",
         }),
