@@ -90,6 +90,10 @@ docs/reviews/
 docs/plans/
 docs/designs/
 docs/research/
+docs/archive/
 
 # Superpowers brainstorming visual companion artifacts
 .superpowers/
+
+# Playwright
+.playwright-mcp/

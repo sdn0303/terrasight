@@ -268,6 +268,7 @@ mod tests {
         pub steep_slope_calls: std::sync::atomic::AtomicU32,
         pub schools_calls: std::sync::atomic::AtomicU32,
         pub medical_calls: std::sync::atomic::AtomicU32,
+        pub stations_calls: std::sync::atomic::AtomicU32,
     }
 
     impl StubLayerRepo {
@@ -345,6 +346,10 @@ mod tests {
                 }
                 LayerType::Medical => {
                     self.medical_calls.fetch_add(1, SeqCst);
+                    Ok(stub_layer_result("Point"))
+                }
+                LayerType::Stations => {
+                    self.stations_calls.fetch_add(1, SeqCst);
                     Ok(stub_layer_result("Point"))
                 }
             }

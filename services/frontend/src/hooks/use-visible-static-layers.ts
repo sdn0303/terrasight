@@ -4,6 +4,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { deserialize } from "flatgeobuf/lib/mjs/geojson";
 import type { Feature, FeatureCollection } from "geojson";
 import { useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSpatialEngineReady } from "@/hooks/use-spatial-engine";
 import { layerUrl } from "@/lib/data-url";
 import { canonicalLayerId } from "@/lib/layer-ids";
@@ -62,10 +63,14 @@ export function useVisibleStaticLayers(
   const prefCodeForLayer = (canonicalId: string): string =>
     NATIONAL_LAYERS.has(canonicalId) ? "national" : selectedPrefCode;
 
-  // Viewport bbox from map store (same pattern as useStaticLayer)
-  const latitude = useMapStore((s) => s.viewState.latitude);
-  const longitude = useMapStore((s) => s.viewState.longitude);
-  const zoom = useMapStore((s) => s.viewState.zoom);
+  // Viewport bbox from map store — debounced to prevent per-frame WASM
+  // queries and TanStack Query cache churn during pan/zoom.
+  const rawLat = useMapStore((s) => s.viewState.latitude);
+  const rawLng = useMapStore((s) => s.viewState.longitude);
+  const rawZoom = useMapStore((s) => s.viewState.zoom);
+  const latitude = useDebouncedValue(rawLat, 300);
+  const longitude = useDebouncedValue(rawLng, 300);
+  const zoom = useDebouncedValue(rawZoom, 300);
 
   const bbox = useMemo(() => {
     const latRange = 180 / 2 ** zoom;

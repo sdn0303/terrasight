@@ -8,21 +8,27 @@ import { queryKeys } from "@/lib/query-keys";
 import { useMapStore } from "@/stores/map-store";
 
 export function useLandPriceAggregation() {
-  const viewState = useMapStore((s) => s.viewState);
-  const debouncedVS = useDebouncedValue(viewState, 300);
+  // Select primitive values — stable under Object.is, only re-render
+  // when the actual number changes (not on unrelated store updates).
+  const rawLat = useMapStore((s) => s.viewState.latitude);
+  const rawLng = useMapStore((s) => s.viewState.longitude);
+  const rawZoom = useMapStore((s) => s.viewState.zoom);
+  const latitude = useDebouncedValue(rawLat, 300);
+  const longitude = useDebouncedValue(rawLng, 300);
+  const zoom = useDebouncedValue(rawZoom, 300);
 
-  // Derive bbox from the debounced viewState so that both queryKey and
+  // Derive bbox from the debounced primitives so that both queryKey and
   // queryFn use the settled position — no fetches during active panning.
   const bbox = useMemo(() => {
-    const latRange = 180 / 2 ** debouncedVS.zoom;
-    const lngRange = 360 / 2 ** debouncedVS.zoom;
+    const latRange = 180 / 2 ** zoom;
+    const lngRange = 360 / 2 ** zoom;
     return {
-      south: debouncedVS.latitude - latRange / 2,
-      west: debouncedVS.longitude - lngRange / 2,
-      north: debouncedVS.latitude + latRange / 2,
-      east: debouncedVS.longitude + lngRange / 2,
+      south: latitude - latRange / 2,
+      west: longitude - lngRange / 2,
+      north: latitude + latRange / 2,
+      east: longitude + lngRange / 2,
     };
-  }, [debouncedVS.latitude, debouncedVS.longitude, debouncedVS.zoom]);
+  }, [latitude, longitude, zoom]);
 
   return useQuery({
     queryKey: queryKeys.landPrices.aggregation(bbox),
@@ -38,7 +44,7 @@ export function useLandPriceAggregation() {
         },
         signal,
       ),
-    enabled: isBBoxValid(bbox) && debouncedVS.zoom < 14,
+    enabled: isBBoxValid(bbox) && zoom < 14,
     // Aggregated city-level data changes infrequently; 2-minute stale window
     staleTime: 120_000,
     retry: 1,

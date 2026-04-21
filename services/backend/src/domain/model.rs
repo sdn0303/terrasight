@@ -10,6 +10,7 @@
 mod aggregation;
 mod appraisal;
 mod area;
+mod estat;
 mod geo;
 mod health;
 mod municipality;
@@ -24,6 +25,7 @@ mod trend;
 pub use aggregation::*;
 pub use appraisal::*;
 pub use area::*;
+pub use estat::*;
 pub use geo::*;
 pub use health::*;
 pub use municipality::*;

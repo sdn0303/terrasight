@@ -32,25 +32,14 @@ import { useLandPriceAggregation } from "@/features/land-prices/api/use-land-pri
 import { useTransactionAggregation } from "@/features/transactions/api/use-transaction-aggregation";
 import { useThemeLayers } from "@/hooks/use-theme-layers";
 import { useVisibleStaticLayers } from "@/hooks/use-visible-static-layers";
-import type { LandPriceAggregation } from "@/lib/api/schemas/land-price-aggregation";
-import type { TransactionAggregation } from "@/lib/api/schemas/transaction-aggregation";
+import type { AreaDataResponse } from "@/lib/api/schemas/area-data";
+import {
+  EMPTY_FC,
+  EMPTY_LAND_PRICE_AGG,
+  EMPTY_TRANSACTION_AGG,
+} from "@/lib/geo-constants";
 import { canonicalLayerId } from "@/lib/layer-ids";
 import type { LayerConfig } from "@/lib/layers";
-
-const EMPTY_FC: FeatureCollection = {
-  type: "FeatureCollection",
-  features: [],
-};
-
-const EMPTY_LAND_PRICE_AGG: LandPriceAggregation = {
-  type: "FeatureCollection",
-  features: [],
-};
-
-const EMPTY_TRANSACTION_AGG: TransactionAggregation = {
-  type: "FeatureCollection",
-  features: [],
-};
 
 const STATIC_LAYER_COMPONENTS: Record<
   string,
@@ -89,7 +78,7 @@ interface LayerRendererProps {
   visibleLayers: Set<string>;
   staticLayers: LayerConfig[];
   apiLayers: LayerConfig[];
-  areaData: Record<string, unknown> | null;
+  areaData: AreaDataResponse | null;
   landPriceData: FeatureCollection;
   isLandPriceFetching: boolean;
   populationYear: number;
@@ -149,7 +138,7 @@ export function LayerRenderer({
         if (!Component) return null;
         const layerData =
           areaData != null
-            ? ((areaData as Record<string, unknown>)[layer.id] as
+            ? (areaData[layer.id as keyof AreaDataResponse] as
                 | FeatureCollection
                 | undefined)
             : undefined;

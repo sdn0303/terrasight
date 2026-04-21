@@ -52,6 +52,7 @@ const DENSITY_ZONING: f64 = 100_000.0;
 const DENSITY_STEEP_SLOPE: f64 = 80_000.0;
 const DENSITY_SCHOOLS: f64 = 30_000.0;
 const DENSITY_MEDICAL: f64 = 80_000.0;
+const DENSITY_STATIONS: f64 = 10_000.0;
 const DENSITY_DEFAULT: f64 = 30_000.0;
 
 /// Typed enum identifying the GIS data layers served by the backend.
@@ -95,6 +96,11 @@ pub enum LayerKind {
     /// Moderate-high density (~80 000 points/deg²). Includes hospitals,
     /// clinics, and pharmacies; dense in commercial and mixed-use areas.
     Medical,
+    /// Railway station locations (駅).
+    ///
+    /// Low density (~10 000 points/deg²). Point features derived from KSJ S12;
+    /// LineString geometries converted to centroids during import.
+    Stations,
     /// Fallback for any layer not explicitly enumerated.
     ///
     /// Uses the default density (~30 000 features/deg²), which matches the
@@ -111,6 +117,7 @@ impl LayerKind {
             Self::SteepSlope => DENSITY_STEEP_SLOPE,
             Self::Schools => DENSITY_SCHOOLS,
             Self::Medical => DENSITY_MEDICAL,
+            Self::Stations => DENSITY_STATIONS,
             Self::Other => DENSITY_DEFAULT,
         }
     }

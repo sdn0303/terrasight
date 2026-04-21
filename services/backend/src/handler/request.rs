@@ -24,8 +24,10 @@ pub mod bbox;
 pub mod land_price;
 pub mod municipality;
 pub mod opportunities;
+pub mod population;
 pub mod transaction;
 pub mod trend;
+pub mod vacancy;
 
 pub use area_data::AreaDataQuery;
 pub use area_stats::AreaStatsQuery;

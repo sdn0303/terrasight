@@ -9,8 +9,13 @@ export const queryKeys = {
   health: ["health"] as const,
   areaData: {
     all: ["area-data"] as const,
-    bbox: (bbox: BBox, layers: string[]) =>
-      ["area-data", ...bboxKey(bbox), [...layers].sort().join(",")] as const,
+    bbox: (bbox: BBox, layers: string[], zoom?: number) =>
+      [
+        "area-data",
+        ...bboxKey(bbox),
+        [...layers].sort().join(","),
+        zoom,
+      ] as const,
   },
   score: {
     all: ["score"] as const,
@@ -66,5 +71,13 @@ export const queryKeys = {
   municipalities: {
     all: ["municipalities"] as const,
     byPref: (prefCode: string) => ["municipalities", prefCode] as const,
+  },
+  population: {
+    all: ["population"] as const,
+    byPref: (prefCode: string) => ["population", prefCode] as const,
+  },
+  vacancy: {
+    all: ["vacancy"] as const,
+    byPref: (prefCode: string) => ["vacancy", prefCode] as const,
   },
 };

@@ -16,6 +16,7 @@ import type {
   ViewStateChangeEvent,
 } from "react-map-gl/mapbox";
 import { Map as MapGL, NavigationControl } from "react-map-gl/mapbox";
+import { useMapUrlState } from "@/hooks/use-map-url-state";
 import type { BBox } from "@/lib/api";
 import { DEBOUNCE_MS } from "@/lib/constants";
 import { ALL_INTERACTIVE_LAYER_IDS } from "@/lib/layers";
@@ -25,7 +26,6 @@ import type { BaseMap } from "@/stores/ui-store";
 import { useUIStore } from "@/stores/ui-store";
 
 const MAPBOX_STYLES = {
-  light: "mapbox://styles/mapbox/streets-v12",
   dark: "mapbox://styles/mapbox/dark-v11",
   satellite: "mapbox://styles/mapbox/satellite-streets-v12",
 } as const satisfies Record<BaseMap, string>;
@@ -41,6 +41,7 @@ interface MapViewProps {
 const WEBGL_RECOVERY_TIMEOUT_MS = 5000;
 
 export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
+  useMapUrlState();
   const [mounted, setMounted] = useState(false);
   const [webglLost, setWebglLost] = useState(false);
   const { viewState, setViewState } = useMapStore();
@@ -52,9 +53,6 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
     return () => {
       if (moveEndTimerRef.current) clearTimeout(moveEndTimerRef.current);
     };
@@ -86,13 +84,6 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
     [onMoveEnd],
   );
 
-  const handleClick = useCallback(
-    (e: MapMouseEvent) => {
-      onFeatureClick?.(e);
-    },
-    [onFeatureClick],
-  );
-
   const handleLoad = useCallback(
     (e: MapEvent) => {
       const map = e.target;
@@ -114,12 +105,9 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
       try {
         map.addSource("terrain-dem", {
           type: "raster-dem",
-          tiles: [
-            "https://s3.amazonaws.com/elevation-tiles-prod/terrainrgb/{z}/{x}/{y}.png",
-          ],
-          tileSize: 256,
-          maxzoom: 15,
-          encoding: "terrarium",
+          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+          tileSize: 512,
+          maxzoom: 14,
         });
 
         map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
@@ -127,7 +115,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         log.error({ err }, "failed to add terrain source");
       }
 
-      // Add 3D building extrusion layer using CARTO vector tiles
+      // Add 3D building extrusion layer using Mapbox composite source
       try {
         const style = map.getStyle();
         const layers = style.layers ?? [];
@@ -137,7 +125,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
             ("source-layer" in l && l["source-layer"] === "building"),
         );
 
-        if (!hasBuildingLayer) {
+        if (!hasBuildingLayer && map.getSource("composite")) {
           const labelLayerId = layers.find(
             (l) =>
               l.type === "symbol" &&
@@ -150,7 +138,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
             {
               id: "3d-buildings",
               type: "fill-extrusion",
-              source: "carto",
+              source: "composite",
               "source-layer": "building",
               filter: ["==", ["geometry-type"], "Polygon"],
               paint: {
@@ -276,7 +264,7 @@ export function MapView({ children, onMoveEnd, onFeatureClick }: MapViewProps) {
         bearing={viewState.bearing}
         onMove={handleMove}
         onMoveEnd={handleMoveEnd}
-        onClick={handleClick}
+        {...(onFeatureClick ? { onClick: onFeatureClick } : {})}
         onLoad={handleLoad}
         mapStyle={MAPBOX_STYLES[baseMap]}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}

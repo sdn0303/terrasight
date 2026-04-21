@@ -9,16 +9,12 @@ export function useMapInteraction() {
   const selectFeature = useMapStore((s) => s.selectFeature);
   const selectArea = useMapStore((s) => s.selectArea);
   const setAnalysisPoint = useMapStore((s) => s.setAnalysisPoint);
-  const openLeftPanel = useUIStore((s) => s.openLeftPanel);
+  const setSelectedArea = useUIStore((s) => s.setSelectedArea);
 
   const handleFeatureClick = useCallback(
     (e: MapMouseEvent) => {
       const feature = e.features?.[0];
 
-      // Progressive disclosure: click opens the left panel for the
-      // feature. Pre-Phase-6 this branched on an `explore` vs `compare`
-      // app mode; compare is now driven by the OpportunitiesSheet
-      // checkbox column, so map clicks always take the panel path.
       if (feature) {
         const layerId = feature.layer?.id;
         if (
@@ -26,12 +22,22 @@ export function useMapInteraction() {
           layerId === "admin-boundary-line"
         ) {
           const props = feature.properties ?? {};
-          selectArea({
+          const area = {
             code: (props.adminCode as string) ?? "",
             name:
               (props.cityName as string) ?? (props.prefName as string) ?? "",
-            level: (props.cityName as string) ? "municipality" : "prefecture",
-            bbox: { south: 0, west: 0, north: 0, east: 0 }, // TODO: compute from geometry
+            level: ((props.cityName as string)
+              ? "municipality"
+              : "prefecture") as "prefecture" | "municipality",
+            bbox: { south: 0, west: 0, north: 0, east: 0 },
+          };
+          selectArea(area);
+          setSelectedArea({
+            code: area.code,
+            name: area.name,
+            level: area.level,
+            lat: e.lngLat.lat,
+            lng: e.lngLat.lng,
           });
           return;
         }
@@ -49,16 +55,18 @@ export function useMapInteraction() {
           lng: e.lngLat.lng,
           ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
-        openLeftPanel({
+        setSelectedArea({
+          code: "",
+          name: featureAddress ?? "",
+          level: "municipality",
           lat: e.lngLat.lat,
           lng: e.lngLat.lng,
-          ...(featureAddress !== undefined ? { address: featureAddress } : {}),
         });
       } else {
         selectFeature(null);
       }
     },
-    [selectArea, selectFeature, setAnalysisPoint, openLeftPanel],
+    [selectArea, selectFeature, setAnalysisPoint, setSelectedArea],
   );
 
   return { handleFeatureClick };

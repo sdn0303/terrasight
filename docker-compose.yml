@@ -31,6 +31,8 @@ services:
       REINFOLIB_API_KEY: ${REINFOLIB_API_KEY:-}
       RUST_LOG: ${RUST_LOG:-info}
       ALLOWED_ORIGINS: http://localhost:3001
+      RATE_LIMIT_RPM: "600"
+      RATE_LIMIT_BURST: "60"
     ports:
       - "8000:8000"
     healthcheck:

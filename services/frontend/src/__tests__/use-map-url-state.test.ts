@@ -50,17 +50,24 @@ describe("isValidThemeId", () => {
     }
   });
 
-  it("accepts each ThemeId individually", () => {
+  it("accepts each TabId individually", () => {
+    expect(isValidThemeId("overview")).toBe(true);
     expect(isValidThemeId("land-price")).toBe(true);
     expect(isValidThemeId("hazard")).toBe(true);
     expect(isValidThemeId("transactions")).toBe(true);
-    expect(isValidThemeId("station")).toBe(true);
-    expect(isValidThemeId("score")).toBe(true);
+    expect(isValidThemeId("stations")).toBe(true);
+    expect(isValidThemeId("population")).toBe(true);
+    expect(isValidThemeId("vacancy")).toBe(true);
+    expect(isValidThemeId("yield")).toBe(true);
+    expect(isValidThemeId("ground")).toBe(true);
+    expect(isValidThemeId("zoning")).toBe(true);
   });
 
   it("rejects legacy / unknown theme IDs", () => {
     expect(isValidThemeId("safety")).toBe(false);
     expect(isValidThemeId("livability")).toBe(false);
+    expect(isValidThemeId("station")).toBe(false);
+    expect(isValidThemeId("score")).toBe(false);
     expect(isValidThemeId("")).toBe(false);
     expect(isValidThemeId("unknown")).toBe(false);
   });
@@ -74,6 +81,6 @@ describe("URL theme param contract", () => {
 
   it("valid theme param passes the guard", () => {
     expect(isValidThemeId("land-price")).toBe(true);
-    expect(isValidThemeId("score")).toBe(true);
+    expect(isValidThemeId("overview")).toBe(true);
   });
 });

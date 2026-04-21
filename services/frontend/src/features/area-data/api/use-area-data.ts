@@ -9,6 +9,7 @@ export function useAreaData(bbox: BBox | null, layers: string[], zoom: number) {
     queryKey: queryKeys.areaData.bbox(
       bbox ?? { south: 0, west: 0, north: 0, east: 0 },
       layers,
+      Math.min(Math.floor(zoom), 22),
     ),
     queryFn: ({ signal }) => {
       if (bbox === null) throw new Error("bbox is required");

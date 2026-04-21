@@ -44,8 +44,11 @@ CREATE TABLE land_prices (
 COMMENT ON TABLE land_prices IS '地価公示・都道府県地価調査';
 
 CREATE INDEX idx_lp_geom ON land_prices USING gist (geom);
+CREATE INDEX idx_lp_geom_geog ON land_prices USING gist ((geom::geography));
 CREATE INDEX idx_lp_pref_year ON land_prices (pref_code, survey_year);
 CREATE UNIQUE INDEX idx_lp_addr_year ON land_prices (address, survey_year);
+CREATE INDEX idx_lp_zone_type ON land_prices (zone_type) WHERE zone_type IS NOT NULL;
+CREATE INDEX idx_lp_zone_year ON land_prices (zone_type, survey_year);
 
 -- ============================================================
 -- Zoning (A29 用途地域)
@@ -79,6 +82,7 @@ CREATE TABLE flood_risk (
 );
 
 CREATE INDEX idx_flood_geom ON flood_risk USING gist (geom);
+CREATE INDEX idx_flood_geom_geog ON flood_risk USING gist ((geom::geography));
 CREATE INDEX idx_flood_pref ON flood_risk (pref_code);
 
 -- ============================================================
@@ -93,6 +97,7 @@ CREATE TABLE steep_slope (
 );
 
 CREATE INDEX idx_steep_geom ON steep_slope USING gist (geom);
+CREATE INDEX idx_steep_geom_geog ON steep_slope USING gist ((geom::geography));
 CREATE INDEX idx_steep_pref ON steep_slope (pref_code);
 
 -- ============================================================
@@ -109,6 +114,7 @@ CREATE TABLE schools (
 );
 
 CREATE INDEX idx_school_geom ON schools USING gist (geom);
+CREATE INDEX idx_school_geom_geog ON schools USING gist ((geom::geography));
 CREATE INDEX idx_school_pref ON schools (pref_code);
 
 -- ============================================================
@@ -126,6 +132,7 @@ CREATE TABLE medical_facilities (
 );
 
 CREATE INDEX idx_medical_geom ON medical_facilities USING gist (geom);
+CREATE INDEX idx_medical_geom_geog ON medical_facilities USING gist ((geom::geography));
 CREATE INDEX idx_medical_pref ON medical_facilities (pref_code);
 
 -- ============================================================

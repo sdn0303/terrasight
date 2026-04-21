@@ -136,6 +136,33 @@ impl From<MedicalFacilityRow> for GeoFeature {
     }
 }
 
+#[derive(Debug, FromRow)]
+struct StationRow {
+    id: i64,
+    station_name: String,
+    station_code: String,
+    line_name: String,
+    operator_name: String,
+    passenger_count: Option<i32>,
+    geometry: serde_json::Value,
+}
+
+impl From<StationRow> for GeoFeature {
+    fn from(row: StationRow) -> Self {
+        to_geo_feature(
+            row.geometry,
+            json!({
+                "id": row.id,
+                "station_name": row.station_name,
+                "station_code": row.station_code,
+                "line_name": row.line_name,
+                "operator_name": row.operator_name,
+                "passenger_count": row.passenger_count,
+            }),
+        )
+    }
+}
+
 /// PostgreSQL + PostGIS implementation of [`LayerRepository`].
 pub(crate) struct PgAreaRepository {
     pool: PgPool,
@@ -174,6 +201,7 @@ impl LayerRepository for PgAreaRepository {
             LayerType::SteepSlope => self.query_steep_slope(bbox, z, pref_code).await,
             LayerType::Schools => self.query_schools(bbox, z, pref_code).await,
             LayerType::Medical => self.query_medical(bbox, z, pref_code).await,
+            LayerType::Stations => self.query_stations(bbox, z, pref_code).await,
         }
     }
 }
@@ -402,6 +430,45 @@ impl PgAreaRepository {
         .inspect(|rows| {
             tracing::debug!(row_count = rows.len(), limit, "medical_facilities fetched")
         })?;
+
+        Ok(apply_limit(
+            rows.into_iter().map(GeoFeature::from).collect(),
+            limit,
+        ))
+    }
+
+    async fn query_stations(
+        &self,
+        bbox: &BBox,
+        zoom: u8,
+        pref_code: Option<&PrefCode>,
+    ) -> Result<LayerResult, DomainError> {
+        let geo_bbox = GeoBBox::new(bbox.south(), bbox.west(), bbox.north(), bbox.east());
+        let area = bbox_area_deg2(&geo_bbox);
+        let limit = compute_feature_limit(LayerKind::Stations, area, zoom);
+        let rows = run_query(
+            LAYER_QUERY_TIMEOUT,
+            "stations layer query",
+            bind_bbox(
+                sqlx::query_as::<_, StationRow>(
+                    r#"
+                    SELECT id, station_name, station_code, line_name, operator_name,
+                           passenger_count,
+                           ST_AsGeoJSON(geom)::jsonb AS geometry
+                    FROM stations
+                    WHERE ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+                      AND ($5::text IS NULL OR pref_code = $5)
+                    LIMIT $6
+                    "#,
+                ),
+                &geo_bbox,
+            )
+            .bind(pref_code.map(PrefCode::as_str))
+            .bind(limit + 1)
+            .fetch_all(&self.pool),
+        )
+        .await
+        .inspect(|rows| tracing::debug!(row_count = rows.len(), limit, "stations fetched"))?;
 
         Ok(apply_limit(
             rows.into_iter().map(GeoFeature::from).collect(),

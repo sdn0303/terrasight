@@ -179,6 +179,39 @@ Source: J-SHIS
 
 Source: メッシュデータ (P2)
 
+#### population_municipality — 市区町村別人口 **(v3 NEW)**
+
+| Column | Type | Note |
+|--------|------|------|
+| id | bigint (identity) | PK |
+| pref_code | text | 2桁ゼロ埋め |
+| city_code | text | 5桁 JIS |
+| city_name | text | |
+| population | integer | 総人口 |
+| male | integer | 男性人口 |
+| female | integer | 女性人口 |
+| households | integer | 世帯数 |
+| census_year | smallint | 国勢調査年 |
+
+Source: e-Stat 国勢調査 → `import_estat.py`
+UNIQUE: `(pref_code, city_code, census_year)`
+
+#### vacancy_rates — 空き家率 **(v3 NEW)**
+
+| Column | Type | Note |
+|--------|------|------|
+| id | bigint (identity) | PK |
+| pref_code | text | 2桁ゼロ埋め |
+| city_code | text | 5桁 JIS |
+| city_name | text | |
+| vacancy_count | integer | 空き家数 |
+| total_houses | integer | 総住宅数 |
+| vacancy_rate_pct | real | 空き家率 (%) |
+| survey_year | smallint | 調査年 |
+
+Source: e-Stat 住宅・土地統計調査 → `import_estat.py`
+UNIQUE: `(pref_code, city_code, survey_year)`
+
 ### Non-Spatial Tables (geometry なし)
 
 #### transaction_prices — 不動産取引価格
