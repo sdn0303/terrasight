@@ -6,14 +6,14 @@ import { useUIStore } from "@/stores/ui-store";
 
 export function MunicipalityList() {
   const prefCode = usePrefectureStore((s) => s.selectedPrefCode);
-  const activeTheme = useUIStore((s) => s.activeTheme);
+  const activeTab = useUIStore((s) => s.activeTab);
   const {
     data: municipalities,
     isLoading,
     isError,
   } = useMunicipalities(prefCode);
   const { data: transactionSummary } = useTransactionSummary(
-    activeTheme === "transactions" ? prefCode : null,
+    activeTab === "transactions" ? prefCode : null,
   );
   const selectArea = useMapStore((s) => s.selectArea);
   const setViewState = useMapStore((s) => s.setViewState);
@@ -66,7 +66,7 @@ export function MunicipalityList() {
       {municipalities.map((m) => {
         // "transactions" テーマ時の取引件数表示
         const txCount =
-          activeTheme === "transactions"
+          activeTab === "transactions"
             ? (transactionSummary?.find((t) => t.city_code === m.city_code)
                 ?.tx_count ?? null)
             : null;

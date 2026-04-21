@@ -40,10 +40,12 @@ use crate::infra::pg_area_repository::PgAreaRepository;
 use crate::infra::pg_health_repository::PgHealthRepository;
 use crate::infra::pg_land_price_repository::PgLandPriceRepository;
 use crate::infra::pg_municipality_repository::PgMunicipalityRepository;
+use crate::infra::pg_population_repository::PgPopulationRepository;
 use crate::infra::pg_stats_repository::PgStatsRepository;
 use crate::infra::pg_tls_repository::PgTlsRepository;
 use crate::infra::pg_transaction_repository::PgTransactionRepository;
 use crate::infra::pg_trend_repository::PgTrendRepository;
+use crate::infra::pg_vacancy_repository::PgVacancyRepository;
 use crate::infra::reinfolib_mock::create_reinfolib_source;
 use crate::usecase::check_health::CheckHealthUsecase;
 use crate::usecase::compute_tls::ComputeTlsUsecase;
@@ -55,11 +57,13 @@ use crate::usecase::get_land_prices::GetLandPricesUsecase;
 use crate::usecase::get_land_prices_by_year_range::GetLandPricesByYearRangeUsecase;
 use crate::usecase::get_municipalities::GetMunicipalitiesUsecase;
 use crate::usecase::get_opportunities::GetOpportunitiesUsecase;
+use crate::usecase::get_population::GetPopulationUsecase;
 use crate::usecase::get_stats::GetStatsUsecase;
 use crate::usecase::get_transaction_aggregation::GetTransactionAggregationUsecase;
 use crate::usecase::get_transaction_summary::GetTransactionSummaryUsecase;
 use crate::usecase::get_transactions::GetTransactionsUsecase;
 use crate::usecase::get_trend::GetTrendUsecase;
+use crate::usecase::get_vacancy::GetVacancyUsecase;
 
 /// Composition root: wires Infra → Domain traits → Usecases.
 ///
@@ -75,6 +79,10 @@ pub struct AppState {
     pub(crate) appraisals: Arc<GetAppraisalsUsecase>,
     /// Handles `GET /api/v1/health`.
     pub(crate) health: Arc<CheckHealthUsecase>,
+    /// Handles `GET /api/v1/population`.
+    pub(crate) population: Arc<GetPopulationUsecase>,
+    /// Handles `GET /api/v1/vacancy`.
+    pub(crate) vacancy: Arc<GetVacancyUsecase>,
     /// Handles `GET /api/v1/area-data`.
     pub(crate) area_data: Arc<GetAreaDataUsecase>,
     /// Handles `GET /api/v1/area-stats`.
@@ -194,6 +202,12 @@ impl AppState {
                 aggregation_repo,
             )),
             trend: Arc::new(GetTrendUsecase::new(trend_repo)),
+            population: Arc::new(GetPopulationUsecase::new(Arc::new(
+                PgPopulationRepository::new(pool.clone()),
+            ))),
+            vacancy: Arc::new(GetVacancyUsecase::new(Arc::new(PgVacancyRepository::new(
+                pool.clone(),
+            )))),
             reinfolib,
         }
     }
@@ -299,5 +313,17 @@ impl FromRef<AppState> for Arc<GetLandPriceAggregationUsecase> {
 impl FromRef<AppState> for Arc<GetTransactionAggregationUsecase> {
     fn from_ref(state: &AppState) -> Self {
         Arc::clone(&state.transaction_aggregation)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetPopulationUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.population)
+    }
+}
+
+impl FromRef<AppState> for Arc<GetVacancyUsecase> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.vacancy)
     }
 }

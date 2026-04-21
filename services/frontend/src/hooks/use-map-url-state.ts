@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { isValidThemeId } from "@/lib/theme-definitions";
+import { isValidTabId } from "@/features/tabs/tab-configs";
 import { useMapStore } from "@/stores/map-store";
 import { useUIStore } from "@/stores/ui-store";
 
-/** True when (lat, lng) is a finite number within Earth bounds. */
 export function isValidCoordinate(
   lat: number | null,
   lng: number | null,
@@ -20,13 +19,13 @@ export function isValidCoordinate(
   );
 }
 
-/** Sync map viewState and activeTheme with URL search params. */
+/** Sync map viewState and activeTab with URL search params. */
 export function useMapUrlState() {
   const initialized = useRef(false);
   const viewState = useMapStore((s) => s.viewState);
   const setViewState = useMapStore((s) => s.setViewState);
-  const activeTheme = useUIStore((s) => s.activeTheme);
-  const setActiveTheme = useUIStore((s) => s.setActiveTheme);
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
 
   // Restore from URL on mount
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once pattern intentionally reads URL params at init time
@@ -40,7 +39,7 @@ export function useMapUrlState() {
     const z = params.get("z");
     const pitch = params.get("pitch");
     const bearing = params.get("bearing");
-    const theme = params.get("theme");
+    const tab = params.get("tab");
 
     if (lat !== null && lng !== null && z !== null) {
       const parsedLat = Number(lat);
@@ -65,8 +64,8 @@ export function useMapUrlState() {
       }
     }
 
-    if (theme !== null && isValidThemeId(theme)) {
-      setActiveTheme(theme);
+    if (tab !== null && isValidTabId(tab)) {
+      setActiveTab(tab);
     }
   }, []);
 
@@ -83,9 +82,7 @@ export function useMapUrlState() {
     if (viewState.bearing !== 0) {
       params.set("bearing", viewState.bearing.toFixed(0));
     }
-    if (activeTheme !== null) {
-      params.set("theme", activeTheme);
-    }
+    params.set("tab", activeTab);
     window.history.replaceState(null, "", `?${params.toString()}`);
   }, [
     viewState.latitude,
@@ -93,6 +90,6 @@ export function useMapUrlState() {
     viewState.zoom,
     viewState.pitch,
     viewState.bearing,
-    activeTheme,
+    activeTab,
   ]);
 }

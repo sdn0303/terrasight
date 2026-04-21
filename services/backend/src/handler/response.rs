@@ -27,10 +27,12 @@ pub(crate) mod health;
 pub(crate) mod layer;
 pub(crate) mod municipality;
 pub(crate) mod opportunities;
+pub(crate) mod population;
 pub(crate) mod stats;
 pub(crate) mod tls;
 pub(crate) mod transaction;
 pub(crate) mod trend;
+pub(crate) mod vacancy;
 
 pub(crate) use area_data::AreaDataResponseDto;
 pub(crate) use area_stats::AreaStatsResponse;

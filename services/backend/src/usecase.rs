@@ -29,7 +29,9 @@
 //! | [`get_transactions`] | `GET /api/v1/transactions` |
 //! | [`get_land_price_aggregation`] | `GET /api/v1/land-prices/aggregation` |
 //! | [`get_transaction_aggregation`] | `GET /api/v1/transactions/aggregation` |
+//! | [`get_population`] | `GET /api/v1/population` |
 //! | [`get_trend`] | `GET /api/v1/trend` |
+//! | [`get_vacancy`] | `GET /api/v1/vacancy` |
 
 pub(crate) mod check_health;
 pub(crate) mod compute_tls;
@@ -41,8 +43,10 @@ pub(crate) mod get_land_prices;
 pub(crate) mod get_land_prices_by_year_range;
 pub(crate) mod get_municipalities;
 pub(crate) mod get_opportunities;
+pub(crate) mod get_population;
 pub(crate) mod get_stats;
 pub(crate) mod get_transaction_aggregation;
 pub(crate) mod get_transaction_summary;
 pub(crate) mod get_transactions;
 pub(crate) mod get_trend;
+pub(crate) mod get_vacancy;

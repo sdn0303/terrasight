@@ -26,7 +26,6 @@ import type { BaseMap } from "@/stores/ui-store";
 import { useUIStore } from "@/stores/ui-store";
 
 const MAPBOX_STYLES = {
-  light: "mapbox://styles/mapbox/streets-v12",
   dark: "mapbox://styles/mapbox/dark-v11",
   satellite: "mapbox://styles/mapbox/satellite-streets-v12",
 } as const satisfies Record<BaseMap, string>;

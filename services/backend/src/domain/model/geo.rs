@@ -111,6 +111,8 @@ pub enum LayerType {
     Schools,
     /// 医療施設 — hospitals and clinics.
     Medical,
+    /// 駅 — railway station points.
+    Stations,
 }
 
 impl LayerType {
@@ -123,6 +125,7 @@ impl LayerType {
             "steep_slope" => Some(Self::SteepSlope),
             "schools" => Some(Self::Schools),
             "medical" => Some(Self::Medical),
+            "stations" => Some(Self::Stations),
             _ => None,
         }
     }
@@ -136,6 +139,7 @@ impl LayerType {
             Self::SteepSlope => "steep_slope",
             Self::Schools => "schools",
             Self::Medical => "medical",
+            Self::Stations => "stations",
         }
     }
 }
@@ -153,6 +157,7 @@ mod tests {
             "steep_slope",
             "schools",
             "medical",
+            "stations",
         ] {
             let lt = LayerType::parse(name).unwrap();
             assert_eq!(lt.as_str(), name);

@@ -5,7 +5,6 @@ import { useTranslation } from "@/lib/i18n";
 import { type BaseMap, useUIStore } from "@/stores/ui-store";
 
 const STYLES: { value: BaseMap; labelKey: string }[] = [
-  { value: "light", labelKey: "settings.mapStyle.light" },
   { value: "dark", labelKey: "settings.mapStyle.dark" },
   { value: "satellite", labelKey: "settings.mapStyle.satellite" },
 ];

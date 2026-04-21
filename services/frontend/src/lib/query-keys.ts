@@ -72,4 +72,12 @@ export const queryKeys = {
     all: ["municipalities"] as const,
     byPref: (prefCode: string) => ["municipalities", prefCode] as const,
   },
+  population: {
+    all: ["population"] as const,
+    byPref: (prefCode: string) => ["population", prefCode] as const,
+  },
+  vacancy: {
+    all: ["vacancy"] as const,
+    byPref: (prefCode: string) => ["vacancy", prefCode] as const,
+  },
 };

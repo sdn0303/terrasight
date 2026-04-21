@@ -23,74 +23,85 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-ds-bg-primary: var(--bg-primary);
-  --color-ds-bg-secondary: var(--bg-secondary);
-  --color-ds-bg-tertiary: var(--bg-tertiary);
-  --color-ds-text-primary: var(--text-primary);
-  --color-ds-text-secondary: var(--text-secondary);
-  --color-ds-text-muted: var(--text-muted);
-  --color-ds-text-heading: var(--text-heading);
-  --color-ds-border-primary: var(--border-primary);
-  --color-ds-accent-primary: var(--accent-primary);
-  --color-ds-accent-cyan: var(--accent-cyan);
-  --color-ds-accent-danger: var(--accent-danger);
-  --color-ds-accent-warning: var(--accent-warning);
-  --color-ds-accent-success: var(--accent-success);
-  --color-ds-hover-accent: var(--hover-accent);
 
-  /* Phase 0/1: Map-canvas shell tokens */
-  --color-mc-card: var(--card-fill);
-  --color-mc-card-solid: var(--card-fill-solid);
-  --color-mc-neutral-0: var(--neutral-0);
-  --color-mc-neutral-50: var(--neutral-50);
-  --color-mc-neutral-100: var(--neutral-100);
-  --color-mc-neutral-200: var(--neutral-200);
-  --color-mc-neutral-400: var(--neutral-400);
-  --color-mc-neutral-500: var(--neutral-500);
-  --color-mc-neutral-600: var(--neutral-600);
-  --color-mc-neutral-700: var(--neutral-700);
-  --color-mc-neutral-900: var(--neutral-900);
-  --color-mc-brand: var(--brand-indigo);
-  --color-mc-brand-violet: var(--brand-violet);
-  --color-mc-brand-cyan: var(--brand-cyan);
-  --color-mc-tint-indigo: var(--tint-indigo);
-  --color-mc-tint-violet: var(--tint-violet);
-  --color-mc-tint-red: var(--tint-red);
-  --color-mc-tint-amber: var(--tint-amber);
-  --color-mc-tint-emerald: var(--tint-emerald);
+  /* ─── Terrasight v3 design system tokens ─── */
+  --color-ts-bg-panel: var(--ts-bg-panel);
+  --color-ts-bg-sidebar: var(--ts-bg-sidebar);
+  --color-ts-bg-tab-active: var(--ts-bg-tab-active);
+  --color-ts-bg-overlay: var(--ts-bg-overlay);
+  --color-ts-bg-table-alt: var(--ts-bg-table-alt);
+  --color-ts-accent: var(--ts-accent);
+  --color-ts-accent-hover: var(--ts-accent-hover);
+  --color-ts-text-primary: var(--ts-text-primary);
+  --color-ts-text-secondary: var(--ts-text-secondary);
+  --color-ts-text-muted: var(--ts-text-muted);
+  --color-ts-text-dim: var(--ts-text-dim);
+  --color-ts-border-subtle: var(--ts-border-subtle);
+  --color-ts-border-divider: var(--ts-border-divider);
+  --color-ts-score-excellent: var(--ts-score-excellent);
+  --color-ts-score-good: var(--ts-score-good);
+  --color-ts-score-average: var(--ts-score-average);
+  --color-ts-score-caution: var(--ts-score-caution);
+  --color-ts-score-danger: var(--ts-score-danger);
 }
 
 :root {
-  /* ─── Terrasight Indigo design tokens ─────── */
-  --bg-primary: #0a0a12;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1e1b4b;
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --text-heading: #f1f5f9;
-  --border-primary: rgba(99, 102, 241, 0.15);
-  --accent-primary: #818cf8;
-  --accent-secondary: #a78bfa;
-  --accent-cyan: var(--accent-primary);
-  --accent-danger: #e04030;
-  --accent-warning: #ffd000;
-  --accent-success: #10b981;
-  --hover-accent: rgba(99, 102, 241, 0.1);
-  --font-mono: "Geist Mono", monospace, system-ui;
-  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  /* ─── v3 Panel backgrounds ──────────────── */
+  --ts-bg-panel: #111111F2;
+  --ts-bg-panel-hover: #111111;
+  --ts-bg-sidebar: #111111E6;
+  --ts-bg-tab-active: #FF840033;
+  --ts-bg-overlay: #111111CC;
+  --ts-bg-table-alt: #FFFFFF05;
 
-  /* ─── Sidebar gradient ─────────────────────── */
-  --accent-gradient-start: #1e1b4b;
-  --accent-gradient-end: #0f0d24;
-  --bg-sidebar: linear-gradient(
-    180deg,
-    var(--accent-gradient-start) 0%,
-    var(--accent-gradient-end) 100%
-  );
-  --surface-elevated: rgba(99, 102, 241, 0.05);
+  /* ─── v3 Accent ─────────────────────────── */
+  --ts-accent: #FF8400;
+  --ts-accent-hover: #FF9520;
 
-  /* ─── Layer color tokens ─────────────────────── */
+  /* ─── v3 Text ───────────────────────────── */
+  --ts-text-primary: #FFFFFF;
+  --ts-text-secondary: #D1D5DB;
+  --ts-text-muted: #9CA3AF;
+  --ts-text-dim: #6B7280;
+
+  /* ─── v3 Score colors ───────────────────── */
+  --ts-score-excellent: #10B981;
+  --ts-score-good: #3B82F6;
+  --ts-score-average: #FBBF24;
+  --ts-score-caution: #F97316;
+  --ts-score-danger: #EF4444;
+
+  /* ─── v3 Borders ────────────────────────── */
+  --ts-border-subtle: #FFFFFF1A;
+  --ts-border-divider: #FFFFFF0A;
+
+  /* ─── v3 Spacing ────────────────────────── */
+  --ts-gap-panel: 12px;
+  --ts-sidebar-width: 56px;
+  --ts-tab-height: 44px;
+  --ts-panel-radius: 12px;
+  --ts-badge-radius: 6px;
+  --ts-panel-padding: 16px;
+
+  /* ─── v3 Typography ─────────────────────── */
+  --font-sans: "Sora", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace, system-ui;
+
+  /* ─── v3 Base (dark map theme) ──────────── */
+  --bg-primary: #111111;
+  --bg-secondary: #1A1A1A;
+  --bg-tertiary: #222222;
+  --text-primary: #FFFFFF;
+  --text-secondary: #D1D5DB;
+  --text-muted: #6B7280;
+  --text-heading: #FFFFFF;
+  --border-primary: #FFFFFF1A;
+  --accent-primary: #FF8400;
+  --accent-danger: #EF4444;
+  --accent-warning: #FBBF24;
+  --accent-success: #10B981;
+
+  /* ─── Layer color tokens ─────────────────── */
   --layer-landprice: #fbbf24;
   --layer-flood-history: #60a5fa;
   --layer-did: #a78bfa;
@@ -112,104 +123,26 @@
   --layer-seismic: #ef4444;
   --layer-railway: #22d3ee;
 
-  /* ─── shadcn/ui theme (indigo dark) ──────────── */
-  --radius: 0.5rem;
-  --background: #0a0a12;
-  --foreground: #e2e8f0;
-  --card: #111827;
-  --card-foreground: #e2e8f0;
-  --popover: #111827;
-  --popover-foreground: #e2e8f0;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #1e1b4b;
-  --secondary-foreground: #e2e8f0;
-  --muted: #1e1b4b;
-  --muted-foreground: #94a3b8;
-  --accent: rgba(99, 102, 241, 0.1);
-  --accent-foreground: #e2e8f0;
-  --destructive: #e04030;
-  --border: rgba(99, 102, 241, 0.15);
-  --input: rgba(99, 102, 241, 0.15);
-  --ring: #6366f1;
-
-  /* ─── Phase 0/1: Map-canvas design tokens (new shell) ─── */
-  /* Card surfaces — semi-opaque white floating on map canvas */
-  --card-fill: rgba(255, 255, 255, 0.98);
-  --card-fill-solid: #ffffff;
-  --card-ring: rgba(255, 255, 255, 0.5);
-
-  /* Neutrals (shared with Tailwind slate palette) */
-  --neutral-0: #ffffff;
-  --neutral-50: #f8fafc;
-  --neutral-100: #f1f5f9;
-  --neutral-200: #e2e8f0;
-  --neutral-400: #94a3b8;
-  --neutral-500: #64748b;
-  --neutral-600: #475569;
-  --neutral-700: #334155;
-  --neutral-900: #0f172a;
-
-  /* Brand gradient stops */
-  --brand-indigo: #6366f1;
-  --brand-violet: #8b5cf6;
-  --brand-cyan: #06b6d4;
-  --brand-purple: #a855f7;
-
-  /* Semantic gradient stops */
-  --score-good-start: #10b981;
-  --score-good-end: #059669;
-  --score-mid-start: #f59e0b;
-  --score-mid-end: #d97706;
-  --score-bad-start: #ef4444;
-  --score-bad-end: #dc2626;
-  --signal-hot-start: #f43f5e;
-  --signal-hot-end: #e11d48;
-
-  /* Light tints */
-  --tint-indigo: #eef2ff;
-  --tint-violet: #f5f3ff;
-  --tint-blue: #eff6ff;
-  --tint-red: #fef2f2;
-  --tint-amber: #fef3c7;
-  --tint-emerald: #d1fae5;
-
-  /* Shadows (strong for main cards, medium for chips, subtle for overlays) */
-  --shadow-card-strong:
-    0 40px 100px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.5);
-  --shadow-card-medium:
-    0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.4);
-  --shadow-card-subtle: 0 10px 24px rgba(0, 0, 0, 0.18);
-
-  /* Glow shadows for gradient elements */
-  --glow-primary: 0 12px 28px rgba(99, 102, 241, 0.45);
-  --glow-primary-subtle: 0 8px 20px rgba(99, 102, 241, 0.35);
-  --glow-success: 0 6px 14px rgba(16, 185, 129, 0.35);
-  --glow-warn: 0 6px 14px rgba(245, 158, 11, 0.35);
-  --glow-danger: 0 6px 14px rgba(239, 68, 68, 0.35);
-  --glow-hot: 0 6px 16px rgba(244, 63, 94, 0.4);
-}
-
-/* ─── Panel theme variables (D44: data-theme attribute sync) ─── */
-:root,
-[data-theme="light"] {
-  --panel-bg: #ffffff;
-  --panel-border: #e2e8f0;
-  --panel-text-primary: #1e293b;
-  --panel-text-secondary: #64748b;
-  --panel-hover-bg: rgba(59, 130, 246, 0.06);
-  --panel-active-bg: rgba(99, 102, 241, 0.12);
-  --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="dark"] {
-  --panel-bg: #0c0c14;
-  --panel-border: #27272a;
-  --panel-text-primary: #e4e4e7;
-  --panel-text-secondary: #a1a1aa;
-  --panel-hover-bg: rgba(59, 130, 246, 0.12);
-  --panel-active-bg: rgba(99, 102, 241, 0.20);
-  --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  /* ─── shadcn/ui theme (dark, orange accent) ─ */
+  --radius: 0.75rem;
+  --background: #111111;
+  --foreground: #FFFFFF;
+  --card: #111111F2;
+  --card-foreground: #FFFFFF;
+  --popover: #111111F2;
+  --popover-foreground: #FFFFFF;
+  --primary: #FF8400;
+  --primary-foreground: #111111;
+  --secondary: #1A1A1A;
+  --secondary-foreground: #D1D5DB;
+  --muted: #1A1A1A;
+  --muted-foreground: #9CA3AF;
+  --accent: #FF840033;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --border: #FFFFFF1A;
+  --input: #FFFFFF1A;
+  --ring: #FF8400;
 }
 
 body {
@@ -220,11 +153,42 @@ body {
   overflow: hidden;
 }
 
-/* Monospace only for numeric/data contexts */
 code,
 kbd,
 samp,
 pre,
 .font-mono {
   font-family: var(--font-mono);
+}
+
+/* ─── v3 Animations ────────────────────── */
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 200ms ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in-left,
+  .animate-fade-in {
+    animation: none;
+  }
 }

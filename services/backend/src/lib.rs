@@ -37,6 +37,8 @@
 //! | `GET` | `/api/v1/transactions/aggregation` | `get_transaction_aggregation` |
 //! | `GET` | `/api/v1/appraisals` | `get_appraisals` |
 //! | `GET` | `/api/v1/municipalities` | `get_municipalities` |
+//! | `GET` | `/api/v1/population` | `get_population` |
+//! | `GET` | `/api/v1/vacancy` | `get_vacancy` |
 
 pub mod app_state;
 pub mod config;
@@ -108,6 +110,11 @@ pub fn build_router(pool: PgPool, config: &config::Config) -> Router {
             "/api/v1/municipalities",
             get(handler::municipalities::get_municipalities),
         )
+        .route(
+            "/api/v1/population",
+            get(handler::population::get_population),
+        )
+        .route("/api/v1/vacancy", get(handler::vacancy::get_vacancy))
         .layer(response_time::response_time_layer())
         .layer(request_id::request_id_layer())
         .with_state(state)

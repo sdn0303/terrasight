@@ -12,9 +12,11 @@
 //! |--------|-----------|
 //! | [`pg_area_repository`] | [`LayerRepository`](crate::domain::repository::LayerRepository) |
 //! | [`pg_land_price_repository`] | [`LandPriceRepository`](crate::domain::repository::LandPriceRepository) |
+//! | [`pg_population_repository`] | [`PopulationRepository`](crate::domain::repository::PopulationRepository) |
 //! | [`pg_stats_repository`] | [`StatsRepository`](crate::domain::repository::StatsRepository) |
 //! | [`pg_tls_repository`] | [`TlsRepository`](crate::domain::repository::TlsRepository) |
 //! | [`pg_trend_repository`] | [`TrendRepository`](crate::domain::repository::TrendRepository) |
+//! | [`pg_vacancy_repository`] | [`VacancyRepository`](crate::domain::repository::VacancyRepository) |
 //! | [`pg_admin_area_stats_repository`] | [`AdminAreaStatsRepository`](crate::domain::repository::AdminAreaStatsRepository) |
 //! | [`pg_aggregation_repository`] | [`AggregationRepository`](crate::domain::repository::AggregationRepository) |
 //! | [`pg_health_repository`] | [`HealthRepository`](crate::domain::repository::HealthRepository) |
@@ -38,10 +40,12 @@ pub(crate) mod pg_area_repository;
 pub(crate) mod pg_health_repository;
 pub(crate) mod pg_land_price_repository;
 pub(crate) mod pg_municipality_repository;
+pub(crate) mod pg_population_repository;
 pub(crate) mod pg_stats_repository;
 pub(crate) mod pg_tls_repository;
 pub(crate) mod pg_transaction_repository;
 pub(crate) mod pg_trend_repository;
+pub(crate) mod pg_vacancy_repository;
 pub(crate) mod query_helpers;
 pub(crate) mod reinfolib_mock;
 pub(crate) mod row_types;
