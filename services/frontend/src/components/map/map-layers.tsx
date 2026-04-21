@@ -5,6 +5,7 @@ import { memo, useMemo } from "react";
 import { LayerRenderer } from "@/components/map/layer-renderer";
 import { useAreaData } from "@/features/area-data/api/use-area-data";
 import { useLandPricesAllYears } from "@/features/land-prices/api/use-land-prices-all-years";
+import { useThemeLayers } from "@/hooks/use-theme-layers";
 import type { BBox } from "@/lib/api";
 import { LAND_PRICE_FROM_YEAR, LAND_PRICE_TO_YEAR } from "@/lib/constants";
 import { EMPTY_FC } from "@/lib/geo-constants";
@@ -41,12 +42,16 @@ export const MapLayers = memo(function MapLayers({
     parseAsInteger.withDefault(2026),
   );
 
-  // Only send API-sourced layer IDs to area-data endpoint.
-  // Static and timeseries layers are fetched via separate hooks.
+  const { visibleLayerIds: tabLayerIds } = useThemeLayers();
+
+  // Send API-sourced layer IDs to area-data endpoint.
+  // Union of manually toggled layers AND tab-selected layers ensures
+  // switching tabs fetches the correct API data.
   const apiLayerIds = useMemo(() => {
     const apiIds = new Set(apiLayers.map((l) => l.id));
-    return [...visibleLayers].filter((id) => apiIds.has(id));
-  }, [visibleLayers]);
+    const combined = new Set([...visibleLayers, ...tabLayerIds]);
+    return [...combined].filter((id) => apiIds.has(id));
+  }, [visibleLayers, tabLayerIds]);
 
   const { data: areaData } = useAreaData(bbox, apiLayerIds, zoom);
   const { data: landPriceData, isFetching: isLandPriceFetching } =

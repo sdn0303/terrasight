@@ -84,8 +84,6 @@ Content-Encoding: gzip
 | GET | `/api/v1/municipalities` | 市区町村リスト |
 | GET | `/api/v1/population` | 市区町村別人口・世帯数 **(v3 NEW)** |
 | GET | `/api/v1/vacancy` | 市区町村別空き家率 **(v3 NEW)** |
-| GET | `/api/v1/vacancy/geo` | 空室率 + ポリゴン GeoJSON **(v3 NEW)** |
-| GET | `/api/v1/population/geo` | 人口 + ポリゴン GeoJSON **(v3 NEW)** |
 
 ---
 
@@ -548,77 +546,6 @@ export const VacancySchema = z.object({
   vacancy_rate_pct: z.number(),
   survey_year: z.number(),
 });
-```
-
----
-
-### 4.3 GET /api/v1/vacancy/geo
-
-空室率データ + 行政区ポリゴン（GeoJSON）。admin_boundaries と vacancy_rates を空間結合。
-
-**Query Parameters:**
-
-| Param | Type | Required | Description |
-| --- | --- | --- | --- |
-| south | f64 | Yes | bbox 南端緯度 |
-| west | f64 | Yes | bbox 西端経度 |
-| north | f64 | Yes | bbox 北端緯度 |
-| east | f64 | Yes | bbox 東端経度 |
-| pref_code | string | No | 都道府県フィルタ |
-
-**Response 200:** GeoJSON FeatureCollection
-
-```json
-{
-  "type": "FeatureCollection",
-  "features": [{
-    "type": "Feature",
-    "geometry": { "type": "MultiPolygon", "coordinates": ["..."] },
-    "properties": {
-      "admin_code": "13104",
-      "city_name": "新宿区",
-      "vacancy_rate_pct": 5.95,
-      "vacancy_count": 12500,
-      "total_houses": 210000,
-      "survey_year": 2023
-    }
-  }]
-}
-```
-
----
-
-### 4.4 GET /api/v1/population/geo
-
-人口データ + 行政区ポリゴン（GeoJSON）。admin_boundaries と population_municipality を空間結合。
-
-**Query Parameters:**
-
-| Param | Type | Required | Description |
-| --- | --- | --- | --- |
-| south | f64 | Yes | bbox 南端緯度 |
-| west | f64 | Yes | bbox 西端経度 |
-| north | f64 | Yes | bbox 北端緯度 |
-| east | f64 | Yes | bbox 東端経度 |
-| pref_code | string | No | 都道府県フィルタ |
-
-**Response 200:** GeoJSON FeatureCollection
-
-```json
-{
-  "type": "FeatureCollection",
-  "features": [{
-    "type": "Feature",
-    "geometry": { "type": "MultiPolygon", "coordinates": ["..."] },
-    "properties": {
-      "admin_code": "13104",
-      "city_name": "新宿区",
-      "population": 344880,
-      "households": 206093,
-      "census_year": 2020
-    }
-  }]
-}
 ```
 
 ---

@@ -4,16 +4,18 @@ import { useUIStore } from "@/stores/ui-store";
 
 /**
  * Maps each tab to its Mapbox layer IDs.
+ * IDs must match layer components registered in LayerRenderer
+ * (STATIC_LAYER_COMPONENTS / API_LAYER_COMPONENTS) or new feature layers.
  * See docs/DESIGN.md Sec 6.4 for layer definitions per tab.
  */
 const TAB_LAYERS: Record<TabId, string[]> = {
-  overview: ["tls_heatmap_fill", "station", "railway"],
+  overview: ["station", "railway"],
   "land-price": ["land_price_polygon", "land_price_polygon_label", "landprice"],
   transactions: ["transaction_polygon", "transaction_polygon_label"],
   population: ["population_mesh", "did"],
-  vacancy: ["vacancy_fill"],
+  vacancy: [],
   stations: ["station", "railway"],
-  yield: ["yield_fill"],
+  yield: [],
   hazard: [
     "flood",
     "flood_history",

@@ -4,9 +4,9 @@ export const PopulationSchema = z.object({
   city_code: z.string(),
   city_name: z.string(),
   population: z.number(),
-  male: z.number(),
-  female: z.number(),
-  households: z.number(),
+  male: z.number().nullable(),
+  female: z.number().nullable(),
+  households: z.number().nullable(),
   census_year: z.number(),
 });
 
